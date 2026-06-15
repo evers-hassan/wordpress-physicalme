@@ -332,6 +332,14 @@ add_action( 'init', function() {
 	) );
 }, 0 );
 
+// Order articles from oldest to newest (first lesson first)
+add_action( 'pre_get_posts', function( $query ) {
+	if ( ! is_admin() && ( is_post_type_archive( 'article' ) || is_tax( 'chapter' ) ) ) {
+		$query->set( 'orderby', 'date' );
+		$query->set( 'order', 'ASC' );
+	}
+} );
+
 // Flush rewrite rules on theme activation
 add_action( 'after_setup_theme', function() {
 	if ( ! get_transient( 'article_rewrite_rules_flushed' ) ) {
