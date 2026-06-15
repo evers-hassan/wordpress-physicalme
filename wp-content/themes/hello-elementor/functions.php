@@ -172,6 +172,13 @@ function hello_elementor_custom_assets() {
 	);
 
 	wp_enqueue_style(
+		'hello-elementor-inner-pages',
+		HELLO_THEME_STYLE_URL . 'inner-pages.css',
+		[],
+		HELLO_ELEMENTOR_VERSION
+	);
+
+	wp_enqueue_style(
 		'hello-elementor-article-layout',
 		HELLO_THEME_STYLE_URL . 'article-layout.css',
 		[],
