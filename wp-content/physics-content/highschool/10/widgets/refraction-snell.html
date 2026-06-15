@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌ساز شکست نور</title>
+<style>
+  :root{--bg:#fff;--surface:#f4f3ef;--text:#1a1a18;--muted:#5f5e5a;--hint:#9b9a93;--border-strong:#cbc9c0;--info:#185fa5;}
+  @media (prefers-color-scheme:dark){:root{--bg:#1f1e1c;--surface:#2a2926;--text:#f0efe9;--muted:#a8a69e;--hint:#76746d;--border-strong:#4a4844;--info:#85b7eb;}}
+  *{box-sizing:border-box;}
+  body{margin:0;padding:16px;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;background:var(--bg);color:var(--text);}
+  .row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  label{font-size:13px;color:var(--muted);white-space:nowrap;min-width:96px;}
+  input[type=range]{flex:1;accent-color:var(--info);}
+  select{flex:1;font-family:inherit;padding:6px;border-radius:8px;border:1px solid var(--border-strong);background:var(--bg);color:var(--text);}
+  .val{font-family:monospace;font-size:13px;min-width:42px;color:var(--info);}
+  canvas{width:100%;height:auto;background:var(--surface);border-radius:12px;display:block;}
+  .stats{display:flex;gap:16px;font-size:13px;color:var(--muted);margin-top:10px;flex-wrap:wrap;}
+  .stats b{color:var(--text);font-weight:600;}
+  #tir{color:var(--info);}
+</style>
+</head>
+<body>
+  <div class="row"><label>زاویه‌ی تابش</label><input type="range" min="0" max="85" value="40" step="1" id="ang"><span class="val" id="angout">۴۰°</span></div>
+  <div class="row"><label>محیطِ پایین</label><select id="med"><option value="1.33">آب (n=۱.۳۳)</option><option value="1.5">شیشه (n=۱.۵)</option><option value="2.42">الماس (n=۲.۴۲)</option></select></div>
+  <canvas id="cv" width="660" height="340"></canvas>
+  <div class="stats"><span>زاویه‌ی شکست: <b id="r2">۰°</b></span><span id="tir"></span></div>
+<script>
+  var faNum=function(n){return String(n).replace(/[0-9]/g,function(d){return "۰۱۲۳۴۵۶۷۸۹"[d];});};
+  var cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+  var angEl=document.getElementById("ang"),medEl=document.getElementById("med");
+  var angout=document.getElementById("angout"),r2El=document.getElementById("r2"),tirEl=document.getElementById("tir");
+  function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||"#888";}
+  var cx=330,cy=170,L=150;
+  function draw(){
+    var inc=+angEl.value,n1=1.0,n2=+medEl.value;angout.textContent=faNum(inc)+"°";
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.fillStyle=css("--info");ctx.globalAlpha=0.12;ctx.fillRect(0,cy,cv.width,cv.height-cy);ctx.globalAlpha=1;
+    ctx.strokeStyle=css("--border-strong");ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(cv.width,cy);ctx.stroke();
+    ctx.setLineDash([4,4]);ctx.strokeStyle=css("--hint");ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cx,20);ctx.lineTo(cx,cv.height-10);ctx.stroke();ctx.setLineDash([]);
+    var iR=inc*Math.PI/180;
+    ctx.strokeStyle="#ef9f27";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx-L*Math.sin(iR),cy-L*Math.cos(iR));ctx.lineTo(cx,cy);ctx.stroke();
+    ctx.fillStyle="#ef9f27";ctx.beginPath();ctx.arc(cx-L*Math.sin(iR),cy-L*Math.cos(iR),5,0,7);ctx.fill();
+    ctx.strokeStyle=css("--hint");ctx.lineWidth=1.5;ctx.globalAlpha=0.6;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+L*Math.sin(iR),cy-L*Math.cos(iR));ctx.stroke();ctx.globalAlpha=1;
+    var sinR=n1*Math.sin(iR)/n2;
+    if(sinR<=1){var rR=Math.asin(sinR);
+      ctx.strokeStyle="#378add";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+L*Math.sin(rR),cy+L*Math.cos(rR));ctx.stroke();
+      ctx.fillStyle="#378add";ctx.beginPath();ctx.arc(cx+L*Math.sin(rR),cy+L*Math.cos(rR),5,0,7);ctx.fill();
+      r2El.textContent=faNum(Math.round(rR*180/Math.PI))+"°";tirEl.textContent="";
+    }else{ctx.strokeStyle="#e24b4a";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+L*Math.sin(iR),cy+L*Math.cos(iR));ctx.stroke();
+      r2El.textContent="—";tirEl.textContent="بازتابِ کلیِ داخلی! نور اصلاً وارد نشد";}
+  }
+  angEl.addEventListener("input",draw);medEl.addEventListener("change",draw);draw();
+</script>
+</body>
+</html>

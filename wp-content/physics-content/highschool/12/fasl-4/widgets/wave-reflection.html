@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بازتاب موج — انتهای ثابت در مقابل آزاد</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed; --warn:#a87800; --warn-bg:#fef6e0;
+    --wave:#185fa5; --wave2:#c43838;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e0b860; --warn-bg:#4a3a15;
+      --wave:#85b7eb; --wave2:#f06a60;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:980px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .layout{display:grid; grid-template-columns:1fr 240px; gap:12px;}
+  @media(max-width:760px){.layout{grid-template-columns:1fr;}}
+  .stage{background:linear-gradient(to bottom, #f7f9fc, var(--bg)); border:1px solid var(--border); border-radius:14px; padding:8px;}
+  @media(prefers-color-scheme:dark){.stage{background:linear-gradient(to bottom, #2a3040, var(--bg));}}
+  canvas{display:block; width:100%; height:260px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:13px; margin:8px 0 6px; color:var(--muted); text-transform:uppercase;}
+  .panel h3:first-child{margin-top:0;}
+  .radio-grp{display:flex; gap:6px; margin-bottom:6px;}
+  .radio-grp label{flex:1; padding:8px; background:var(--bg); border:1px solid var(--border); border-radius:6px; text-align:center; cursor:pointer; font-size:12.5px;}
+  .radio-grp input{display:none;}
+  .radio-grp input:checked + span{color:var(--info); font-weight:700;}
+  .radio-grp label:has(input:checked){background:var(--info-bg); border-color:var(--info);}
+  .slider-row{display:grid; grid-template-columns:1fr 60px; gap:6px; align-items:center; font-size:13px; margin-bottom:4px;}
+  .val{font-weight:700; color:var(--info); text-align:left; font-variant-numeric:tabular-nums;}
+  input[type=range]{width:100%; accent-color:var(--info);}
+  .btn{background:var(--info); color:white; border:none; padding:8px 14px; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer; width:100%; margin-top:6px;}
+  .btn.alt{background:#c43838;}
+  .note{font-size:12px; padding:8px; background:var(--ok-bg); color:var(--ok); border-radius:8px; margin-top:8px; line-height:1.6;}
+  .row-lbl{font-size:11.5px; color:var(--muted); padding:4px 8px; text-align:center;}
+</style>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']], processEscapes: true },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>بازتاب موج 🔁 — انتهای ثابت در مقابل آزاد</h2>
+  <p class="sub">یه تَپ روی طناب می‌فرستیم. ببین وقتی به دیوار می‌رسه چی می‌شه. انتهای ثابت = وارونگی. انتهای آزاد = بدون وارونگی.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <div class="row-lbl">↓ طناب — موجِ آبی فرودی، موجِ قرمز بازتابیده</div>
+      <canvas id="cv"></canvas>
+    </div>
+
+    <div class="panel">
+      <h3>نوعِ انتها</h3>
+      <div class="radio-grp">
+        <label><input type="radio" name="end" value="fixed" checked><span>ثابت 🧱</span></label>
+        <label><input type="radio" name="end" value="free"><span>آزاد 🔄</span></label>
+      </div>
+
+      <h3>پارامترها</h3>
+      <div class="slider-row"><label>دامنه</label><span class="val" id="vA">۲۰</span></div>
+      <input type="range" id="A" min="10" max="40" step="2" value="20">
+      <div class="slider-row"><label>عرضِ تَپ</label><span class="val" id="vW">۰٫۵</span></div>
+      <input type="range" id="W" min="0.2" max="1.2" step="0.05" value="0.5">
+      <div class="slider-row"><label>سرعت</label><span class="val" id="vS">۱٫۰</span></div>
+      <input type="range" id="S" min="0.3" max="2.5" step="0.1" value="1.0">
+
+      <button class="btn" id="send">↗ فرستادن تَپ</button>
+      <button class="btn alt" id="reset">⟲ ریست</button>
+
+      <div class="note" id="note">
+        🧱 <b>انتهای ثابت:</b> تَپ بازتابیده <b>وارونه</b> برمی‌گرده. علتش قانون سوم نیوتونه — نیروی واکنشی دیوار، یه تَپ معکوس می‌سازه.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fa=n=>n.toLocaleString('fa-IR');
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const cv=$('cv'), ctx=cv.getContext('2d');
+let DPR=window.devicePixelRatio||1;
+function fit(){const r=cv.getBoundingClientRect(); cv.width=r.width*DPR; cv.height=r.height*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); return {w:r.width,h:r.height};}
+
+let A=20, W=0.5, S=1.0;
+let endType='fixed';
+let pulses=[]; // each: {x, dir, sign}
+let t=0, last=null;
+let pulseId=0;
+
+function pulse(x, center, width, sign){
+  const u = (x-center)/width;
+  return sign * A * Math.exp(-u*u*4);
+}
+
+function draw(){
+  const {w, h}=fit();
+  const cy=h/2;
+  // background gradient already in CSS
+  ctx.clearRect(0,0,w,h);
+  // floor / x-axis
+  ctx.strokeStyle=css('--border'); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(20, cy); ctx.lineTo(w-30, cy); ctx.stroke();
+  // wall (right) — fixed wall
+  const wallX = w-30;
+  ctx.fillStyle = (endType==='fixed') ? '#555' : 'transparent';
+  ctx.strokeStyle = (endType==='fixed') ? '#222' : '#888';
+  ctx.lineWidth=2;
+  if(endType==='fixed'){
+    ctx.fillRect(wallX, cy-50, 10, 100);
+    ctx.strokeRect(wallX, cy-50, 10, 100);
+    // hatching
+    ctx.beginPath();
+    for(let yy=cy-46; yy<cy+50; yy+=8){
+      ctx.moveTo(wallX+10, yy); ctx.lineTo(wallX+20, yy+8);
+    }
+    ctx.stroke();
+  } else {
+    // free end — ring on a pole
+    ctx.beginPath(); ctx.moveTo(wallX+5, cy-50); ctx.lineTo(wallX+5, cy+50); ctx.stroke();
+    ctx.beginPath(); ctx.arc(wallX+5, cy, 10, 0, 2*Math.PI); ctx.fillStyle=css('--surface'); ctx.fill(); ctx.stroke();
+    // label
+    ctx.fillStyle=css('--muted'); ctx.font='10px Vazirmatn'; ctx.textAlign='center';
+    ctx.fillText('آزاد', wallX+5, cy+62);
+  }
+  // wall label
+  if(endType==='fixed'){
+    ctx.fillStyle=css('--muted'); ctx.font='10px Vazirmatn'; ctx.textAlign='center';
+    ctx.fillText('ثابت', wallX+5, cy+62);
+  }
+
+  // compute string shape (sum of pulses)
+  ctx.strokeStyle=css('--wave'); ctx.lineWidth=2.5;
+  ctx.beginPath();
+  const left = 20, right = wallX;
+  const len_m = (right-left)/200; // m
+  for(let px=left; px<=right; px+=1){
+    const x_m = (px-left)/200; // position in meters
+    let y=0;
+    pulses.forEach(p=>{
+      // each pulse oscillates between left and wall
+      // dir: +1 going right, -1 going left
+      // sign: ±1 (vertical inversion)
+      y += pulse(x_m, p.x, W, p.sign);
+    });
+    if(px===left) ctx.moveTo(px, cy - y);
+    else ctx.lineTo(px, cy - y);
+  }
+  ctx.stroke();
+}
+
+function step(now){
+  if(!last) last=now;
+  const dt = Math.min((now-last)/1000, 0.05);
+  last=now;
+  t+=dt;
+  // move pulses
+  pulses.forEach(p=>{
+    p.x += p.dir * S * dt;
+    // wall length in meters: (w-50)/200
+    const cv_w = cv.getBoundingClientRect().width;
+    const len_m = (cv_w - 50)/200;
+    if(p.dir>0 && p.x > len_m){
+      // hit wall — reflect
+      p.dir = -1;
+      if(endType==='fixed') p.sign *= -1;
+      p.x = 2*len_m - p.x;
+    } else if(p.dir<0 && p.x < 0){
+      // hit left edge — just absorb
+      p.dead = true;
+    }
+  });
+  pulses = pulses.filter(p=>!p.dead);
+  draw();
+  requestAnimationFrame(step);
+}
+
+$('send').addEventListener('click', ()=>{
+  pulses.push({x:0.1, dir:+1, sign:+1});
+});
+$('reset').addEventListener('click', ()=>{ pulses=[]; });
+['A','W','S'].forEach(id=>{
+  $(id).addEventListener('input', e=>{
+    if(id==='A'){A=parseFloat(e.target.value); $('vA').textContent=fa(A);}
+    if(id==='W'){W=parseFloat(e.target.value); $('vW').textContent=fa(W.toFixed(2));}
+    if(id==='S'){S=parseFloat(e.target.value); $('vS').textContent=fa(S.toFixed(1));}
+  });
+});
+document.querySelectorAll('input[name=end]').forEach(r=>{
+  r.addEventListener('change', e=>{
+    endType=e.target.value;
+    $('note').innerHTML = (endType==='fixed')
+      ? '🧱 <b>انتهای ثابت:</b> تَپ بازتابیده <b>وارونه</b> برمی‌گرده. علتش قانون سوم نیوتونه — نیروی واکنشی دیوار، یه تَپ معکوس می‌سازه.'
+      : '🔄 <b>انتهای آزاد:</b> تَپ بازتابیده <b>هم‌جهت</b> برمی‌گرده — بدون وارونگی. چون حلقه آزاده، می‌تونه بالا-پایین بشه و دامنه‌اش دو برابر می‌شه لحظه‌ای.';
+  });
+});
+requestAnimationFrame(step);
+</script>
+</body>
+</html>

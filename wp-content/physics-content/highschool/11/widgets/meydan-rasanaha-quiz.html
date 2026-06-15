@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودتو بسنج — میدان در رساناها</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8;
+  }
+  .wrap{max-width:720px; margin:0 auto;}
+  .q-item{
+    border:1px solid var(--border); border-radius:12px; margin-bottom:10px;
+    overflow:hidden; background:var(--surface);
+  }
+  .q-head{
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+    padding:13px 15px; font-weight:500; font-size:15px; user-select:none;
+  }
+  .q-head:hover{background:var(--info-bg);}
+  .q-head .tog{
+    margin-inline-start:auto; flex:0 0 auto; color:var(--info);
+    transition:transform .2s ease; font-size:18px;
+  }
+  .q-item.open .q-head .tog{transform:rotate(45deg);}
+  .q-num{
+    flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+    background:var(--info); color:#fff; display:flex; align-items:center;
+    justify-content:center; font-size:13px; font-weight:700;
+  }
+  .q-body{
+    max-height:0; overflow:hidden; transition:max-height .25s ease;
+    background:var(--ok-bg);
+  }
+  .q-body .inner{padding:13px 15px; color:var(--text); font-size:14.5px;}
+  .q-body .inner::before{
+    content:"پاسخ: "; color:var(--ok); font-weight:700;
+  }
+  .hint{font-size:13px; color:var(--muted); margin:0 0 14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="hint">روی هر سؤال بزن تا پاسخش باز شود 👇</p>
+  <div id="quiz"></div>
+</div>
+
+<script>
+  var items = [
+    { q: "بارِ اضافی که به یک رسانا می‌دهیم کجا توزیع می‌شود؟",
+      a: "روی <b>سطحِ خارجیِ</b> رسانا. این را آزمایشِ فاراده نشان داد." },
+    { q: "میدان الکتریکی داخلِ یک رسانا در تعادلِ الکترواستاتیکی چقدر است؟",
+      a: "<b>صفر</b>. اگر صفر نبود، الکترون‌های آزاد نیرو می‌گرفتند و جابه‌جا می‌شدند (جریان ایجاد می‌شد) — که با تعادل سازگار نیست." },
+    { q: "چرا داخلِ اتومبیل یا هواپیما هنگامِ آذرخش در امانی؟",
+      a: "بدنه‌ی فلزی مثلِ یک <b>قفسِ فاراده</b> عمل می‌کند: میدان داخلش صفر است و بار از روی سطحِ خارجی عبور می‌کند، نه از داخل." },
+    { q: "آیا همه‌ی نقاطِ یک رسانا در تعادل، هم‌پتانسیل‌اند؟",
+      a: "بله. چون میدانِ داخل صفر است، کارِ لازم برای جابه‌جاییِ بار صفر می‌شود، پس اختلاف پتانسیلِ بینِ هر دو نقطه صفر است → <b>همه هم‌پتانسیل</b>." },
+    { q: "چگالی سطحیِ بار (σ) چیست؟",
+      a: "<b>σ = Q/A</b>؛ یعنی بار بر واحدِ سطح، با یکای کولن بر مترمربع (C/m²)." },
+    { q: "بار روی کدام قسمتِ یک رسانای باردار متراکم‌تر است؟",
+      a: "روی <b>نوک‌های تیز</b>. آنجا چگالی سطحیِ بار و میدان الکتریکی قوی‌تر است — همین اساسِ کارِ <b>برق‌گیر</b> است." }
+  ];
+
+  var box = document.getElementById('quiz');
+  items.forEach(function(it, i){
+    var item = document.createElement('div'); item.className='q-item';
+    var head = document.createElement('div'); head.className='q-head';
+    head.innerHTML = '<span class="q-num">'+toFa(i+1)+'</span><span>'+it.q+'</span><span class="tog">+</span>';
+    var body = document.createElement('div'); body.className='q-body';
+    var inner = document.createElement('div'); inner.className='inner'; inner.innerHTML=it.a;
+    body.appendChild(inner);
+    head.addEventListener('click', function(){
+      var open = item.classList.toggle('open');
+      body.style.maxHeight = open ? (inner.scrollHeight + 26) + 'px' : '0';
+    });
+    item.appendChild(head); item.appendChild(body); box.appendChild(item);
+  });
+  function toFa(n){return (''+n).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+</script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودت را بسنج — دستگاه بین‌المللی یکاها</title>
+<style>
+  :root{ --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a; --border:#e0ded7; }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e; --border:#3a3835; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; font-family:Vazirmatn,Tahoma,system-ui,sans-serif; background:var(--bg); color:var(--text);}
+  .qa-item{border:1px solid var(--border); border-radius:12px; margin-bottom:10px; overflow:hidden; background:var(--bg);}
+  .qa-q{width:100%; text-align:right; border:none; background:transparent; padding:14px 16px; font-size:15px;
+    font-weight:600; color:var(--text); cursor:pointer; display:flex; justify-content:space-between;
+    align-items:center; gap:10px; line-height:1.6; font-family:inherit;}
+  .qa-q .arrow{flex-shrink:0; transition:transform .2s; font-size:13px;}
+  .qa-a{max-height:0; overflow:hidden; transition:max-height .25s ease;}
+  .qa-a p{margin:0; padding:0 16px 16px; font-size:15px; line-height:1.8; color:var(--muted);
+    border-top:1px solid var(--border); padding-top:12px;}
+</style>
+</head>
+<body>
+  <div id="qa"></div>
+<script>
+  var items=[
+    {q:"۱. چرا یه یکای اندازه‌گیریِ خوب باید «تغییرناپذیر» و «قابلِ بازتولید» باشه؟",
+     a:"تغییرناپذیر یعنی همیشه و همه‌جا یه اندازه بمونه (وگرنه دیروز با امروز فرق می‌کنه!)، و قابلِ بازتولید یعنی هر کسی هر جای دنیا بتونه دقیقاً همونو بسازه. اگه این دو تا نباشن، اندازه‌گیریِ من با تو نمی‌خونه و علم و تجارت به هم می‌ریزه. برای همین SI داره می‌ره سمتِ تعریف بر اساسِ ثابت‌های جهانیِ طبیعت."},
+    {q:"۲. تفاوتِ یکای اصلی و یکای فرعی چیه؟",
+     a:"یکای اصلی یکی از اون هفت‌تای پایه‌ست (متر، کیلوگرم، ثانیه، کلوین، مول، آمپر، کندلا) که مستقل از همن. یکای فرعی از ترکیبِ همین هفت‌تا ساخته می‌شه — مثلاً متر بر ثانیه (سرعت) که از متر و ثانیه درست شده، یا نیوتون که از kg·m/s² ساخته شده."},
+    {q:"۳. چرا متر رو با سرعتِ نور تعریف کردن، نه با یه میله‌ی فلزی؟",
+     a:"چون میله‌ی فلزی ممکنه با گرما و گذرِ زمان یه ذره تغییر کنه یا آسیب ببینه. ولی سرعتِ نور تو خلأ یه ثابتِ جهانیه که هیچ‌وقت و هیچ‌جا تغییر نمی‌کنه — پس متری که بهش وصل شده هم همیشه دقیقاً یه اندازه می‌مونه."},
+    {q:"۴. یکای ضریبِ تبدیل چطوری کار می‌کنه؟",
+     a:"ضریبِ تبدیل یه کسره که برابرِ عددِ یکه (مثلِ ۱ متر تقسیم بر ۱۰۰ سانتی‌متر، که چون مساوین، کسرشون = ۱). چون ضرب کردنِ هر چیزی در عدد یک اندازه‌شو عوض نمی‌کنه، می‌تونیم باهاش یکا رو تغییر بدیم بدونِ اینکه مقدارِ واقعی عوض شه. یکاها بالا و پایین همدیگه رو می‌خورن و فقط یکای دلخواه می‌مونه."},
+    {q:"۵. تفاوتِ نمادِ M و m چیه و چرا مهمه؟",
+     a:"M (بزرگ) یعنی مگا = ۱۰⁶، ولی m (کوچیک) یعنی میلی = ۱۰⁻³! یعنی فرقشون میلیاردها برابره. اگه تو نوشتن قاطیشون کنی، جوابت فاجعه‌بار غلط می‌شه. پس تو پیشوندها، بزرگ و کوچک بودنِ حروف اصلاً شوخی‌بردار نیست."}
+  ];
+  var box=document.getElementById("qa");
+  items.forEach(function(it){
+    var wrap=document.createElement("div");wrap.className="qa-item";
+    var btn=document.createElement("button");btn.className="qa-q";
+    btn.innerHTML="<span>"+it.q+"</span><span class='arrow'>▼</span>";
+    var ans=document.createElement("div");ans.className="qa-a";
+    var p=document.createElement("p");p.textContent=it.a;ans.appendChild(p);
+    var open=false;
+    btn.addEventListener("click",function(){open=!open;
+      ans.style.maxHeight=open?ans.scrollHeight+"px":"0";
+      btn.querySelector(".arrow").style.transform=open?"rotate(180deg)":"rotate(0deg)";});
+    wrap.appendChild(btn);wrap.appendChild(ans);box.appendChild(wrap);
+  });
+</script>
+</body>
+</html>

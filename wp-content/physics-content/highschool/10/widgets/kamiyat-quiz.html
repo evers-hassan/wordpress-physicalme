@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودت را بسنج — کمیت‌های نرده‌ای و برداری</title>
+<style>
+  :root{ --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a; --border:#e0ded7; }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e; --border:#3a3835; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; font-family:Vazirmatn,Tahoma,system-ui,sans-serif; background:var(--bg); color:var(--text);}
+  .qa-item{border:1px solid var(--border); border-radius:12px; margin-bottom:10px; overflow:hidden; background:var(--bg);}
+  .qa-q{width:100%; text-align:right; border:none; background:transparent; padding:14px 16px; font-size:15px;
+    font-weight:600; color:var(--text); cursor:pointer; display:flex; justify-content:space-between;
+    align-items:center; gap:10px; line-height:1.6; font-family:inherit;}
+  .qa-q .arrow{flex-shrink:0; transition:transform .2s; font-size:13px;}
+  .qa-a{max-height:0; overflow:hidden; transition:max-height .25s ease;}
+  .qa-a p{margin:0; padding:0 16px 16px; font-size:15px; line-height:1.8; color:var(--muted);
+    border-top:1px solid var(--border); padding-top:12px;}
+</style>
+</head>
+<body>
+  <div id="qa"></div>
+<script>
+  var items=[
+    {q:"۱. فرقِ اصلیِ یه کمیتِ نرده‌ای و برداری چیه؟",
+     a:"کمیتِ نرده‌ای فقط با یه عدد و یکا کامل می‌شه (مثلِ جرم یا دما)، ولی کمیتِ برداری علاوه بر عدد و یکا، حتماً به «جهت» هم نیاز داره (مثلِ نیرو یا جابه‌جایی). تستِ ساده: اگه پرسیدن «به کدوم طرف؟» معنی داشت، برداریه."},
+    {q:"۲. چرا «بیانِ یه کمیت بدونِ یکا» بی‌معنیه؟ یه مثال بزن.",
+     a:"چون عدد به‌تنهایی مرجع نداره. اگه بگم «جرمم ۶۵»، معلوم نیست ۶۵ گرمه، کیلوگرمه یا تُن! یکا همون مقیاسیه که عدد رو معنادار می‌کنه. پس همیشه عدد + یکا."},
+    {q:"۳. تندی و سرعت چه فرقی دارن؟",
+     a:"تندی نرده‌ایه و فقط می‌گه چقدر تند (مثلِ ۶۰ کیلومتر بر ساعت). سرعت برداریه و می‌گه چقدر تند و به کدوم طرف (۶۰ کیلومتر بر ساعت به‌طرفِ شرق). تو زبونِ روزمره یکی گرفته می‌شن، ولی تو فیزیک فرق دارن."},
+    {q:"۴. یه ماشین یه دورِ کاملِ پیست می‌زنه و برمی‌گرده سرِ جای اول. جابه‌جایی و سرعتِ متوسطش چقدره؟",
+     a:"جابه‌جاییش صفره! چون از همون نقطه‌ای که شروع کرد به همون نقطه برگشت (مبدأ و مقصد یکیه). و چون سرعتِ متوسط = جابه‌جایی تقسیم بر زمان، سرعتِ متوسطش هم صفره — با اینکه تمامِ مسیرو با تندیِ زیاد رفته! این یکی از قشنگ‌ترین تفاوت‌های نرده‌ای و برداریه."},
+    {q:"۵. فلشِ کوچیکِ بالای نمادِ یه کمیت (مثلِ بردار F) یعنی چی؟ اگه نباشه چی؟",
+     a:"فلشِ بالای نماد یعنی اون کمیت برداریه و جهتش هم مهمه. اگه همون حرفو بدونِ فلش بنویسیم (مثلِ F خالی)، یعنی فقط داریم درباره‌ی «اندازه‌ی» اون کمیت حرف می‌زنیم — عدد و یکاش، بدونِ جهت."}
+  ];
+  var box=document.getElementById("qa");
+  items.forEach(function(it){
+    var wrap=document.createElement("div");wrap.className="qa-item";
+    var btn=document.createElement("button");btn.className="qa-q";
+    btn.innerHTML="<span>"+it.q+"</span><span class='arrow'>▼</span>";
+    var ans=document.createElement("div");ans.className="qa-a";
+    var p=document.createElement("p");p.textContent=it.a;ans.appendChild(p);
+    var open=false;
+    btn.addEventListener("click",function(){open=!open;
+      ans.style.maxHeight=open?ans.scrollHeight+"px":"0";
+      btn.querySelector(".arrow").style.transform=open?"rotate(180deg)":"rotate(0deg)";});
+    wrap.appendChild(btn);wrap.appendChild(ans);box.appendChild(wrap);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<svg viewBox="0 0 660 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="نمایش یک بردار با پیکان و نماد F با فلش بالای آن" font-family="Vazirmatn,Tahoma,sans-serif">
+  <style>
+    .axis{stroke:#cbc9c0;stroke-width:1;}
+    .vec{stroke:#d85a30;stroke-width:4;fill:none;}
+    .vechead{fill:#d85a30;}
+    .lbl{fill:#5f5e5a;font-size:15px;}
+    .sym{fill:#1a1a18;font-size:40px;font-style:italic;}
+    .arr{stroke:#d85a30;stroke-width:2.5;fill:none;}
+    .arrhead{fill:#d85a30;}
+    @media (prefers-color-scheme: dark){
+      .axis{stroke:#4a4844;} .lbl{fill:#a8a69e;} .sym{fill:#f0efe9;}
+      .vec,.arr{stroke:#f0997b;} .vechead,.arrhead{fill:#f0997b;}
+    }
+  </style>
+
+  <line class="axis" x1="40" y1="190" x2="340" y2="190"/>
+  <line class="axis" x1="70" y1="40" x2="70" y2="210"/>
+  <line class="vec" x1="70" y1="190" x2="280" y2="80"/>
+  <polygon class="vechead" points="280,80 264,82 272,96"/>
+  <circle cx="70" cy="190" r="4" fill="#888"/>
+  <text class="lbl" x="180" y="120" text-anchor="middle">یک بردار: اندازه + جهت</text>
+
+  <text class="sym" x="500" y="135" text-anchor="middle">F</text>
+  <line class="arr" x1="478" y1="92" x2="520" y2="92"/>
+  <polygon class="arrhead" points="520,92 511,88 511,96"/>
+  <text class="lbl" x="500" y="175" text-anchor="middle">نمادِ یک کمیت برداری</text>
+</svg>

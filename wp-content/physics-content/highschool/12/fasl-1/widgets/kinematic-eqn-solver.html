@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>حل‌کننده‌ی معادلات کینماتیک</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed; --warn:#a87800; --warn-bg:#fef6e0;
+    --primary:#185fa5; --secondary:#c43838; --accent:#7d3aa3;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e0b860; --warn-bg:#4a3a15;
+      --primary:#85b7eb; --secondary:#f06a60; --accent:#c489e3;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;}
+  .wrap{max-width:820px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:10px;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px;}
+  .input{font-size:13px;}
+  .input label{display:block; color:var(--muted); margin-bottom:3px;}
+  .input input{width:100%; padding:6px 8px; font-family:inherit; font-size:13.5px;
+               background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:8px;}
+  .input input:focus{outline:1px solid var(--info); border-color:var(--info);}
+  .input input.has{border-color:var(--ok); background:var(--ok-bg);}
+  .btn{background:var(--primary); color:white; border:none; padding:10px 18px; border-radius:8px; font-family:inherit; font-size:14px; cursor:pointer; margin-top:10px;}
+  .btn:hover{filter:brightness(1.08);}
+  .btn.alt{background:var(--muted);}
+  .result{padding:10px 12px; background:var(--info-bg); color:var(--info); border-radius:10px; line-height:1.9; margin-top:10px; font-size:14px;}
+  .result.bad{background:var(--warn-bg); color:var(--warn);}
+  .formula-pick{font-size:12.5px; color:var(--accent); margin:6px 0;}
+  ol{padding-right:18px;}
+  li{margin-bottom:5px;}
+</style>
+<script id="mathjax-config">
+  window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']]}, startup:{pageReady:()=>MathJax.startup.defaultPageReady()}};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>حل‌کننده‌ی معادلات کینماتیک ⚙️</h2>
+  <p class="sub">هر چی می‌دونی رو وارد کن، خودش بهترین معادله رو می‌گه و حل می‌کنه.</p>
+
+  <div class="panel">
+    <p style="font-size:12.5px; color:var(--muted); margin:0 0 8px;">۴ تا از ۵ متغیر زیر رو پر کن (یا حداقل ۳ تا اگه می‌خوای ۲ تا رو پیدا کنی):</p>
+    <div class="grid">
+      <div class="input">
+        <label>$v_0$ — سرعت اولیه (m/s)</label>
+        <input id="v0" type="number" step="any" placeholder="مثلاً 0">
+      </div>
+      <div class="input">
+        <label>$v$ — سرعت نهایی (m/s)</label>
+        <input id="v" type="number" step="any" placeholder="مثلاً 25">
+      </div>
+      <div class="input">
+        <label>$a$ — شتاب (m/s²)</label>
+        <input id="a" type="number" step="any" placeholder="مثلاً 2.5">
+      </div>
+      <div class="input">
+        <label>$\Delta x$ — جابه‌جایی (m)</label>
+        <input id="dx" type="number" step="any" placeholder="مثلاً 100">
+      </div>
+      <div class="input">
+        <label>$t$ — زمان (s)</label>
+        <input id="t" type="number" step="any" placeholder="مثلاً 10">
+      </div>
+    </div>
+    <button class="btn" id="solve">🎯 حل کن</button>
+    <button class="btn alt" id="clear">⟲ پاک‌سازی</button>
+    <div id="out" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="panel" style="font-size:13px;">
+    <strong style="color:var(--primary);">۴ معادله طلایی:</strong>
+    <ol>
+      <li>$v = v_0 + at$ — بدون $\Delta x$</li>
+      <li>$\Delta x = v_0 t + \tfrac{1}{2}at^2$ — بدون $v$</li>
+      <li>$v^2 = v_0^2 + 2a\Delta x$ — بدون $t$ ⭐ (پرکاربردترین)</li>
+      <li>$\Delta x = \tfrac{v_0+v}{2} \cdot t$ — بدون $a$</li>
+    </ol>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const out=$('out');
+const ids = ['v0','v','a','dx','t'];
+
+function getVal(id){
+  const v = $(id).value;
+  return v === '' ? null : parseFloat(v);
+}
+function setHas(){
+  ids.forEach(id => {
+    $(id).classList.toggle('has', $(id).value !== '');
+  });
+}
+ids.forEach(id => $(id).addEventListener('input', setHas));
+
+function solve(){
+  const v0=getVal('v0'), v=getVal('v'), a=getVal('a'), dx=getVal('dx'), t=getVal('t');
+  const known = {v0, v, a, dx, t};
+  const knownList = Object.entries(known).filter(([k,val])=>val!==null);
+  const unknownList = Object.entries(known).filter(([k,val])=>val===null);
+
+  if(knownList.length < 3){
+    out.style.display='block'; out.className='result bad';
+    out.innerHTML='حداقل ۳ تا از متغیرها رو پر کن!';
+    return;
+  }
+
+  // Try to solve using each equation systematically.
+  // Eq1: v = v0 + at        — knows: v0,v,a,t
+  // Eq2: dx = v0 t + 0.5 a t² — knows: v0,a,t,dx
+  // Eq3: v² = v0² + 2 a dx   — knows: v0,v,a,dx
+  // Eq4: dx = (v0+v)/2 · t   — knows: v0,v,t,dx
+
+  const results = {};
+
+  function tryEq1(){ // v = v0 + at — solve for one unknown
+    const vars = {v0,v,a,t};
+    const unkv = Object.entries(vars).filter(([k,val])=>val===null);
+    if(unkv.length !== 1) return null;
+    const [key] = unkv[0];
+    if(key==='v') return {name:'1: v = v₀ + at', val:v0+a*t, var:'v'};
+    if(key==='v0') return {name:'1: v₀ = v - at', val:v-a*t, var:'v0'};
+    if(key==='a' && t!==0) return {name:'1: a = (v-v₀)/t', val:(v-v0)/t, var:'a'};
+    if(key==='t' && a!==0) return {name:'1: t = (v-v₀)/a', val:(v-v0)/a, var:'t'};
+    return null;
+  }
+  function tryEq2(){ // dx = v0 t + 0.5 a t²
+    const vars = {v0,a,t,dx};
+    const unkv = Object.entries(vars).filter(([k,val])=>val===null);
+    if(unkv.length !== 1) return null;
+    const [key] = unkv[0];
+    if(key==='dx') return {name:'2: Δx = v₀t + ½at²', val:v0*t + 0.5*a*t*t, var:'dx'};
+    if(key==='v0' && t!==0) return {name:'2: v₀ = (Δx - ½at²)/t', val:(dx - 0.5*a*t*t)/t, var:'v0'};
+    if(key==='a' && t!==0) return {name:'2: a = 2(Δx - v₀t)/t²', val:2*(dx - v0*t)/(t*t), var:'a'};
+    if(key==='t'){
+      // 0.5 a t² + v0 t - dx = 0
+      if(Math.abs(a) < 1e-9){
+        if(v0 === 0) return null;
+        return {name:'2 (a≈0): t = Δx/v₀', val:dx/v0, var:'t'};
+      }
+      const A=0.5*a, B=v0, C=-dx;
+      const disc = B*B - 4*A*C;
+      if(disc<0) return null;
+      const r1 = (-B+Math.sqrt(disc))/(2*A);
+      const r2 = (-B-Math.sqrt(disc))/(2*A);
+      // pick positive one
+      const t_sol = r1>=0 ? r1 : r2;
+      return {name:'2: t از معادله‌ی درجه‌دو', val:t_sol, var:'t', extra:`دو ریشه: ${r1.toFixed(3)}, ${r2.toFixed(3)} (مثبت رو انتخاب کردیم)`};
+    }
+    return null;
+  }
+  function tryEq3(){ // v² = v0² + 2 a dx
+    const vars = {v0,v,a,dx};
+    const unkv = Object.entries(vars).filter(([k,val])=>val===null);
+    if(unkv.length !== 1) return null;
+    const [key] = unkv[0];
+    if(key==='v'){
+      const sq = v0*v0 + 2*a*dx;
+      if(sq<0) return null;
+      return {name:'3: v² = v₀² + 2aΔx', val:Math.sqrt(sq), var:'v', extra:`(جواب مثبت؛ منفی هم ممکن است: ${(-Math.sqrt(sq)).toFixed(3)})`};
+    }
+    if(key==='v0'){
+      const sq = v*v - 2*a*dx;
+      if(sq<0) return null;
+      return {name:'3: v₀² = v² - 2aΔx', val:Math.sqrt(sq), var:'v0', extra:`(جواب مثبت؛ منفی هم ممکن است: ${(-Math.sqrt(sq)).toFixed(3)})`};
+    }
+    if(key==='a' && dx!==0) return {name:'3: a = (v²-v₀²)/(2Δx)', val:(v*v-v0*v0)/(2*dx), var:'a'};
+    if(key==='dx' && a!==0) return {name:'3: Δx = (v²-v₀²)/(2a)', val:(v*v-v0*v0)/(2*a), var:'dx'};
+    return null;
+  }
+  function tryEq4(){ // dx = (v0+v)/2 · t
+    const vars = {v0,v,t,dx};
+    const unkv = Object.entries(vars).filter(([k,val])=>val===null);
+    if(unkv.length !== 1) return null;
+    const [key] = unkv[0];
+    if(key==='dx') return {name:'4: Δx = (v₀+v)/2 · t', val:(v0+v)*t/2, var:'dx'};
+    if(key==='t' && (v0+v)!==0) return {name:'4: t = 2Δx/(v₀+v)', val:2*dx/(v0+v), var:'t'};
+    if(key==='v0' && t!==0) return {name:'4: v₀ = 2Δx/t - v', val:2*dx/t - v, var:'v0'};
+    if(key==='v' && t!==0) return {name:'4: v = 2Δx/t - v₀', val:2*dx/t - v0, var:'v'};
+    return null;
+  }
+
+  const tried = [tryEq3, tryEq2, tryEq1, tryEq4]; // prefer eq3, then 2,1,4
+  let chosen = null;
+  for(const fn of tried){
+    const r = fn();
+    if(r){ chosen = r; break; }
+  }
+
+  if(!chosen){
+    out.style.display='block'; out.className='result bad';
+    out.innerHTML='با این داده‌ها نمی‌تونم یه مجهول رو پیدا کنم. مطمئنی داده‌ها سازگارن؟';
+    return;
+  }
+  const varNames = {v0:'v₀ (سرعت اولیه)', v:'v (سرعت نهایی)', a:'a (شتاب)', dx:'Δx (جابه‌جایی)', t:'t (زمان)'};
+  const unitMap = {v0:'m/s', v:'m/s', a:'m/s²', dx:'m', t:'s'};
+  out.style.display='block'; out.className='result';
+  out.innerHTML = `<div class="formula-pick">معادله‌ی انتخابی: <b>${chosen.name}</b></div>` +
+                  `<div><b>${varNames[chosen.var]}</b> = <b>${chosen.val.toFixed(4)}</b> ${unitMap[chosen.var]}</div>` +
+                  (chosen.extra ? `<div style="font-size:12px; color:var(--muted); margin-top:4px;">${chosen.extra}</div>` : '');
+}
+
+$('solve').addEventListener('click', solve);
+$('clear').addEventListener('click', ()=>{
+  ids.forEach(id=>$(id).value='');
+  setHas();
+  out.style.display='none';
+});
+</script>
+</body>
+</html>

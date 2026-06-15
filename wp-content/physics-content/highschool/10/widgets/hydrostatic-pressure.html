@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>فشار شاره — اندازه‌گیری در عمق</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+           --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.7}
+  h2{margin:0 0 12px;font-size:1.05em;color:var(--info)}
+  canvas{background:var(--surface);border-radius:14px;width:100%;max-width:520px;
+         display:block;margin:0 auto;border:1px solid var(--border);cursor:ns-resize}
+  .row{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .row label{min-width:90px;font-weight:600}
+  input[type=range]{flex:1;min-width:160px}
+  select{padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);
+         background:var(--surface);color:var(--text);font-family:inherit}
+  .readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+           gap:10px;margin-top:14px}
+  .card{padding:12px;background:var(--info-bg);border-radius:10px;color:var(--info)}
+  .card b{display:block;color:var(--text);font-size:1.3em;margin-bottom:2px}
+  .formula{margin-top:10px;padding:10px;background:var(--surface);border-radius:10px;
+           font-family:'Courier New',monospace;text-align:center;direction:ltr;
+           color:var(--ok);font-size:1.05em;font-weight:600}
+  .hint{margin-top:10px;font-size:.9em;color:var(--muted)}
+</style>
+</head>
+<body>
+<h2>🌊 فشار شاره در عمق — کاوشگرِ متحرک</h2>
+
+<canvas id="cv" width="520" height="380"></canvas>
+<div class="hint">روی محتوای ظرف عمودی بکش — کاوشگر (●) رو جابه‌جا کن</div>
+
+<div class="row">
+  <label>شاره:</label>
+  <select id="fluid">
+    <option value="1000">آب (۱۰۰۰ kg/m³)</option>
+    <option value="1025">آبِ دریا (۱۰۲۵)</option>
+    <option value="1060">خون (۱۰۶۰)</option>
+    <option value="820">روغن (۸۲۰)</option>
+    <option value="13595">جیوه (۱۳۵۹۵)</option>
+  </select>
+</div>
+
+<div class="row">
+  <label>P₀ (هوا)</label>
+  <input type="range" id="p0" min="0" max="200" value="101" step="1">
+  <span id="p0Badge">۱۰۱ kPa</span>
+</div>
+
+<div class="formula">P = P₀ + ρ · g · h</div>
+
+<div class="readout">
+  <div class="card"><b id="depth">۰ m</b>عمق (h)</div>
+  <div class="card"><b id="rho">۱۰۰۰ kg/m³</b>چگالی (ρ)</div>
+  <div class="card"><b id="pres">۱۰۱ kPa</b>فشارِ کل</div>
+  <div class="card"><b id="ghp">۰ kPa</b>افزون از عمق (ρgh)</div>
+</div>
+
+<script>
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+const g = 9.8;
+// container: x [80..440], y [40..360] = 320 px = 10 m (scale)
+const cx0 = 80, cx1 = 440, cy0 = 40, cy1 = 360;
+const scale = 10 / (cy1 - cy0); // m per pixel
+let probeY = (cy0 + cy1)/2;
+let rho = 1000;
+let p0 = 101; // kPa
+
+const faDigit = n => String(n).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // water gradient
+  const grd = ctx.createLinearGradient(0, cy0, 0, cy1);
+  grd.addColorStop(0, 'rgba(60,140,200,0.4)');
+  grd.addColorStop(1, 'rgba(20,60,100,0.9)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(cx0, cy0, cx1-cx0, cy1-cy0);
+  // container border
+  ctx.strokeStyle = '#444'; ctx.lineWidth = 3;
+  ctx.strokeRect(cx0, cy0, cx1-cx0, cy1-cy0);
+
+  // depth ruler on right
+  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text');
+  ctx.font = 'bold 12px Vazirmatn';
+  ctx.textAlign = 'left';
+  for (let h=0; h<=10; h++){
+    const y = cy0 + h * (cy1-cy0)/10;
+    ctx.beginPath(); ctx.moveTo(cx1, y); ctx.lineTo(cx1+8, y); ctx.stroke();
+    ctx.fillText(faDigit(h) + ' m', cx1+12, y+4);
+  }
+
+  // probe
+  const px = (cx0+cx1)/2;
+  ctx.beginPath();
+  ctx.arc(px, probeY, 12, 0, Math.PI*2);
+  ctx.fillStyle = '#e74c3c'; ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+  // pressure arrows around probe (visual indicator)
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+  const depth = (probeY - cy0) * scale;
+  const arrowLen = 8 + depth * 2;
+  // four arrows
+  for (let a=0; a<4; a++){
+    const ang = a*Math.PI/2 + Math.PI/4;
+    const dx = Math.cos(ang)*16, dy = Math.sin(ang)*16;
+    const dx2 = Math.cos(ang)*(16+arrowLen), dy2 = Math.sin(ang)*(16+arrowLen);
+    ctx.beginPath();
+    ctx.moveTo(px+dx2, probeY+dy2);
+    ctx.lineTo(px+dx, probeY+dy);
+    ctx.stroke();
+  }
+
+  // readouts
+  const P_ghp = rho * g * depth / 1000; // kPa
+  const P_total = p0 + P_ghp;
+  document.getElementById('depth').textContent = faDigit(depth.toFixed(2)) + ' m';
+  document.getElementById('rho').textContent = faDigit(rho) + ' kg/m³';
+  document.getElementById('pres').textContent = faDigit(P_total.toFixed(1)) + ' kPa';
+  document.getElementById('ghp').textContent = faDigit(P_ghp.toFixed(1)) + ' kPa';
+}
+
+function setProbeFromEvent(e){
+  const rect = cv.getBoundingClientRect();
+  const yCss = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  const y = yCss * (H/rect.height);
+  probeY = Math.max(cy0+5, Math.min(cy1-5, y));
+  draw();
+}
+let dragging = false;
+cv.addEventListener('mousedown', e=>{ dragging=true; setProbeFromEvent(e); });
+window.addEventListener('mouseup', ()=> dragging=false);
+window.addEventListener('mousemove', e=>{ if(dragging) setProbeFromEvent(e); });
+cv.addEventListener('touchstart', e=>{ e.preventDefault(); setProbeFromEvent(e); }, {passive:false});
+cv.addEventListener('touchmove', e=>{ e.preventDefault(); setProbeFromEvent(e); }, {passive:false});
+
+document.getElementById('fluid').onchange = e=>{ rho = +e.target.value; draw(); };
+const p0El = document.getElementById('p0');
+p0El.oninput = ()=>{
+  p0 = +p0El.value;
+  document.getElementById('p0Badge').textContent = faDigit(p0) + ' kPa';
+  draw();
+};
+
+draw();
+</script>
+</body>
+</html>

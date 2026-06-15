@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>میدان مغناطیسی سیم راست حامل جریان</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --hint-c:#a87800; --hint-bg:#fef6e0;
+    --I:#c2410c; --B:#7a4dbd; --field:#9b8acc;
+    --N:#d6453c; --S:#2f6fd0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --hint-c:#e0b860; --hint-bg:#4a3a15;
+      --I:#fb923c; --B:#b08be8; --field:#b9a8e0;
+      --N:#f06a60; --S:#6aa0ee;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:380px; touch-action:none; cursor:crosshair;}
+  .readout{padding:12px; border-top:1px solid var(--border); display:flex; gap:10px; flex-wrap:wrap;}
+  .chip{flex:1 1 130px; background:var(--info-bg); color:var(--info); border-radius:10px; padding:8px 12px; text-align:center; font-size:14px;}
+  .chip b{display:block; font-size:16px; font-weight:700; margin-top:2px;}
+  .chip.ok{background:var(--ok-bg); color:var(--ok);}
+
+  .controls{margin-top:14px; display:grid; gap:10px;}
+  .slider-row{display:grid; grid-template-columns:120px 1fr 70px; gap:10px; align-items:center; font-size:14px;}
+  .slider-row span:first-child{color:var(--muted);}
+  .slider-row .val{font-weight:700; color:var(--text); text-align:left;}
+  input[type=range]{accent-color:var(--info); height:6px;}
+
+  .row{display:flex; gap:8px; flex-wrap:wrap;}
+  .btn{font-family:inherit; font-size:14px; padding:9px 14px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text); cursor:pointer; transition:.12s; flex:1 1 140px;}
+  .btn:hover{background:var(--info-bg); border-color:var(--info); color:var(--info);}
+  .btn.on{background:var(--info); color:#fff; border-color:var(--info);}
+
+  .hint{margin-top:12px; background:var(--hint-bg); color:var(--hint-c);
+    border-radius:10px; padding:10px 14px; font-size:13.5px;
+    border-right:3px solid var(--hint-c);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🌀 میدان مغناطیسی اطرافِ سیم راست — کشف اورستد</h2>
+  <p class="sub">یه سیم عمود بر صفحه (نقطه‌ی وسط). جریان از داخل یا خارج صفحه می‌گذره. ماوس رو روی صفحه ببر تا قطب‌نما جهتِ میدان رو در اون نقطه نشون بده.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">جهتِ B در محل قطب‌نما <b id="bDirVal">—</b></div>
+      <div class="chip ok">شدّتِ B (∝ I/r) <b id="bMagVal">—</b></div>
+      <div class="chip">فاصله از سیم <b id="rVal">—</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="slider-row">
+      <span>اندازه جریان I</span>
+      <input type="range" id="iSlider" min="0.5" max="5" step="0.1" value="2">
+      <span class="val" id="iSliderVal">۲٫۰ A</span>
+    </div>
+    <div class="row">
+      <button class="btn on" id="iOut">⊙ جریان از صفحه بیرون</button>
+      <button class="btn" id="iIn">⊗ جریان داخل صفحه</button>
+      <button class="btn" id="tLines">خطوط میدان</button>
+      <button class="btn" id="tFilings">برادهٔ آهن</button>
+    </div>
+  </div>
+
+  <div class="hint">
+    💡 <b>قاعدهٔ دستِ راست برای سیم راست:</b> شَست‌ت رو در جهت <b style="color:var(--I);">جریان</b> بگیر، انگشت‌های دیگه‌ت دور سیم رو در جهت <b style="color:var(--B);">میدان</b> می‌پیچن. خطوط میدان <b>دایره‌های هم‌مرکز</b> اطراف سیم‌اند. هرچه به سیم نزدیک‌تر، میدان قوی‌تر: $B = \dfrac{\mu_0 I}{2\pi r}$
+  </div>
+</div>
+
+<script id="mathjax-config">
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var W,H,cx,cy;
+
+  var I = 2;
+  var iOut = true;       // current direction: true = out of page (⊙), false = into page (⊗)
+  var showLines = true;
+  var showFilings = false;
+  var mouseX = null, mouseY = null;
+
+  function toFa(s){return (''+s).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];}).replace('.','٫');}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  // B field magnitude at distance r from wire: |B| ∝ I/r
+  // Direction (tangent to circle around wire): perpendicular to r
+  // For I out of page (⊙): B circulates counter-clockwise on canvas (when looking down at canvas)
+  //   Wait — physical convention: thumb out of page (+ẑ in canvas right-handed where +z is INTO page... no this is canvas confusion again)
+  // Let me reason in canvas: I = current along +z (toward viewer = out of page = ⊙)
+  //   In right-handed canvas (x right, y down, z into page), "out of page" means -z direction.
+  //   So I in -z direction (out of page).
+  //   By right-hand rule (grip): thumb along I (-z, out of page), fingers curl. From viewer's perspective,
+  //     thumb is pointing at viewer, fingers curl COUNTER-CLOCKWISE when viewed from in front.
+  //   So B field on canvas goes COUNTER-CLOCKWISE for ⊙ current.
+  // OK final result: ⊙ → B counter-clockwise on canvas. ⊗ → B clockwise on canvas.
+  function fieldAt(px, py){
+    var dx = px - cx, dy = py - cy;
+    var r = Math.hypot(dx, dy);
+    if (r < 8) return {x:0, y:0, mag:0, r:r};
+    // Tangent perpendicular to (dx, dy)
+    // CCW rotation of (dx, dy) by 90° (in canvas y-down): (x,y) → (-y, x)... wait let me check.
+    //   In canvas (y down), a 90° CCW rotation (visually) takes (1, 0)→(0, -1) (right to up on screen)
+    //   So (x, y) → (?). Standard math: CCW rot 90° = (x, y) → (-y, x). Check: (1, 0) → (0, 1). But on canvas y-down, (0, 1) is DOWN. So this would be CW visually on canvas.
+    //   For CCW VISUAL on canvas (y down): need to use (x, y) → (y, -x). Check: (1, 0) → (0, -1) = UP on canvas. ✓
+    var tx, ty;
+    if (iOut){
+      // ⊙ → CCW on canvas → tangent direction is (dy, -dx) normalized
+      tx = dy / r; ty = -dx / r;
+    } else {
+      // ⊗ → CW on canvas
+      tx = -dy / r; ty = dx / r;
+    }
+    var mag = I / r * 30;   // scale for display
+    return {x: tx, y: ty, mag: mag, r: r};
+  }
+
+  function drawWire(){
+    ctx.save();
+    ctx.fillStyle = cssv('--I');
+    ctx.beginPath(); ctx.arc(cx, cy, 18, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5;
+    if (iOut){
+      // ⊙
+      ctx.fillStyle='#fff';
+      ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI*2); ctx.fill();
+    } else {
+      // ⊗
+      ctx.beginPath(); ctx.moveTo(cx-9, cy-9); ctx.lineTo(cx+9, cy+9); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx+9, cy-9); ctx.lineTo(cx-9, cy+9); ctx.stroke();
+    }
+    ctx.fillStyle = cssv('--I'); ctx.font='bold 13px Vazirmatn';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('I', cx, cy - 30);
+    ctx.restore();
+  }
+
+  function drawFieldLines(){
+    if (!showLines) return;
+    ctx.save();
+    ctx.strokeStyle = cssv('--field');
+    // Scale appearance with I: stronger current → bolder, denser lines.
+    var sFactor = Math.min(3.0, Math.max(0.35, I / 2));   // I=2 → 1.0 baseline
+    ctx.lineWidth = 1.0 + sFactor * 1.0;
+    ctx.globalAlpha = Math.min(0.95, 0.40 + sFactor * 0.22);
+
+    // Concentric circles at various radii — base set plus extra rings as current grows
+    var baseRadii = [40, 70, 105, 145, 190];
+    var radii = baseRadii.slice();
+    if (sFactor > 1.0) radii.push(55, 85, 125, 170);          // intermediate rings
+    if (sFactor > 2.0) radii.push(48, 78, 115, 155, 200);
+    radii = Array.from(new Set(radii)).sort(function(a,b){return a-b;});
+    radii.forEach(function(r, idx){
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI*2);
+      ctx.stroke();
+      // Add a directional arrowhead on the top of each circle
+      var ang = -Math.PI/2;  // top of circle (canvas y up = negative y)
+      var arrowX = cx + r * Math.cos(ang);
+      var arrowY = cy + r * Math.sin(ang);
+      // Tangent direction at this point (CCW or CW)
+      var tx, ty;
+      if (iOut){ tx = -Math.sin(ang); ty = Math.cos(ang); }  // CCW visual
+      else      { tx = Math.sin(ang); ty = -Math.cos(ang); }
+      // Wait, on canvas y-down, CCW visual at top: the tangent should point right or left?
+      // CCW visual: top → left. So at top, tangent direction is to the LEFT.
+      // Let's check: with iOut=true (⊙, CCW on canvas), at top point (cx, cy-r), motion is to the LEFT (-x).
+      // So tangent = (-1, 0). Using fieldAt: dy = -r, dx = 0. iOut: tx = dy/r = -1, ty = -dx/r = 0. ✓
+      var field = fieldAt(arrowX, arrowY);
+      var ax = arrowX + field.x * 8, ay = arrowY + field.y * 8;
+      ctx.fillStyle = cssv('--field');
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      // Perpendicular for arrowhead sides
+      var perpX = -field.y, perpY = field.x;
+      ctx.lineTo(ax - field.x*7 + perpX*4, ay - field.y*7 + perpY*4);
+      ctx.lineTo(ax - field.x*7 - perpX*4, ay - field.y*7 - perpY*4);
+      ctx.closePath(); ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  // Iron filings: small line segments at random positions, oriented along the local B direction
+  var filingsPositions = null;
+  function generateFilings(){
+    filingsPositions = [];
+    var s = 7777;
+    function rnd(){ s = (s*1664525 + 1013904223) >>> 0; return s/4294967296; }
+    for (var i=0;i<160;i++){
+      var x = rnd() * W, y = rnd() * H;
+      var r = Math.hypot(x-cx, y-cy);
+      if (r < 25 || r > Math.min(W, H)*0.45){ i--; continue; }
+      filingsPositions.push({x:x, y:y});
+    }
+  }
+  function drawFilings(){
+    if (!showFilings) return;
+    if (!filingsPositions) generateFilings();
+    ctx.save();
+    ctx.strokeStyle = cssv('--text'); ctx.lineWidth = 1.2; ctx.globalAlpha = 0.75;
+    filingsPositions.forEach(function(p){
+      var f = fieldAt(p.x, p.y);
+      var L = 9;
+      ctx.beginPath();
+      ctx.moveTo(p.x - f.x * L/2, p.y - f.y * L/2);
+      ctx.lineTo(p.x + f.x * L/2, p.y + f.y * L/2);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  function drawCompass(px, py){
+    var f = fieldAt(px, py);
+    if (f.r < 25) return;
+    var ang = Math.atan2(f.y, f.x);
+    var R = 22;
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.strokeStyle = cssv('--border');
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(px, py, R, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.translate(px, py); ctx.rotate(ang);
+    // Red half (toward N of compass)
+    ctx.beginPath(); ctx.moveTo(R-5, 0); ctx.lineTo(0, -3.5); ctx.lineTo(0, 3.5); ctx.closePath();
+    ctx.fillStyle = cssv('--N'); ctx.fill();
+    // White half
+    ctx.beginPath(); ctx.moveTo(-(R-5), 0); ctx.lineTo(0, -3.5); ctx.lineTo(0, 3.5); ctx.closePath();
+    ctx.fillStyle = '#888'; ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, 2.3, 0, Math.PI*2); ctx.fillStyle = '#222'; ctx.fill();
+    ctx.restore();
+
+    // Update readouts
+    var degrees = ang * 180/Math.PI;
+    if (degrees < 0) degrees += 360;
+    document.getElementById('bDirVal').textContent = toFa(degrees.toFixed(0))+'°';
+    document.getElementById('bMagVal').textContent = toFa(f.mag.toFixed(2)) + ' (نسبی)';
+    document.getElementById('rVal').textContent = toFa(f.r.toFixed(0)) + ' px';
+  }
+
+  function draw(){
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=rect.width; H=rect.height; cx=W/2; cy=H/2;
+    ctx.clearRect(0,0,W,H);
+    drawFieldLines();
+    drawFilings();
+    drawWire();
+    if (mouseX !== null) drawCompass(mouseX, mouseY);
+  }
+
+  cv.addEventListener('pointermove', function(e){
+    var rect = cv.getBoundingClientRect();
+    var t = e.touches ? e.touches[0] : e;
+    mouseX = t.clientX - rect.left;
+    mouseY = t.clientY - rect.top;
+    draw();
+  });
+  cv.addEventListener('pointerleave', function(){
+    mouseX = null; mouseY = null; draw();
+  });
+
+  document.getElementById('iSlider').addEventListener('input', function(e){
+    I = +e.target.value;
+    document.getElementById('iSliderVal').textContent = toFa(I.toFixed(1)) + ' A';
+    draw();
+  });
+  document.getElementById('iOut').addEventListener('click', function(){
+    iOut = true;
+    this.classList.add('on');
+    document.getElementById('iIn').classList.remove('on');
+    draw();
+  });
+  document.getElementById('iIn').addEventListener('click', function(){
+    iOut = false;
+    this.classList.add('on');
+    document.getElementById('iOut').classList.remove('on');
+    draw();
+  });
+  document.getElementById('tLines').addEventListener('click', function(){
+    showLines = !showLines;
+    this.classList.toggle('on', showLines);
+    draw();
+  });
+  document.getElementById('tFilings').addEventListener('click', function(){
+    showFilings = !showFilings;
+    this.classList.toggle('on', showFilings);
+    draw();
+  });
+  document.getElementById('tLines').classList.toggle('on', showLines);
+  document.getElementById('tFilings').classList.toggle('on', showFilings);
+
+  window.addEventListener('resize', function(){ filingsPositions = null; draw(); });
+  draw();
+})();
+</script>
+</body>
+</html>

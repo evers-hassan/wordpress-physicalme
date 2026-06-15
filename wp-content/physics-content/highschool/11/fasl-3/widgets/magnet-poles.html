@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌سازی قطب‌های آهنربا</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --hint-c:#a87800; --hint-bg:#fef6e0;
+    --N:#d6453c; --S:#2f6fd0; --force-attract:#1d9e75; --force-repel:#c43838;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --hint-c:#e0b860; --hint-bg:#4a3a15;
+      --N:#f06a60; --S:#6aa0ee; --force-attract:#5dcaa5; --force-repel:#f0807d;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;
+  }
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; overflow:hidden; position:relative;
+  }
+  canvas{display:block; width:100%; height:300px; cursor:grab; touch-action:none;}
+  canvas.dragging{cursor:grabbing;}
+  .readout{
+    display:flex; gap:10px; flex-wrap:wrap; align-items:stretch;
+    padding:12px; border-top:1px solid var(--border);
+  }
+  .chip{
+    flex:1 1 140px; background:var(--info-bg); color:var(--info);
+    border-radius:10px; padding:8px 12px; text-align:center; font-weight:500;
+    font-size:14px;
+  }
+  .chip.kind{background:var(--ok-bg); color:var(--ok);}
+  .chip.repel{background:#fde2e1; color:#c43838;}
+  @media (prefers-color-scheme: dark){
+    .chip.repel{background:#4a1f1f; color:#f0807d;}
+  }
+  .chip b{display:block; font-size:18px; font-weight:700; margin-top:2px;}
+  .controls{margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;}
+  .btn{
+    font-family:inherit; font-size:14px; padding:9px 16px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text);
+    cursor:pointer; transition:.15s; flex:1 1 180px;
+  }
+  .btn:hover{background:var(--info-bg); border-color:var(--info); color:var(--info);}
+  .btn b{color:var(--N);} .btn b.s{color:var(--S);}
+  .hint{
+    margin-top:12px; background:var(--hint-bg); color:var(--hint-c);
+    border-radius:10px; padding:10px 14px; font-size:13.5px;
+    border-right:3px solid var(--hint-c);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🧲 شبیه‌سازی تعاملی: قطب‌های آهنربا</h2>
+  <p class="sub">آهنربا رو با ماوس (یا انگشت) بِکِش. با دکمه‌ها قطب‌هاش رو برعکس کن و ببین نیرو چطور عوض می‌شه.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip" id="distChip">فاصله <b id="distVal">—</b></div>
+      <div class="chip kind" id="kindChip">نوع نیرو <b id="kindVal">—</b></div>
+      <div class="chip" id="strChip">شدّتِ نسبی <b id="strVal">—</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="flipL">برعکس کردنِ آهنربای <b>چپ</b></button>
+    <button class="btn" id="flipR">برعکس کردنِ آهنربای <b>راست</b></button>
+    <button class="btn" id="reset">بازنشانی موقعیت ↺</button>
+  </div>
+
+  <div class="hint">
+    💡 امتحان کن: یه آهنربا رو نزدیکِ اون یکی ببر. وقتی همنام (N به N) هستن، می‌بینی فلش‌های قرمز همدیگه رو هل می‌دن. وقتی ناهمنام (N به S) شدن، فلش‌های سبز به‌سمتِ هم می‌کشن.
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var distVal=document.getElementById('distVal'),
+      kindVal=document.getElementById('kindVal'),
+      strVal=document.getElementById('strVal'),
+      kindChip=document.getElementById('kindChip');
+
+  // Two magnets. Each has center (x,y) and orientation (1 means N on right, -1 means N on left).
+  var W=600,H=300;
+  var magL = {x:160, y:150, ori: 1};   // N on right (faces the other magnet)
+  var magR = {x:440, y:150, ori:-1};   // N on left (faces the other magnet)  → attract by default
+  var dragging = null, dragDX=0, dragDY=0;
+
+  function toFa(s){return (''+s).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  function magnetEnds(m){
+    // length 120, height 36, drawn horizontal. Returns world coords of ends.
+    var L=60;
+    if(m.ori>0){ // right end is N
+      return {N:{x:m.x+L,y:m.y}, S:{x:m.x-L,y:m.y}};
+    } else {     // left end is N
+      return {N:{x:m.x-L,y:m.y}, S:{x:m.x+L,y:m.y}};
+    }
+  }
+
+  function drawMagnet(m){
+    var L=60, hH=18;
+    ctx.save();
+    ctx.translate(m.x, m.y);
+    // body
+    ctx.fillStyle='#3a3835'; ctx.fillRect(-L,-hH,2*L,2*hH);
+    // halves: red (N) and blue (S)
+    var redOnRight = (m.ori>0);
+    ctx.fillStyle=cssv('--N');
+    ctx.fillRect(redOnRight ? 0 : -L, -hH, L, 2*hH);
+    ctx.fillStyle=cssv('--S');
+    ctx.fillRect(redOnRight ? -L : 0, -hH, L, 2*hH);
+    // border
+    ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=1.5;
+    ctx.strokeRect(-L,-hH,2*L,2*hH);
+    // labels
+    ctx.fillStyle='#fff'; ctx.font='bold 18px Vazirmatn, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('N', redOnRight ?  L/2 : -L/2, 0);
+    ctx.fillText('S', redOnRight ? -L/2 :  L/2, 0);
+    ctx.restore();
+  }
+
+  // Draw a single field line as a smooth cubic Bezier between two points.
+  // ctrl1Off / ctrl2Off are perpendicular offsets at each end-point that shape the curve.
+  function fieldArc(x1,y1, x2,y2, bulge1, bulge2, dashed){
+    var dx=x2-x1, dy=y2-y1;
+    var len=Math.hypot(dx,dy);
+    if(len<2) return;
+    // Perpendicular unit vector
+    var px=-dy/len, py=dx/len;
+    var cx1=x1 + dx*0.33 + px*bulge1;
+    var cy1=y1 + dy*0.33 + py*bulge1;
+    var cx2=x1 + dx*0.66 + px*bulge2;
+    var cy2=y1 + dy*0.66 + py*bulge2;
+    if(dashed) ctx.setLineDash([5,5]);
+    ctx.beginPath();
+    ctx.moveTo(x1,y1);
+    ctx.bezierCurveTo(cx1,cy1, cx2,cy2, x2,y2);
+    ctx.stroke();
+    if(dashed) ctx.setLineDash([]);
+  }
+
+  function drawFieldLines(mL, mR, sameType){
+    var eL=magnetEnds(mL), eR=magnetEnds(mR);
+    // "Inner" ends (facing each other)
+    function inner(m, other){
+      var ends=magnetEnds(m);
+      var dN=Math.hypot(ends.N.x-other.x, ends.N.y-other.y);
+      var dS=Math.hypot(ends.S.x-other.x, ends.S.y-other.y);
+      return dN<dS
+        ? {pole:'N', pt:ends.N, outer:ends.S}
+        : {pole:'S', pt:ends.S, outer:ends.N};
+    }
+    var iL = inner(mL, mR), iR = inner(mR, mL);
+
+    ctx.save();
+    ctx.lineWidth=1.5; ctx.globalAlpha=0.55;
+
+    // ─── 1) Outer loops around each magnet (these always exist for a real dipole) ───
+    // Generic outer field line: start near the magnet's outer pole, arc above/below,
+    // and end near the same magnet's inner pole. We do 3 lines on each side (top/bottom).
+    function drawDipoleLoops(m){
+      var e=magnetEnds(m);
+      // Outside-side end (away from interaction zone)
+      // We rebuild from inner/outer using m's ori — easier: just draw symmetric loops
+      // about both poles of the magnet, on the outer/top/bottom side.
+      ctx.strokeStyle = cssv('--muted');
+      // Top arcs (above the magnet)
+      for (var k=1; k<=3; k++){
+        var bulge = -28*k;       // negative = upward (perpendicular sign)
+        fieldArc(e.N.x, e.N.y-12, e.S.x, e.S.y-12, bulge, bulge, false);
+      }
+      // Bottom arcs (below the magnet)
+      for (var k=1; k<=3; k++){
+        var bulge = 28*k;
+        fieldArc(e.N.x, e.N.y+12, e.S.x, e.S.y+12, bulge, bulge, false);
+      }
+    }
+    drawDipoleLoops(mL);
+    drawDipoleLoops(mR);
+
+    // ─── 2) Interaction zone between facing poles ───
+    var col = sameType ? cssv('--force-repel') : cssv('--force-attract');
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+
+    var dx = iR.pt.x - iL.pt.x, dy = iR.pt.y - iL.pt.y;
+    var dist = Math.hypot(dx,dy);
+    var n = 4; // number of lines on each (top & bottom) side
+    if (!sameType){
+      // ── ATTRACT: lines from facing N (or S) toward the other's S (or N), smooth arcs ──
+      // Multiple parallel arcs above and below the centerline
+      for (var i=1;i<=n;i++){
+        var off = i * 10;       // vertical spread
+        var bulge = -off * 1.2; // top set bulges up
+        fieldArc(iL.pt.x, iL.pt.y - off, iR.pt.x, iR.pt.y - off, bulge*0.6, bulge*0.6, true);
+        fieldArc(iL.pt.x, iL.pt.y + off, iR.pt.x, iR.pt.y + off, -bulge*0.6, -bulge*0.6, true);
+      }
+      // Plus a straight midline (dashed)
+      fieldArc(iL.pt.x, iL.pt.y, iR.pt.x, iR.pt.y, 0, 0, true);
+    } else {
+      // ── REPEL: lines diverge OUTWARD; never connect across the gap.
+      //   On the left magnet's facing side, lines bulge LEFT (back into the magnet's own loop).
+      //   On the right magnet's facing side, lines bulge RIGHT.
+      //   In the middle there's a "compression zone" with no horizontal lines.
+      // We render short curved stubs sprouting from each facing pole, curving back along
+      // the magnet's outer arc direction.
+      var sgn = Math.sign(iR.pt.x - iL.pt.x) || 1;
+      for (var i=0;i<n;i++){
+        var angDeg = 30 + i*22;            // 30°,52°,74°,96° from straight-toward-other
+        // Left magnet: stub going up-and-back-left
+        stubFromPole(iL.pt.x, iL.pt.y, -sgn, -1, angDeg, dist);
+        stubFromPole(iL.pt.x, iL.pt.y, -sgn, +1, angDeg, dist);
+        stubFromPole(iR.pt.x, iR.pt.y,  sgn, -1, angDeg, dist);
+        stubFromPole(iR.pt.x, iR.pt.y,  sgn, +1, angDeg, dist);
+      }
+      // Add a thin "compression" shading to suggest crowded field lines between
+      ctx.save();
+      ctx.globalAlpha=0.25;
+      ctx.fillStyle = col;
+      var midX=(iL.pt.x+iR.pt.x)/2, midY=(iL.pt.y+iR.pt.y)/2;
+      ctx.beginPath(); ctx.ellipse(midX,midY, Math.max(8,dist*0.18), 12, 0, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // A short curved stub leaving a pole in the (xSign,ySign) outward quadrant.
+  function stubFromPole(px,py, xSign, ySign, deg, dist){
+    var rad = Math.PI * deg / 180;
+    // Outward direction (away from the other magnet)
+    var ux = xSign * Math.cos(rad);
+    var uy = ySign * Math.sin(rad);
+    var L = Math.min(70, 25 + dist*0.18);
+    var x2 = px + ux*L, y2 = py + uy*L;
+    // Bulge: curve away from straight line outward
+    var bulge = 18 * ySign * (deg<60?1:0.5);
+    fieldArc(px,py, x2,y2, -bulge, -bulge*1.6, true);
+  }
+
+  function arrow(x1,y1,x2,y2,color){
+    var dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy);
+    if(len<3) return;
+    var ux=dx/len, uy=dy/len, hs=8;
+    ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=3; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2-ux*hs, y2-uy*hs); ctx.stroke();
+    // arrowhead
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-ux*hs - uy*hs*0.6, y2-uy*hs + ux*hs*0.6);
+    ctx.lineTo(x2-ux*hs + uy*hs*0.6, y2-uy*hs - ux*hs*0.6);
+    ctx.closePath(); ctx.fill();
+  }
+
+  function draw(){
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=rect.width; H=rect.height;
+    // clamp positions
+    magL.x = Math.max(70, Math.min(W-70, magL.x));
+    magR.x = Math.max(70, Math.min(W-70, magR.x));
+    magL.y = Math.max(40, Math.min(H-40, magL.y));
+    magR.y = Math.max(40, Math.min(H-40, magR.y));
+    ctx.clearRect(0,0,W,H);
+
+    // Calculate force between facing ends.
+    var eL = magnetEnds(magL), eR = magnetEnds(magR);
+    // Determine which ends are closest between the two magnets:
+    // (For simplicity, use the inner ends — i.e. ends closer to the other magnet's center.)
+    function inner(m, other){
+      var ends=magnetEnds(m);
+      var dN=Math.hypot(ends.N.x-other.x, ends.N.y-other.y);
+      var dS=Math.hypot(ends.S.x-other.x, ends.S.y-other.y);
+      return dN<dS ? {pole:'N', pt:ends.N} : {pole:'S', pt:ends.S};
+    }
+    var iL = inner(magL, magR), iR = inner(magR, magL);
+    var dx = iR.pt.x - iL.pt.x, dy = iR.pt.y - iL.pt.y;
+    var d = Math.hypot(dx, dy);
+    var sameType = (iL.pole === iR.pole);  // same → repel ; different → attract
+    var maxStrength = 1; // arbitrary normalized
+    // Inverse-square-ish on pole separation (clamped)
+    var strength = Math.max(0.1, Math.min(maxStrength, 4000 / (d*d + 200)));
+
+    // Draw field lines — physically suggestive curves
+    // Dipole field of each magnet: lines exit N pole, curve through space, return to S pole.
+    // We render lines around each magnet individually (closed loops), and color the
+    // "interaction zone" between the two facing poles based on attract/repel:
+    //   - attract (N facing S):   lines from N₁ curve toward S₂ — connecting arcs
+    //   - repel  (N facing N):    lines bulge OUTWARD on both sides, never connect
+    drawFieldLines(magL, magR, sameType);
+
+    // Draw magnets on top
+    drawMagnet(magL); drawMagnet(magR);
+
+    // Draw force arrows
+    var arrowLen = 30 + strength*60;
+    var col = sameType ? cssv('--force-repel') : cssv('--force-attract');
+    // Direction: attract → arrows point toward other magnet; repel → arrows point away.
+    var dirSign = sameType ? -1 : +1;
+    // On left magnet
+    var fxL = iL.pt.x + dirSign * Math.sign(iR.pt.x - iL.pt.x) * arrowLen;
+    arrow(iL.pt.x, iL.pt.y-30, fxL, iL.pt.y-30, col);
+    // On right magnet
+    var fxR = iR.pt.x - dirSign * Math.sign(iR.pt.x - iL.pt.x) * arrowLen;
+    arrow(iR.pt.x, iR.pt.y-30, fxR, iR.pt.y-30, col);
+
+    // Pole labels near the action zone
+    ctx.fillStyle=col; ctx.font='bold 13px Vazirmatn, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+    ctx.fillText(sameType ? 'دفع' : 'جذب', (iL.pt.x+iR.pt.x)/2, Math.min(iL.pt.y,iR.pt.y) - 50);
+
+    // Readout
+    distVal.textContent = toFa(Math.round(d)) + ' px';
+    if(sameType){
+      kindVal.textContent = 'دفع ↔';
+      kindChip.classList.add('repel'); kindChip.classList.remove('kind');
+    } else {
+      kindVal.textContent = 'جذب →←';
+      kindChip.classList.remove('repel'); kindChip.classList.add('kind');
+    }
+    strVal.textContent = toFa((strength*100).toFixed(0)) + '٪';
+  }
+
+  // Pointer interaction
+  function hitMagnet(x,y){
+    function inside(m){
+      return Math.abs(x-m.x)<=60 && Math.abs(y-m.y)<=18;
+    }
+    if(inside(magL)) return magL;
+    if(inside(magR)) return magR;
+    return null;
+  }
+  function getPt(e){
+    var rect=cv.getBoundingClientRect();
+    var t = e.touches ? e.touches[0] : e;
+    return {x:t.clientX-rect.left, y:t.clientY-rect.top};
+  }
+  cv.addEventListener('pointerdown', function(e){
+    var p=getPt(e);
+    var m=hitMagnet(p.x,p.y);
+    if(m){
+      dragging=m; dragDX=p.x-m.x; dragDY=p.y-m.y;
+      cv.classList.add('dragging');
+      cv.setPointerCapture(e.pointerId);
+    }
+  });
+  cv.addEventListener('pointermove', function(e){
+    if(!dragging) return;
+    var p=getPt(e);
+    dragging.x = p.x - dragDX;
+    dragging.y = p.y - dragDY;
+    draw();
+  });
+  cv.addEventListener('pointerup', function(e){
+    dragging=null; cv.classList.remove('dragging');
+    try{ cv.releasePointerCapture(e.pointerId); }catch(_){}
+  });
+
+  document.getElementById('flipL').addEventListener('click', function(){ magL.ori*=-1; draw(); });
+  document.getElementById('flipR').addEventListener('click', function(){ magR.ori*=-1; draw(); });
+  document.getElementById('reset').addEventListener('click', function(){
+    magL.x=160; magL.y=150; magL.ori=1;
+    magR.x=440; magR.y=150; magR.ori=-1;
+    draw();
+  });
+  window.addEventListener('resize', draw);
+  draw();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مخلوط‌سازیِ گرماسنجی — دمای تعادل</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75;
+    --warn:#a87800; --cold:#3a86ff; --hot:#e63946;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+           --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.7}
+  h2{margin:0 0 12px;font-size:1.05em;color:var(--info)}
+  .bowls{display:grid;grid-template-columns:1fr 60px 1fr;gap:14px;align-items:center;
+         background:var(--surface);border-radius:14px;padding:14px;border:1px solid var(--border)}
+  @media(max-width:560px){.bowls{grid-template-columns:1fr;gap:8px}}
+  .bowl{padding:12px;background:var(--bg);border-radius:12px;border:2px solid var(--border)}
+  .bowl h3{margin:0 0 8px;font-size:0.95em}
+  .bowl .row{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:0.9em}
+  .bowl label{min-width:80px;color:var(--muted)}
+  .bowl input[type=number]{width:80px;padding:3px 6px;border:1px solid var(--border);
+                            border-radius:6px;background:var(--bg);color:var(--text);text-align:center}
+  .bowl select{padding:3px 6px;border:1px solid var(--border);border-radius:6px;
+               background:var(--bg);color:var(--text);font-family:inherit;width:100%}
+  .arrow{text-align:center;font-size:2em;color:var(--info)}
+  @media(max-width:560px){.arrow{transform:rotate(90deg)}}
+  .result{margin-top:14px;padding:14px;background:var(--info-bg);border-radius:12px;text-align:center}
+  .result .big{font-size:2em;color:var(--info);font-weight:700;display:block;margin:4px 0}
+  .formula{margin-top:10px;padding:10px;background:var(--surface);border-radius:10px;
+           font-family:'Courier New',monospace;text-align:center;direction:ltr;
+           color:var(--ok);font-size:0.95em;font-weight:600}
+  .tip{margin-top:10px;padding:8px;background:var(--surface);border-radius:8px;
+       font-size:0.9em;color:var(--muted)}
+  .Tbar{margin-top:8px;height:22px;background:linear-gradient(to right,var(--cold),#fff7c2,var(--hot));
+        border-radius:6px;position:relative;border:1px solid var(--border)}
+  .Tbar .pin{position:absolute;top:-4px;width:4px;height:30px;background:var(--text);border-radius:2px}
+  .Tbar .lab{position:absolute;top:-22px;font-size:0.75em;color:var(--text);transform:translateX(-50%)}
+</style>
+  <script id="mathjax-config">
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+           displayMath: [['$$','$$'], ['\\[','\\]']],
+           processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<h2>♨️ گرماسنجی — دمای تعادل پس از مخلوط شدن</h2>
+
+<div class="bowls">
+  <div class="bowl">
+    <h3>🟥 جسم/مایع A</h3>
+    <div class="row"><label>جنس</label>
+      <select id="mA">
+        <option value="4186" data-name="آب">آب (c=۴۱۸۶)</option>
+        <option value="2400" data-name="اتانول">اتانول (c=۲۴۰۰)</option>
+        <option value="900" data-name="آلومینیم">آلومینیم (c=۹۰۰)</option>
+        <option value="900" data-name="هوا">هوا (c=۱۰۰۵)</option>
+        <option value="450" data-name="آهن">آهن (c=۴۵۰)</option>
+        <option value="390" data-name="مس">مس (c=۳۹۰)</option>
+        <option value="129" data-name="طلا">طلا (c=۱۲۹)</option>
+        <option value="3470" data-name="بدنِ انسان">بدن انسان (c=۳۴۷۰)</option>
+      </select>
+    </div>
+    <div class="row"><label>جرم (kg)</label><input type="number" id="m1" value="0.5" step="0.05" min="0.01"></div>
+    <div class="row"><label>دما (°C)</label><input type="number" id="T1" value="80" step="1"></div>
+  </div>
+  <div class="arrow">↔</div>
+  <div class="bowl">
+    <h3>🟦 جسم/مایع B</h3>
+    <div class="row"><label>جنس</label>
+      <select id="mB">
+        <option value="4186" data-name="آب" selected>آب (c=۴۱۸۶)</option>
+        <option value="2400" data-name="اتانول">اتانول (c=۲۴۰۰)</option>
+        <option value="900" data-name="آلومینیم">آلومینیم (c=۹۰۰)</option>
+        <option value="1005" data-name="هوا">هوا (c=۱۰۰۵)</option>
+        <option value="450" data-name="آهن">آهن (c=۴۵۰)</option>
+        <option value="390" data-name="مس">مس (c=۳۹۰)</option>
+        <option value="129" data-name="طلا">طلا (c=۱۲۹)</option>
+        <option value="3470" data-name="بدنِ انسان">بدن انسان (c=۳۴۷۰)</option>
+      </select>
+    </div>
+    <div class="row"><label>جرم (kg)</label><input type="number" id="m2" value="1.0" step="0.05" min="0.01"></div>
+    <div class="row"><label>دما (°C)</label><input type="number" id="T2" value="20" step="1"></div>
+  </div>
+</div>
+
+<div class="formula">m₁·c₁·(T_f − T₁) + m₂·c₂·(T_f − T₂) = 0&nbsp; ⇒ &nbsp;T_f = (m₁c₁T₁ + m₂c₂T₂)/(m₁c₁ + m₂c₂)</div>
+
+<div class="result">
+  دمای تعادلِ نهایی:
+  <span class="big" id="Tf">— °C</span>
+  <div class="Tbar"><div class="pin" id="pinA"></div><div class="pin" id="pinB" style="background:var(--info)"></div>
+       <div class="pin" id="pinF" style="background:var(--hot)"></div>
+       <div class="lab" id="labA">T_A</div><div class="lab" id="labB">T_B</div>
+       <div class="lab" id="labF">T_f</div></div>
+  <div style="margin-top:18px;font-size:0.92em;color:var(--info)">
+    Q از A خارج: <b id="Qout">—</b> J &nbsp;|&nbsp; Q به B وارد: <b id="Qin">—</b> J
+  </div>
+</div>
+
+<div class="tip" id="tip">—</div>
+
+<script>
+const faDigit = n => String(n).replace(/-?\d/g, d => d==='-'?'−':'۰۱۲۳۴۵۶۷۸۹'[d]);
+function $(id){ return document.getElementById(id); }
+
+function nameOf(sel){
+  const o = sel.options[sel.selectedIndex];
+  return o.getAttribute('data-name');
+}
+
+function compute(){
+  const c1 = +$('mA').value, c2 = +$('mB').value;
+  const m1 = +$('m1').value, m2 = +$('m2').value;
+  const T1 = +$('T1').value, T2 = +$('T2').value;
+  const Tf = (m1*c1*T1 + m2*c2*T2) / (m1*c1 + m2*c2);
+  $('Tf').textContent = faDigit(Tf.toFixed(2)) + ' °C';
+  const Qout = m1*c1*(T1 - Tf);
+  const Qin = m2*c2*(Tf - T2);
+  $('Qout').textContent = faDigit(Math.abs(Qout).toFixed(0));
+  $('Qin').textContent = faDigit(Math.abs(Qin).toFixed(0));
+  // Tbar pins
+  const lo = Math.min(T1, T2, Tf, 0);
+  const hi = Math.max(T1, T2, Tf, 100);
+  const rng = hi - lo;
+  const pct = t => Math.max(0, Math.min(100, (t-lo)/rng*100));
+  $('pinA').style.left = pct(T1) + '%';
+  $('pinB').style.left = pct(T2) + '%';
+  $('pinF').style.left = pct(Tf) + '%';
+  $('labA').style.left = pct(T1) + '%'; $('labA').textContent = 'A: ' + faDigit(T1) + '°';
+  $('labB').style.left = pct(T2) + '%'; $('labB').textContent = 'B: ' + faDigit(T2) + '°';
+  $('labF').style.left = pct(Tf) + '%'; $('labF').textContent = 'T_f';
+  // tip
+  const nA = nameOf($('mA')), nB = nameOf($('mB'));
+  let tip;
+  if (Math.abs(T1 - T2) < 0.5) tip = '⚖️ دو جسم تقریباً هم‌دمان — تبادل گرمایی صفر، تعادل از قبل برقراره.';
+  else {
+    const closer = (Math.abs(Tf - T1) < Math.abs(Tf - T2)) ? `${nA} (A)` : `${nB} (B)`;
+    tip = `💡 دمای تعادل به ${closer} نزدیک‌تره — این یعنی این جسم «ظرفیت گرماییِ» بیشتری (m·c بزرگ‌تر) داره. به همین دلیل آب با گرمای ویژه‌ی بالا، دمای بدن و سیاره رو پایدار نگه می‌داره. 🩺`;
+  }
+  $('tip').textContent = tip;
+}
+
+['mA','mB','m1','m2','T1','T2'].forEach(id => $(id).oninput = compute);
+['mA','mB'].forEach(id => $(id).onchange = compute);
+compute();
+</script>
+</body>
+</html>

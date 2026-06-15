@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>پایستگی انرژی مکانیکی — پاندول</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75;
+    --warn:#a87800; --total:#7e3a9a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+           --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.7}
+  h2{margin:0 0 12px;font-size:1.05em;color:var(--info)}
+  .container{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:600px;margin:0 auto}
+  @media(max-width:560px){.container{grid-template-columns:1fr}}
+  canvas{background:var(--surface);border-radius:14px;width:100%;border:1px solid var(--border)}
+  .bars{background:var(--surface);border-radius:14px;padding:14px;border:1px solid var(--border)}
+  .bar-row{margin-bottom:8px}
+  .bar-row label{font-weight:600;font-size:0.92em;display:flex;justify-content:space-between}
+  .bar{height:18px;background:#ccc;border-radius:5px;overflow:hidden;margin-top:2px}
+  .bar > div{height:100%;transition:width 0.15s linear}
+  .bar-K > div{background:#1d9e75}
+  .bar-U > div{background:#185fa5}
+  .bar-E > div{background:#7e3a9a}
+  .row{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .row label{min-width:110px;font-weight:600}
+  input[type=range]{flex:1;min-width:140px}
+  button{padding:8px 14px;background:var(--info);color:#fff;border:none;border-radius:8px;
+         cursor:pointer;font-family:inherit;font-weight:600}
+</style>
+</head>
+<body>
+<h2>🎢 پایستگی انرژی — پاندول</h2>
+
+<div class="container">
+  <canvas id="cv" width="280" height="260"></canvas>
+  <div class="bars">
+    <div class="bar-row">
+      <label>انرژی جنبشی (K) <span id="kVal" style="color:#1d9e75">— J</span></label>
+      <div class="bar bar-K"><div id="kBar" style="width:0%"></div></div>
+    </div>
+    <div class="bar-row">
+      <label>انرژی پتانسیل (U) <span id="uVal" style="color:#185fa5">— J</span></label>
+      <div class="bar bar-U"><div id="uBar" style="width:0%"></div></div>
+    </div>
+    <div class="bar-row">
+      <label>انرژی کل (E = K+U) <span id="eVal" style="color:#7e3a9a">— J</span></label>
+      <div class="bar bar-E"><div id="eBar" style="width:0%"></div></div>
+    </div>
+    <p style="font-size:0.88em;color:var(--muted);margin-top:14px">
+      با هر نوسان، K و U بین صفر و حداکثر جابه‌جا می‌شن — ولی <b>E ثابت می‌مونه!</b> این یعنی پایستگی انرژی مکانیکی.
+    </p>
+  </div>
+</div>
+
+<div class="row">
+  <label>زاویه‌ی اولیه</label>
+  <input type="range" id="ang0" min="5" max="75" value="45">
+  <span id="ang0Badge">۴۵°</span>
+</div>
+<div class="row">
+  <label>طولِ نخ</label>
+  <input type="range" id="L" min="0.5" max="3" step="0.1" value="1.5">
+  <span id="LBadge">۱.۵ m</span>
+</div>
+<div class="row">
+  <label>اصطکاک</label>
+  <input type="range" id="damp" min="0" max="0.05" step="0.001" value="0">
+  <span id="dampBadge">۰</span>
+</div>
+<div class="row">
+  <button id="reset">شروع دوباره</button>
+</div>
+
+<script>
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+const m = 1, g = 9.8;
+let L = 1.5;
+let theta0 = 45 * Math.PI / 180;
+let theta = theta0;
+let omega = 0;
+let damp = 0;
+const faDigit = n => String(n).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+
+function step(){
+  // simple pendulum dynamics
+  const dt = 0.025;
+  const alpha = -(g/L) * Math.sin(theta) - damp * omega;
+  omega += alpha * dt;
+  theta += omega * dt;
+  // draw
+  ctx.clearRect(0,0,W,H);
+  const px = W/2, py = 30;
+  const pixelsPerMeter = (H - 80) / 3;
+  const Lpx = L * pixelsPerMeter * 0.8;
+  const bobX = px + Math.sin(theta) * Lpx;
+  const bobY = py + Math.cos(theta) * Lpx;
+  // string
+  ctx.strokeStyle = '#888'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+  ctx.lineTo(bobX, bobY);
+  ctx.stroke();
+  // pivot
+  ctx.fillStyle = '#222';
+  ctx.fillRect(px-15, py-6, 30, 6);
+  // bob
+  ctx.beginPath();
+  ctx.arc(bobX, bobY, 14, 0, Math.PI*2);
+  ctx.fillStyle = '#c0392b';
+  ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+  ctx.stroke();
+  // arc trace (optional)
+  ctx.strokeStyle = 'rgba(150,150,150,0.3)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3,3]);
+  ctx.beginPath();
+  ctx.arc(px, py, Lpx, Math.PI/2 - theta0, Math.PI/2 + theta0);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // height & energies
+  const h = L * (1 - Math.cos(theta));
+  const hMax = L * (1 - Math.cos(theta0));
+  const Umax = m*g*hMax;
+  const U = m*g*h;
+  const v = omega * L;
+  const K = 0.5*m*v*v;
+  const E = K + U;
+  // update bars
+  const scale = Umax > 0.1 ? Umax * 1.05 : 1;
+  document.getElementById('kBar').style.width = Math.min(100, K/scale*100) + '%';
+  document.getElementById('uBar').style.width = Math.min(100, U/scale*100) + '%';
+  document.getElementById('eBar').style.width = Math.min(100, E/scale*100) + '%';
+  document.getElementById('kVal').textContent = faDigit(K.toFixed(2)) + ' J';
+  document.getElementById('uVal').textContent = faDigit(U.toFixed(2)) + ' J';
+  document.getElementById('eVal').textContent = faDigit(E.toFixed(2)) + ' J';
+  requestAnimationFrame(step);
+}
+
+document.getElementById('ang0').oninput = e=>{
+  theta0 = +e.target.value * Math.PI / 180;
+  theta = theta0; omega = 0;
+  document.getElementById('ang0Badge').textContent = faDigit(e.target.value) + '°';
+};
+document.getElementById('L').oninput = e=>{
+  L = +e.target.value;
+  theta = theta0; omega = 0;
+  document.getElementById('LBadge').textContent = faDigit(L.toFixed(1)) + ' m';
+};
+document.getElementById('damp').oninput = e=>{
+  damp = +e.target.value;
+  document.getElementById('dampBadge').textContent = faDigit(damp.toFixed(3));
+};
+document.getElementById('reset').onclick = ()=>{
+  theta = theta0; omega = 0;
+};
+
+step();
+</script>
+</body>
+</html>

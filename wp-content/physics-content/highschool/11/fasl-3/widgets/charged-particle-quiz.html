@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودتو بسنج — نیروی مغناطیسی بر ذرّهٔ باردار</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8;}
+  .wrap{max-width:720px; margin:0 auto;}
+  .q-item{border:1px solid var(--border); border-radius:12px; margin-bottom:10px;
+    overflow:hidden; background:var(--surface);}
+  .q-head{display:flex; align-items:center; gap:10px; cursor:pointer;
+    padding:13px 15px; font-weight:500; font-size:15px; user-select:none;}
+  .q-head:hover{background:var(--info-bg);}
+  .q-head .tog{margin-inline-start:auto; flex:0 0 auto; color:var(--info);
+    transition:transform .2s ease; font-size:18px;}
+  .q-item.open .q-head .tog{transform:rotate(45deg);}
+  .q-num{flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+    background:var(--info); color:#fff; display:flex; align-items:center;
+    justify-content:center; font-size:13px; font-weight:700;}
+  .q-body{max-height:0; overflow:hidden; transition:max-height .25s ease;
+    background:var(--ok-bg);}
+  .q-body .inner{padding:13px 15px; color:var(--text); font-size:14.5px;}
+  .q-body .inner::before{content:"پاسخ: "; color:var(--ok); font-weight:700;}
+  .hint{font-size:13px; color:var(--muted); margin:0 0 14px;}
+</style>
+<script id="mathjax-config">
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <p class="hint">روی هر سؤال بزن تا پاسخش باز شود 👇</p>
+  <div id="quiz"></div>
+</div>
+
+<script>
+  var items = [
+    { q: "فرمول نیروی مغناطیسی بر ذرّهٔ باردار متحرک چیه؟",
+      a: "$$F = qvB\\sin\\theta$$<br>که در اون: $q$ مقدار بار، $v$ سرعت ذرّه، $B$ شدت میدان، و $\\theta$ زاویه‌ی بین $\\vec{v}$ و $\\vec{B}$ ـه. این فرمول، خودش <b>تعریفِ اندازه‌ی $\\vec{B}$</b> ـه: ($B = F/(qv\\sin\\theta)$ وقتی نیرو رو اندازه بگیریم)." },
+    { q: "اگه ذرّه دقیقاً در جهت میدان حرکت کنه چی می‌شه؟",
+      a: "$\\theta = 0$ → $\\sin\\theta = 0$ → <b>F = 0</b>. <br>یعنی هیچ نیرویی روی ذرّه وارد نمی‌شه! این یه نکته‌ی جالبه: ذره‌ی بارداری که داره <b>موازی</b> با میدان حرکت می‌کنه، هیچ تفاوتی با ذره‌ی بدون میدان نداره. این فقط در حالت <b>عمود</b> (یا تقریباً عمود) ـه که نیروی مغناطیسی محسوسه." },
+    { q: "وقتی ذرّه عمود بر میدان وارد بشه چه شکلی حرکت می‌کنه؟",
+      a: "<b>مسیر دایره‌ای کامل!</b> 🔄 چون نیرو همیشه عمود بر سرعته (به خاطر $\\sin 90° = 1$ و قاعدهٔ دست راست). این نیرو سرعت رو کم و زیاد نمی‌کنه، فقط <b>جهت</b>ش رو عوض می‌کنه — دقیقاً مثلِ نیروی مرکزگرا. شعاع دایره: $r = \\dfrac{mv}{qB}$" },
+    { q: "چرا دورهٔ تناوبِ این حرکت دایره‌ای، به سرعت ذرّه بستگی نداره؟",
+      a: "اگه از $r = \\dfrac{mv}{qB}$ و $T = \\dfrac{2\\pi r}{v}$ شروع کنی، v حذف می‌شه و می‌رسی به:<br>$$T = \\frac{2\\pi m}{qB}$$<br>این یعنی <b>هر ذرّه با همون m و q</b>، توی همون میدان B، چه آروم چه تند بره، در <b>زمان یکسان</b> یه دور می‌زنه. این پایه‌ی کارِ <b>سیکلوترون</b> (شتاب‌دهنده‌ی ذرّات) ـه." },
+    { q: "قاعدهٔ دست راست رو با کلمات توضیح بده.",
+      a: "برای ذرّه‌ی <b>مثبت</b>:<br>۱) انگشتِ <b>اشاره</b> رو در جهتِ $\\vec{v}$ بگیر<br>۲) انگشتِ <b>میانی</b> رو در جهتِ $\\vec{B}$<br>۳) انگشتِ <b>شَست</b> جهتِ $\\vec{F}$ رو نشون می‌ده<br>برای بار <b>منفی</b>: همین کارو بکن ولی نتیجه رو <b>برعکس</b> کن. (روش جایگزین: دستِ چپ به‌جای راست برای منفی.)" },
+    { q: "ذرّه‌ی باردار با سرعتی غیرعمود (نه ۰° نه ۹۰°) وارد میدان یکنواخت می‌شه. مسیرش چی می‌شه؟",
+      a: "<b>مسیر مارپیچی (helix)!</b> 🧬 سرعت رو به دو مولفه تجزیه می‌کنیم:<br>• مولفه‌ی <b>موازی $B$</b> ($v_\\parallel$): هیچ نیرویی نمی‌بینه، با سرعت ثابت ادامه می‌ده<br>• مولفه‌ی <b>عمود بر $B$</b> ($v_\\perp$): حرکت دایره‌ای می‌کنه<br>ترکیب این دو، یه مارپیچ منظم می‌شه — مثل فنر! این دقیقاً همون چیزیه که ذرات کیهانی رو در امتدادِ خطوط میدان زمین به طرفِ قطب‌ها می‌فرسته (و شفق قطبی درست می‌کنه)." },
+    { q: "محاسبه: یه پروتون با سرعت $5\\times 10^5$ m/s عمود بر میدانی به اندازه‌ی $0.4$ T حرکت می‌کنه. نیرو چقدره؟ شعاع چقدره؟ ($q_p = 1.6\\times 10^{-19}$ C، $m_p = 1.67\\times 10^{-27}$ kg)",
+      a: "<b>نیرو:</b> $F = qvB = (1.6\\times 10^{-19})(5\\times 10^5)(0.4) = 3.2\\times 10^{-14}$ N<br><b>شعاع:</b> $r = \\dfrac{mv}{qB} = \\dfrac{(1.67\\times 10^{-27})(5\\times 10^5)}{(1.6\\times 10^{-19})(0.4)} \\approx 1.3\\times 10^{-2}$ m = ۱.۳ سانتی‌متر.<br><b>درس کلیدی:</b> برای ذرّاتِ زیراتمی، شعاعِ مسیرشون توی میدان مغناطیسی، در حدِ سانتی‌متره — به همین خاطر آشکارسازهای ذرّه (مثلِ LHC) از میدان مغناطیسی استفاده می‌کنن." },
+    { q: "چرا ذرات اشعهٔ کیهانی به‌خوبی به سطح زمین نمی‌رسن؟",
+      a: "اکثرِ این ذرات <b>باردارن</b> (پروتون، الکترون، هسته‌های سبک). میدان مغناطیسی زمین اون‌ها رو <b>کج می‌کنه</b> (طبق همون $\\vec{F} = q\\vec{v}\\times\\vec{B}$) و در امتدادِ خطوط میدان به سمتِ قطب‌ها می‌فرسته. به همین خاطر در <b>عرض‌های جغرافیایی پایین</b> پرتو کیهانی محسوسش به سطح نمی‌رسه — این یه سپرِ نامرئیه که جون ما رو نجات می‌ده. در قطب‌ها بخشی از این ذرات می‌تونن وارد جوّ بشن و شفق قطبی درست کنن." }
+  ];
+
+  var box = document.getElementById('quiz');
+  items.forEach(function(it, i){
+    var item = document.createElement('div'); item.className='q-item';
+    var head = document.createElement('div'); head.className='q-head';
+    head.innerHTML = '<span class="q-num">'+toFa(i+1)+'</span><span>'+it.q+'</span><span class="tog">+</span>';
+    var body = document.createElement('div'); body.className='q-body';
+    var inner = document.createElement('div'); inner.className='inner'; inner.innerHTML=it.a;
+    body.appendChild(inner);
+    head.addEventListener('click', function(){
+      var open = item.classList.toggle('open');
+      body.style.maxHeight = open ? (inner.scrollHeight + 26) + 'px' : '0';
+    });
+    item.appendChild(head); item.appendChild(body); box.appendChild(item);
+  });
+  function toFa(n){return (''+n).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+</script>
+</body>
+</html>

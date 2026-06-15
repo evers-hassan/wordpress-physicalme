@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>اصل ارشمیدس — شناوری</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75;
+    --warn:#a87800; --danger:#c0392b;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+           --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.7}
+  h2{margin:0 0 12px;font-size:1.05em;color:var(--info)}
+  canvas{background:var(--surface);border-radius:14px;width:100%;max-width:520px;
+         display:block;margin:0 auto;border:1px solid var(--border)}
+  .row{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .row label{min-width:90px;font-weight:600}
+  input[type=range]{flex:1;min-width:140px}
+  select{padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);
+         background:var(--surface);color:var(--text);font-family:inherit}
+  .readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+           gap:10px;margin-top:14px}
+  .card{padding:12px;border-radius:10px;text-align:center}
+  .card.w{background:#fde6e0;color:#a83215}
+  .card.b{background:#e3f5ed;color:#0d6b48}
+  .card.f{background:var(--info-bg);color:var(--info)}
+  @media (prefers-color-scheme: dark){
+    .card.w{background:#5a2820;color:#ffb39c}
+    .card.b{background:#1a4a35;color:#7fdcb6}
+  }
+  .card b{display:block;color:var(--text);font-size:1.3em;margin-bottom:2px}
+  .verdict{margin-top:12px;padding:12px;border-radius:10px;text-align:center;
+           font-weight:700;font-size:1.05em}
+  .verdict.float{background:#e3f5ed;color:#0d6b48}
+  .verdict.sink{background:#fde6e0;color:#a83215}
+  .verdict.suspend{background:var(--info-bg);color:var(--info)}
+</style>
+</head>
+<body>
+<h2>🚢🪨 اصل ارشمیدس — شناوری</h2>
+
+<canvas id="cv" width="520" height="380"></canvas>
+
+<div class="row">
+  <label>جنسِ جسم:</label>
+  <select id="mat">
+    <option value="100">چوبِ بالسا (۱۰۰ kg/m³)</option>
+    <option value="700">چوبِ کاج (۷۰۰)</option>
+    <option value="920">یخ (۹۲۰)</option>
+    <option value="1060">بدنِ انسان (۱۰۶۰)</option>
+    <option value="2700">آلومینیوم (۲۷۰۰)</option>
+    <option value="7870" selected>آهن (۷۸۷۰)</option>
+    <option value="19300">طلا (۱۹۳۰۰)</option>
+  </select>
+</div>
+<div class="row">
+  <label>شاره:</label>
+  <select id="fluid">
+    <option value="1000" selected>آب (۱۰۰۰)</option>
+    <option value="1025">آبِ دریا (۱۰۲۵)</option>
+    <option value="820">روغن (۸۲۰)</option>
+    <option value="13595">جیوه (۱۳۵۹۵)</option>
+  </select>
+</div>
+<div class="row">
+  <label>اندازهٔ جسم</label>
+  <input type="range" id="size" min="30" max="80" value="50">
+  <span id="sizeBadge">۵۰ cm</span>
+</div>
+
+<div class="readout">
+  <div class="card w"><b id="W">— N</b>وزن (پایین)</div>
+  <div class="card b"><b id="Fb">— N</b>شناوری (بالا)</div>
+  <div class="card f"><b id="Vd">— L</b>حجمِ جابه‌جا شده</div>
+</div>
+<div class="verdict" id="verdict">—</div>
+
+<script>
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+const g = 9.8;
+// container x [60..460], y [40..360]
+const cx0=60, cx1=460, cy0=40, cy1=360;
+const waterY = 100; // top of water inside container
+
+let objRho = 7870;
+let fluidRho = 1000;
+let sizeCm = 50;
+
+const faDigit = n => String(n).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+
+function compute(){
+  const side = sizeCm/100; // m
+  const V = side*side*side; // m³
+  const mass = objRho * V; // kg
+  const weight = mass*g; // N
+  // depth submerged (m)
+  let depth_m;
+  if (objRho >= fluidRho){
+    depth_m = side;
+  } else {
+    depth_m = side * (objRho/fluidRho);
+  }
+  const V_disp = side*side*depth_m;
+  const Fb = fluidRho * g * V_disp;
+  return {side, V, weight, Fb, depth_m, V_disp, mass};
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // container
+  const grd = ctx.createLinearGradient(0, waterY, 0, cy1);
+  grd.addColorStop(0, 'rgba(60,140,200,0.35)');
+  grd.addColorStop(1, 'rgba(20,60,100,0.85)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(cx0, waterY, cx1-cx0, cy1-waterY);
+  ctx.strokeStyle = '#444'; ctx.lineWidth = 3;
+  ctx.strokeRect(cx0, cy0, cx1-cx0, cy1-cy0);
+
+  // object
+  const r = compute();
+  const pxPerM = (cy1-waterY)/0.9; // ~scale: 0.9 m of water
+  const sideP = sizeCm * 1.6; // visual size
+  const subP = (r.depth_m / r.side) * sideP;
+  const objW = sideP;
+  const objH = sideP;
+  const cx = (cx0+cx1)/2;
+  // object top
+  const topY = waterY - (objH - subP);
+  ctx.fillStyle = objRho < fluidRho ? '#c8a872' : (objRho < 3000 ? '#c0c0c0' : '#7a6f5f');
+  ctx.fillRect(cx - objW/2, topY, objW, objH);
+  ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
+  ctx.strokeRect(cx - objW/2, topY, objW, objH);
+  // density label
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 12px Vazirmatn';
+  ctx.textAlign = 'center';
+  ctx.fillText('ρ=' + faDigit(objRho), cx, topY + objH/2 - 6);
+  ctx.fillText('کیلوگرم/m³', cx, topY + objH/2 + 12);
+
+  // force arrows
+  // weight (down) red
+  const arrLen = 50;
+  ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(cx-15, topY + objH/2);
+  ctx.lineTo(cx-15, topY + objH/2 + arrLen);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx-22, topY + objH/2 + arrLen - 7);
+  ctx.lineTo(cx-15, topY + objH/2 + arrLen);
+  ctx.lineTo(cx-8, topY + objH/2 + arrLen - 7);
+  ctx.stroke();
+  ctx.fillStyle = '#c0392b';
+  ctx.fillText('W', cx-30, topY + objH/2 + arrLen);
+
+  // buoyancy (up) green — scale by Fb/W ratio
+  const ratio = Math.min(2, r.Fb/r.weight);
+  const upLen = arrLen * ratio;
+  ctx.strokeStyle = '#1d9e75'; ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(cx+15, topY + objH/2);
+  ctx.lineTo(cx+15, topY + objH/2 - upLen);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx+8, topY + objH/2 - upLen + 7);
+  ctx.lineTo(cx+15, topY + objH/2 - upLen);
+  ctx.lineTo(cx+22, topY + objH/2 - upLen + 7);
+  ctx.stroke();
+  ctx.fillStyle = '#1d9e75';
+  ctx.fillText('Fb', cx+30, topY + objH/2 - upLen);
+
+  // readouts
+  document.getElementById('W').textContent = faDigit(r.weight.toFixed(1)) + ' N';
+  document.getElementById('Fb').textContent = faDigit(r.Fb.toFixed(1)) + ' N';
+  document.getElementById('Vd').textContent = faDigit((r.V_disp*1000).toFixed(2)) + ' L';
+  const v = document.getElementById('verdict');
+  if (objRho < fluidRho){
+    v.className = 'verdict float';
+    v.textContent = '🟢 شناوره — چگالی جسم کمتر از شاره';
+  } else if (Math.abs(objRho - fluidRho) < 1){
+    v.className = 'verdict suspend';
+    v.textContent = '🔵 غوطه‌ور — چگالی‌ها برابر';
+  } else {
+    v.className = 'verdict sink';
+    v.textContent = '🔴 غرق می‌شه — چگالی جسم بزرگ‌تر از شاره';
+  }
+}
+
+document.getElementById('mat').onchange = e=>{ objRho = +e.target.value; draw(); };
+document.getElementById('fluid').onchange = e=>{ fluidRho = +e.target.value; draw(); };
+const sizeEl = document.getElementById('size');
+sizeEl.oninput = ()=>{
+  sizeCm = +sizeEl.value;
+  document.getElementById('sizeBadge').textContent = faDigit(sizeCm) + ' cm';
+  draw();
+};
+draw();
+</script>
+</body>
+</html>

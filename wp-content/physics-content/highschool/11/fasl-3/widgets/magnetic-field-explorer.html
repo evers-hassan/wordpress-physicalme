@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>کاوشگر میدان مغناطیسی</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --hint-c:#a87800; --hint-bg:#fef6e0;
+    --N:#d6453c; --S:#2f6fd0;
+    --field:#7c8186; --field-strong:#3a3835;
+    --compass:#c2410c;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --hint-c:#e0b860; --hint-bg:#4a3a15;
+      --N:#f06a60; --S:#6aa0ee;
+      --field:#9ea4a8; --field-strong:#d0d0c8;
+      --compass:#fb923c;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;
+  }
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; overflow:hidden;
+  }
+  canvas{display:block; width:100%; height:380px; cursor:crosshair; touch-action:none;}
+  .readout{
+    display:flex; gap:10px; flex-wrap:wrap; align-items:stretch;
+    padding:12px; border-top:1px solid var(--border);
+  }
+  .chip{
+    flex:1 1 130px; background:var(--info-bg); color:var(--info);
+    border-radius:10px; padding:8px 12px; text-align:center; font-weight:500;
+    font-size:14px;
+  }
+  .chip b{display:block; font-size:17px; font-weight:700; margin-top:2px;}
+  .chip.ok{background:var(--ok-bg); color:var(--ok);}
+  .controls{margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;}
+  .toggle{
+    font-family:inherit; font-size:13.5px; padding:9px 16px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text);
+    cursor:pointer; transition:.15s; flex:1 1 140px;
+  }
+  .toggle:hover{background:var(--info-bg); border-color:var(--info); color:var(--info);}
+  .toggle.on{background:var(--info); color:#fff; border-color:var(--info);}
+  .hint{
+    margin-top:12px; background:var(--hint-bg); color:var(--hint-c);
+    border-radius:10px; padding:10px 14px; font-size:13.5px;
+    border-right:3px solid var(--hint-c);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🧭 کاوش میدان مغناطیسی — قطب‌نمای متحرک</h2>
+  <p class="sub">ماوس رو روی صفحه حرکت بده. قطب‌نمای کوچیک نشون می‌ده میدان مغناطیسی توی هر نقطه کدوم طرف اشاره می‌کنه.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">جهت میدان <b id="angVal">—</b></div>
+      <div class="chip ok">شدّت میدان <b id="magVal">—</b></div>
+      <div class="chip">فاصله از مرکز <b id="distVal">—</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="toggle on" id="tLines">خطوط میدان</button>
+    <button class="toggle" id="tFilings">برادهٔ آهن</button>
+    <button class="toggle on" id="tGrid">شبکهٔ پیکان</button>
+  </div>
+
+  <div class="hint">
+    💡 توجه کن: نزدیکِ <span style="color:var(--N);font-weight:700">N</span> فلش‌ها ازش <b>دور می‌شن</b>، نزدیکِ <span style="color:var(--S);font-weight:700">S</span> به سمتش <b>کشیده می‌شن</b>. هرچی به آهنربا نزدیک‌تر، میدان قوی‌تر (یعنی فلش‌ها بزرگ‌تر و خطوط متراکم‌تر).
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var angVal=document.getElementById('angVal'),
+      magVal=document.getElementById('magVal'),
+      distVal=document.getElementById('distVal');
+
+  // Bar magnet position (centered at runtime in resize). Treated as two opposite
+  // monopoles separated by 2*halfLen. North pole on the RIGHT (positive x).
+  var W=600, H=380, xc=300, yc=190;
+  var halfLen = 70, halfH = 18;
+  var xN, xS;     // pole x-coords (recomputed on resize)
+  var mouseX=null, mouseY=null;
+  var showLines=true, showFilings=false, showGrid=true;
+
+  function toFa(s){return (''+s).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  // Field at point (px, py): sum of two monopole fields.
+  // North pole pushes outward (positive divergence), South pulls inward (negative).
+  // We avoid the singular core of each pole by clamping r.
+  function fieldAt(px, py){
+    var dxN=px-xN, dyN=py-yc;
+    var dxS=px-xS, dyS=py-yc;
+    var rN=Math.max(8, Math.hypot(dxN,dyN));
+    var rS=Math.max(8, Math.hypot(dxS,dyS));
+    // ~1/r² inverse-square law for each pole.
+    var s = 6000;   // strength constant for visualization
+    var bxN =  s*dxN/(rN*rN*rN);
+    var byN =  s*dyN/(rN*rN*rN);
+    var bxS = -s*dxS/(rS*rS*rS);
+    var byS = -s*dyS/(rS*rS*rS);
+    return {x: bxN+bxS, y: byN+byS};
+  }
+  function fieldMag(b){ return Math.hypot(b.x, b.y); }
+  function fieldAngle(b){ return Math.atan2(b.y, b.x); }   // 0 = +x = "to the right"
+
+  function drawArrow(x,y, ang, len, color, headSize){
+    headSize = headSize || 4;
+    var ex = x + Math.cos(ang)*len, ey = y + Math.sin(ang)*len;
+    ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=1.4; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(ex,ey); ctx.stroke();
+    // Arrowhead
+    var hs = headSize;
+    var a1 = ang+2.5, a2 = ang-2.5;
+    ctx.beginPath();
+    ctx.moveTo(ex,ey);
+    ctx.lineTo(ex+Math.cos(a1)*hs, ey+Math.sin(a1)*hs);
+    ctx.lineTo(ex+Math.cos(a2)*hs, ey+Math.sin(a2)*hs);
+    ctx.closePath(); ctx.fill();
+  }
+
+  function drawMagnet(){
+    ctx.save();
+    ctx.fillStyle='#3a3835'; ctx.fillRect(xc-halfLen, yc-halfH, 2*halfLen, 2*halfH);
+    // Halves
+    ctx.fillStyle=cssv('--S');
+    ctx.fillRect(xc-halfLen, yc-halfH, halfLen, 2*halfH);
+    ctx.fillStyle=cssv('--N');
+    ctx.fillRect(xc, yc-halfH, halfLen, 2*halfH);
+    ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=1.5;
+    ctx.strokeRect(xc-halfLen, yc-halfH, 2*halfLen, 2*halfH);
+    ctx.fillStyle='#fff'; ctx.font='bold 18px Vazirmatn, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('S', xc-halfLen/2, yc);
+    ctx.fillText('N', xc+halfLen/2, yc);
+    ctx.restore();
+  }
+
+  function drawGrid(){
+    if(!showGrid) return;
+    ctx.save();
+    var step = 36;
+    var maxRef = 0.012;     // for normalizing arrow size
+    for(var gx=step/2; gx<W; gx+=step){
+      for(var gy=step/2; gy<H; gy+=step){
+        // Skip arrows that lie inside the magnet body
+        if (gx>xc-halfLen-2 && gx<xc+halfLen+2 && gy>yc-halfH-2 && gy<yc+halfH+2) continue;
+        var b = fieldAt(gx, gy);
+        var mag = fieldMag(b);
+        var size = Math.min(18, 4 + mag*1200);
+        var ang = fieldAngle(b);
+        var alpha = Math.min(0.85, 0.18 + mag*60);
+        ctx.globalAlpha = alpha;
+        drawArrow(gx-size/2*Math.cos(ang), gy-size/2*Math.sin(ang),
+                  ang, size, cssv('--field'), 3.5);
+      }
+    }
+    ctx.globalAlpha=1;
+    ctx.restore();
+  }
+
+  // Stream a field line from a start point in given direction.
+  function streamLine(startX, startY, sign, maxSteps){
+    var pts=[{x:startX,y:startY}];
+    var step=4;
+    var x=startX, y=startY;
+    for(var i=0;i<maxSteps;i++){
+      var b = fieldAt(x,y);
+      var mag = fieldMag(b);
+      if (mag < 1e-6) break;
+      var ux = sign * b.x/mag, uy = sign * b.y/mag;
+      x += ux*step;  y += uy*step;
+      if (x<-10 || x>W+10 || y<-10 || y>H+10) break;
+      // Stop if we re-enter the magnet from outside
+      if (i>3 && x>xc-halfLen && x<xc+halfLen && y>yc-halfH-2 && y<yc+halfH+2) break;
+      pts.push({x:x,y:y});
+    }
+    return pts;
+  }
+
+  function drawFieldLines(){
+    if(!showLines) return;
+    ctx.save();
+    ctx.strokeStyle = cssv('--field-strong');
+    ctx.lineWidth = 1.4;
+    ctx.globalAlpha = 0.55;
+    // Seed points along the N pole face (right edge of magnet) and S face (left edge)
+    var seeds = [];
+    // Vertical seeds at each pole face (3 above, 3 below midline)
+    for (var dy = -halfH*0.7; dy <= halfH*0.7+0.001; dy += halfH*0.7){
+      seeds.push({x: xc+halfLen+0.5, y: yc+dy, sign: +1, color: '--field-strong'});
+      seeds.push({x: xc-halfLen-0.5, y: yc+dy, sign: -1, color: '--field-strong'});
+    }
+    // Also seeds above and below the magnet body — these create the loop arcs
+    for (var dx=-halfLen+15; dx<=halfLen-15; dx+=30){
+      seeds.push({x: xc+dx, y: yc-halfH-0.5, sign: +1, color: '--field-strong'});  // pointing up out of N side
+      seeds.push({x: xc+dx, y: yc+halfH+0.5, sign: +1, color: '--field-strong'});  // pointing down
+    }
+    seeds.forEach(function(s){
+      var pts = streamLine(s.x, s.y, s.sign, 200);
+      if (pts.length<3) return;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (var i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
+      // Draw a small arrow midway showing field direction
+      if (pts.length>20){
+        var mid = pts[Math.floor(pts.length/2)];
+        var nxt = pts[Math.floor(pts.length/2)+2];
+        var ang = Math.atan2(nxt.y-mid.y, nxt.x-mid.x);
+        ctx.globalAlpha = 0.9;
+        drawArrow(mid.x-3*Math.cos(ang), mid.y-3*Math.sin(ang), ang, 6, cssv('--field-strong'), 4);
+        ctx.globalAlpha = 0.55;
+      }
+    });
+    ctx.restore();
+  }
+
+  function drawFilings(){
+    if(!showFilings) return;
+    ctx.save();
+    ctx.strokeStyle = cssv('--text');
+    ctx.lineWidth = 1.1;
+    ctx.globalAlpha = 0.7;
+    // Random scattered filings — fixed seed per session for stability
+    if (!drawFilings._seeded){
+      drawFilings._pts = [];
+      // Simple PRNG with fixed seed
+      var s = 12345;
+      function rnd(){ s = (s*1664525 + 1013904223) >>> 0; return s/4294967296; }
+      for (var i=0;i<150;i++){
+        var fx = rnd()*W, fy = rnd()*H;
+        // Skip filings inside the magnet body
+        if (fx>xc-halfLen-2 && fx<xc+halfLen+2 && fy>yc-halfH-2 && fy<yc+halfH+2){ i--; continue; }
+        drawFilings._pts.push({x:fx,y:fy});
+      }
+      drawFilings._seeded = true;
+    }
+    drawFilings._pts.forEach(function(p){
+      var b = fieldAt(p.x, p.y);
+      var ang = fieldAngle(b);
+      var len = 9;
+      ctx.beginPath();
+      ctx.moveTo(p.x-Math.cos(ang)*len/2, p.y-Math.sin(ang)*len/2);
+      ctx.lineTo(p.x+Math.cos(ang)*len/2, p.y+Math.sin(ang)*len/2);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  function drawCompass(x, y){
+    var b = fieldAt(x, y);
+    var ang = fieldAngle(b);
+    var mag = fieldMag(b);
+    var R = 22;
+    ctx.save();
+    // Body
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.strokeStyle = cssv('--border');
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x,y, R, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    // N/S labels at static cardinal points
+    ctx.fillStyle = cssv('--muted'); ctx.font='10px Vazirmatn, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    // Needle — rotated to align with field
+    ctx.translate(x,y); ctx.rotate(ang);
+    // Red half (toward N pole — i.e., toward field direction)
+    ctx.beginPath();
+    ctx.moveTo(R-5,0); ctx.lineTo(0,-3.5); ctx.lineTo(0,3.5); ctx.closePath();
+    ctx.fillStyle = cssv('--N'); ctx.fill();
+    // White half (back end, toward S of needle)
+    ctx.beginPath();
+    ctx.moveTo(-(R-5),0); ctx.lineTo(0,-3.5); ctx.lineTo(0,3.5); ctx.closePath();
+    ctx.fillStyle = '#888'; ctx.fill();
+    // Center pin
+    ctx.beginPath(); ctx.arc(0,0, 2.3, 0, Math.PI*2);
+    ctx.fillStyle='#222'; ctx.fill();
+    ctx.restore();
+    // Update readout
+    var degrees = -ang * 180/Math.PI;
+    if (degrees<0) degrees += 360;
+    angVal.textContent = toFa(degrees.toFixed(0)) + '°';
+    var magPercent = Math.min(100, mag*5000);
+    magVal.textContent = toFa(magPercent.toFixed(0)) + '٪';
+    var d = Math.hypot(x-xc, y-yc);
+    distVal.textContent = toFa(d.toFixed(0))+' px';
+  }
+
+  function draw(){
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=rect.width; H=rect.height;
+    xc=W/2; yc=H/2;
+    xN = xc + halfLen*0.85;  // effective monopole positions inside magnet (slightly inside the ends gives nicer field)
+    xS = xc - halfLen*0.85;
+    ctx.clearRect(0,0,W,H);
+    drawGrid();
+    drawFieldLines();
+    drawFilings();
+    drawMagnet();
+    if (mouseX!=null && mouseY!=null) drawCompass(mouseX, mouseY);
+  }
+
+  cv.addEventListener('pointermove', function(e){
+    var rect=cv.getBoundingClientRect();
+    var t = e.touches ? e.touches[0] : e;
+    mouseX = t.clientX-rect.left; mouseY = t.clientY-rect.top;
+    draw();
+  });
+  cv.addEventListener('pointerleave', function(){ mouseX=mouseY=null; draw(); });
+  cv.addEventListener('pointerdown', function(e){
+    var rect=cv.getBoundingClientRect();
+    var t = e.touches ? e.touches[0] : e;
+    mouseX = t.clientX-rect.left; mouseY = t.clientY-rect.top;
+    draw();
+  });
+
+  function bindToggle(id, get, set){
+    var btn = document.getElementById(id);
+    btn.addEventListener('click', function(){
+      set(!get());
+      btn.classList.toggle('on', get());
+      draw();
+    });
+  }
+  bindToggle('tLines',   function(){return showLines;},   function(v){showLines=v;});
+  bindToggle('tFilings', function(){return showFilings;}, function(v){showFilings=v;});
+  bindToggle('tGrid',    function(){return showGrid;},    function(v){showGrid=v;});
+
+  window.addEventListener('resize', function(){
+    drawFilings._seeded = false;   // regenerate filings on resize
+    draw();
+  });
+  draw();
+})();
+</script>
+</body>
+</html>

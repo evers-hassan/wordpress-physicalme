@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودت را بسنج — دقت در اندازه‌گیری</title>
+<style>
+  :root{ --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a; --border:#e0ded7; }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e; --border:#3a3835; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; font-family:Vazirmatn,Tahoma,system-ui,sans-serif; background:var(--bg); color:var(--text);}
+  .qa-item{border:1px solid var(--border); border-radius:12px; margin-bottom:10px; overflow:hidden; background:var(--bg);}
+  .qa-q{width:100%; text-align:right; border:none; background:transparent; padding:14px 16px; font-size:15px;
+    font-weight:600; color:var(--text); cursor:pointer; display:flex; justify-content:space-between;
+    align-items:center; gap:10px; line-height:1.6; font-family:inherit;}
+  .qa-q .arrow{flex-shrink:0; transition:transform .2s; font-size:13px;}
+  .qa-a{max-height:0; overflow:hidden; transition:max-height .25s ease;}
+  .qa-a p{margin:0; padding:0 16px 16px; font-size:15px; line-height:1.8; color:var(--muted);
+    border-top:1px solid var(--border); padding-top:12px;}
+</style>
+</head>
+<body>
+  <div id="qa"></div>
+<script>
+  var items=[{"q": "۱. چرا می‌گیم در اندازه‌گیری همیشه خطا هست و نمی‌شه به صفر رسوندش؟", "a": "چون اندازه‌گیری ذاتاً محدودیت داره — هم وسیله محدودیتِ دقت داره، هم آزمایشگر، هم شرایطِ محیط. می‌شه با وسیله‌ی بهتر و روشِ درست‌تر خطا رو کم کرد، ولی هیچ‌وقت کاملاً صفر نمی‌شه. این یه واقعیتِ بنیادیه، نه ضعفِ آزمایشگر."}, {"q": "۲. دقتِ یه خط‌کشِ معمولی و یه ابزارِ دیجیتال چطوری مشخص می‌شه؟", "a": "برای ابزارِ مدرّج (مثلِ خط‌کش)، دقت برابرِ کوچک‌ترین درجه‌بندیِ اونه — مثلاً خط‌کشی که تا میلی‌متر درجه داره دقتش ۱ میلی‌متره. برای ابزارِ دیجیتال، دقت برابرِ یک واحد از آخرین رقمیه که نشون می‌ده."}, {"q": "۳. خطای اختلافِ منظر (Parallax) چیه و چطوری ازش جلوگیری کنیم؟", "a": "وقتی از یه زاویه‌ی مایل (نه روبه‌رو) به یه عقربه یا خط‌کش نگاه کنی، عددی که می‌خونی با مقدارِ واقعی فرق می‌کنه. برای جلوگیری، همیشه باید از روبه‌رو و عمود به ابزار نگاه کنی."}, {"q": "۴. چرا اندازه‌گیری رو چند بار تکرار و میانگین‌گیری می‌کنیم؟", "a": "چون خطاها معمولاً تصادفی‌ان (یه بار کمی بیشتر، یه بار کمی کمتر). با میانگین‌گیری این خطاها همدیگه رو خنثی می‌کنن و به مقدارِ واقعی نزدیک‌تر می‌شیم. البته اگه یه عددِ خیلی پرت بود، اونو تو میانگین حساب نمی‌کنیم."}, {"q": "۵. فرقِ «دقت» و «درستی» چیه؟ با مثالِ ساعت توضیح بده.", "a": "درستی یعنی چقدر به مقدارِ واقعی نزدیکی؛ دقت یعنی چقدر اندازه‌گیری‌هات به هم نزدیک و تکرارپذیرن. یه ساعتِ دیجیتال که تا ثانیه نشون می‌ده دقیقه، ولی اگه چند دقیقه عقب باشه درست نیست. برعکس، یه ساعتِ دیواری ممکنه زمانِ درست بده ولی چون عقربه‌ی ثانیه نداره دقتش کمه."}];
+  var box=document.getElementById("qa");
+  items.forEach(function(it){
+    var wrap=document.createElement("div");wrap.className="qa-item";
+    var btn=document.createElement("button");btn.className="qa-q";
+    btn.innerHTML="<span>"+it.q+"</span><span class='arrow'>▼</span>";
+    var ans=document.createElement("div");ans.className="qa-a";
+    var p=document.createElement("p");p.textContent=it.a;ans.appendChild(p);
+    var open=false;
+    btn.addEventListener("click",function(){open=!open;
+      ans.style.maxHeight=open?ans.scrollHeight+"px":"0";
+      btn.querySelector(".arrow").style.transform=open?"rotate(180deg)":"rotate(0deg)";});
+    wrap.appendChild(btn);wrap.appendChild(ans);box.appendChild(wrap);
+  });
+</script>
+</body>
+</html>

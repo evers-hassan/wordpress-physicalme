@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>حرکت دایره‌ای یکنواخت — شبیه‌سازی</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --primary:#185fa5; --secondary:#c43838; --accent:#9CAB52;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --primary:#85b7eb; --secondary:#f06a60;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:880px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .layout{display:grid; grid-template-columns:1fr 240px; gap:12px;}
+  @media(max-width:700px){.layout{grid-template-columns:1fr;}}
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:420px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:13px; margin:8px 0 6px; color:var(--muted); text-transform:uppercase;}
+  .panel h3:first-child{margin-top:0;}
+  .slider-row{display:grid; grid-template-columns:1fr 60px; gap:6px; align-items:center; font-size:13px; margin-bottom:6px;}
+  .val{font-weight:700; color:var(--info); text-align:left;}
+  input[type=range]{width:100%;}
+  .readout{padding:10px 12px; display:grid; grid-template-columns:repeat(2,1fr); gap:6px; border-top:1px solid var(--border); background:var(--surface); font-size:13px;}
+  .readout .item{padding:5px 8px; background:var(--info-bg); color:var(--info); border-radius:6px; text-align:center;}
+  .readout .item b{display:block; font-size:14px;}
+  .check{display:flex; align-items:center; gap:6px; font-size:12.5px; margin:6px 0;}
+</style>
+<script id="mathjax-config">
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$']], processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script"></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>حرکت دایره‌ای یکنواخت 🌀</h2>
+  <p class="sub">شعاع، تندی و جرم رو تغییر بده — نیروی مرکزگرا و شتاب و دوره رو ببین.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <canvas id="cv"></canvas>
+      <div class="readout">
+        <div class="item">شتاب a<sub>c</sub><b id="rac">0 m/s²</b></div>
+        <div class="item">نیرو F<sub>c</sub><b id="rfc">0 N</b></div>
+        <div class="item">دوره T<b id="rT">0 s</b></div>
+        <div class="item">ω زاویه‌ای<b id="rw">0 rad/s</b></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>شعاع</h3>
+      <div class="slider-row"><label>r (m)</label><span class="val" id="vr">2.0</span></div>
+      <input type="range" id="r" min="0.5" max="5" step="0.1" value="2">
+      <h3>تندی</h3>
+      <div class="slider-row"><label>v (m/s)</label><span class="val" id="vv">4.0</span></div>
+      <input type="range" id="v" min="0.5" max="10" step="0.1" value="4">
+      <h3>جرم</h3>
+      <div class="slider-row"><label>m (kg)</label><span class="val" id="vm">1.0</span></div>
+      <input type="range" id="m" min="0.1" max="5" step="0.1" value="1">
+      <h3>نمایش</h3>
+      <div class="check"><input type="checkbox" id="showV" checked><label for="showV">بردار سرعت (مماس)</label></div>
+      <div class="check"><input type="checkbox" id="showA" checked><label for="showA">بردار شتاب (مرکزگرا)</label></div>
+      <div class="check"><input type="checkbox" id="showF" checked><label for="showF">بردار نیرو</label></div>
+      <div class="check"><input type="checkbox" id="trail" checked><label for="trail">مسیر باقی‌مونده</label></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+function resize(){
+  const r = cv.getBoundingClientRect();
+  cv.width = r.width * devicePixelRatio;
+  cv.height = r.height * devicePixelRatio;
+  cv.style.height = '420px';
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+resize(); window.addEventListener('resize', resize);
+
+let theta = 0;
+let lastT = 0;
+let trail = [];
+
+function arrow(x1,y1,x2,y2,color,label){
+  ctx.strokeStyle = color; ctx.fillStyle = color;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const ang = Math.atan2(y2-y1, x2-x1);
+  const ah = 9;
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2 - ah*Math.cos(ang - 0.4), y2 - ah*Math.sin(ang - 0.4));
+  ctx.lineTo(x2 - ah*Math.cos(ang + 0.4), y2 - ah*Math.sin(ang + 0.4));
+  ctx.closePath(); ctx.fill();
+  if (label) {
+    ctx.font = 'bold 12px Vazirmatn';
+    ctx.fillText(label, x2 + 5, y2 - 5);
+  }
+}
+
+function step(t){
+  const dt = Math.min(0.05, (t - lastT)/1000 || 0.016);
+  lastT = t;
+  const r = +document.getElementById('r').value;
+  const v = +document.getElementById('v').value;
+  const m = +document.getElementById('m').value;
+  const omega = v / r;
+  theta += omega * dt;
+  const W = cv.clientWidth, H = 420;
+  const cx = W/2, cy = H/2;
+  const pixR = Math.min(W,H) * 0.35 * (r/5);
+  const px = cx + pixR * Math.cos(theta);
+  const py = cy + pixR * Math.sin(theta);
+
+  ctx.clearRect(0,0,W,H);
+  // trail
+  if (document.getElementById('trail').checked) {
+    trail.push({x:px,y:py});
+    if (trail.length > 200) trail.shift();
+    ctx.strokeStyle = 'rgba(156,171,82,0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    trail.forEach((p,i) => {
+      if (i===0) ctx.moveTo(p.x,p.y); else ctx.lineTo(p.x,p.y);
+    });
+    ctx.stroke();
+  } else trail = [];
+  // path circle
+  ctx.strokeStyle = '#bba38244'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx,cy,pixR,0,Math.PI*2); ctx.stroke();
+  // center
+  ctx.fillStyle = '#888';
+  ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2); ctx.fill();
+  // radius line
+  ctx.strokeStyle = '#888'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(px,py); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font = '12px Vazirmatn';
+  ctx.fillStyle = '#666';
+  ctx.fillText('r='+r.toFixed(1)+'m', (cx+px)/2+6, (cy+py)/2-4);
+  // ball
+  ctx.fillStyle = '#c43838';
+  ctx.beginPath(); ctx.arc(px,py,12,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.stroke();
+  // velocity tangent
+  if (document.getElementById('showV').checked) {
+    const vx = -Math.sin(theta), vy = Math.cos(theta);
+    const sc = 22;
+    arrow(px, py, px + vx*v*sc/2, py + vy*v*sc/2, '#1d9e75', 'v='+v.toFixed(1));
+  }
+  // accel inward
+  const ac = v*v/r;
+  if (document.getElementById('showA').checked) {
+    const ax = -Math.cos(theta), ay = -Math.sin(theta);
+    const sc = 12;
+    arrow(px, py, px + ax*ac*sc, py + ay*ac*sc, '#185fa5', 'a='+ac.toFixed(1));
+  }
+  // force inward
+  const Fc = m * ac;
+  if (document.getElementById('showF').checked) {
+    const ax = -Math.cos(theta), ay = -Math.sin(theta);
+    const sc = 12;
+    arrow(px, py, px + ax*Fc*sc, py + ay*Fc*sc, '#a87800', 'F='+Fc.toFixed(1));
+  }
+
+  document.getElementById('rac').textContent = ac.toFixed(2)+' m/s²';
+  document.getElementById('rfc').textContent = Fc.toFixed(2)+' N';
+  document.getElementById('rT').textContent = (2*Math.PI*r/v).toFixed(2)+' s';
+  document.getElementById('rw').textContent = omega.toFixed(2)+' rad/s';
+
+  requestAnimationFrame(step);
+}
+
+['r','v','m'].forEach(id => {
+  document.getElementById(id).addEventListener('input', e => {
+    document.getElementById('v'+id).textContent = (+e.target.value).toFixed(1);
+    trail = [];
+  });
+});
+
+requestAnimationFrame(step);
+</script>
+</body>
+</html>

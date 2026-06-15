@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تغییر حالتِ آب — منحنیِ گرمایش</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75;
+    --warn:#a87800; --cold:#3a86ff; --hot:#e63946;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+           --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.7}
+  h2{margin:0 0 12px;font-size:1.05em;color:var(--info)}
+  canvas{background:var(--surface);border-radius:14px;width:100%;max-width:640px;
+         display:block;margin:0 auto;border:1px solid var(--border)}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center}
+  button{padding:6px 14px;background:var(--info);color:#fff;border:none;border-radius:8px;
+         font-family:inherit;cursor:pointer;font-weight:600}
+  button:hover{background:#0d4d8c}
+  button.sec{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+  input[type=range]{flex:1;min-width:140px}
+  label{font-weight:600;font-size:0.9em}
+  .readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+           gap:8px;margin-top:12px}
+  .card{padding:10px;background:var(--info-bg);border-radius:10px;text-align:center;color:var(--info)}
+  .card b{display:block;color:var(--text);font-size:1.15em;margin-bottom:2px}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:0.85em;color:var(--muted)}
+  .legend span{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:middle;margin-left:4px}
+</style>
+</head>
+<body>
+<h2>💧 تغییر حالتِ آب — یخ به آب به بخار</h2>
+
+<canvas id="cv" width="640" height="360"></canvas>
+
+<div class="controls">
+  <button id="play">▶️ شروع گرمایش</button>
+  <button id="reset" class="sec">↻ ریست</button>
+  <label>جرم آب: <input type="range" id="mass" min="0.1" max="5" value="1" step="0.1"> <span id="mb">۱.۰ kg</span></label>
+</div>
+
+<div class="readout">
+  <div class="card"><b id="phase">یخ</b>حالت</div>
+  <div class="card"><b id="T">−۲۰°C</b>دما</div>
+  <div class="card"><b id="Q">۰ kJ</b>گرمای کل (Q)</div>
+  <div class="card"><b id="seg">۱/۵</b>مرحله</div>
+</div>
+
+<div class="legend">
+  <span style="background:#a8c4f4"></span>گرمِ کردن یخ &nbsp;|&nbsp;
+  <span style="background:#1d9e75"></span>ذوب (Q=mLF) &nbsp;|&nbsp;
+  <span style="background:#3a86ff"></span>گرمِ کردن آب &nbsp;|&nbsp;
+  <span style="background:#e63946"></span>جوش (Q=mLV) &nbsp;|&nbsp;
+  <span style="background:#ff8c42"></span>گرمِ کردن بخار
+</div>
+
+<p style="margin-top:10px;font-size:0.9em;color:var(--muted)">
+  💡 توجه: در ذوب و جوش، خط افقیه — یعنی <b>دما ثابته</b> اما داری گرمای زیادی می‌دی! این همون «گرمای نهان» (latent heat) ـه که پیوندهای مولکولی رو می‌شکنه، نه دما رو بالا می‌بره.
+</p>
+
+<script>
+const faDigit = n => String(n).replace(/-?\d/g, d => d==='-'?'−':'۰۱۲۳۴۵۶۷۸۹'[d]);
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+
+// Water properties (per kg)
+const c_ice = 2090;      // J/(kg·K)
+const c_water = 4186;
+const c_steam = 2010;
+const L_fusion = 334000; // J/kg
+const L_vapor = 2260000; // J/kg
+
+let mass = 1;
+let running = false, t = 0;
+let Q_total = 0;
+const dQ_per_frame = 8000; // J per frame (heating power)
+
+function segments(m){
+  // Returns [{name, color, dQ, dT_start, dT_end, isLatent}]
+  return [
+    {name:'یخ گرم می‌شه', color:'#a8c4f4', dQ: m*c_ice*20, T0:-20, T1:0, isLat:false},
+    {name:'یخ در حالِ ذوب', color:'#1d9e75', dQ: m*L_fusion, T0:0, T1:0, isLat:true},
+    {name:'آب گرم می‌شه', color:'#3a86ff', dQ: m*c_water*100, T0:0, T1:100, isLat:false},
+    {name:'آب در حالِ جوش', color:'#e63946', dQ: m*L_vapor, T0:100, T1:100, isLat:true},
+    {name:'بخار گرم می‌شه', color:'#ff8c42', dQ: m*c_steam*30, T0:100, T1:130, isLat:false},
+  ];
+}
+
+function currentState(Q, segs){
+  let acc = 0;
+  for (let i=0; i<segs.length; i++){
+    const s = segs[i];
+    if (Q < acc + s.dQ){
+      const frac = (Q - acc) / s.dQ;
+      const T = s.T0 + (s.T1 - s.T0) * frac;
+      return { idx:i, T, seg:s, segFrac:frac };
+    }
+    acc += s.dQ;
+  }
+  return { idx: segs.length-1, T: segs[segs.length-1].T1, seg: segs[segs.length-1], segFrac:1 };
+}
+
+function totalQ(segs){ return segs.reduce((a,s)=>a+s.dQ, 0); }
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const segs = segments(mass);
+  const total = totalQ(segs);
+  // axes
+  const padL=50, padR=20, padT=20, padB=40;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  ctx.strokeStyle = 'rgba(120,120,120,0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, padT+plotH);
+  ctx.lineTo(padL+plotW, padT+plotH);
+  ctx.stroke();
+  // T axis labels
+  ctx.fillStyle = 'rgba(120,120,120,0.9)'; ctx.font = '11px Vazirmatn';
+  ctx.textAlign='right';
+  [-20, 0, 50, 100, 130].forEach(T => {
+    const y = padT + plotH - (T+30)/160 * plotH;
+    ctx.fillText(faDigit(T)+'°', padL-5, y+4);
+    ctx.strokeStyle='rgba(120,120,120,0.15)'; ctx.beginPath();
+    ctx.moveTo(padL, y); ctx.lineTo(padL+plotW, y); ctx.stroke();
+  });
+  ctx.textAlign='center';
+  ctx.fillText('Q (انرژی داده شده)', padL+plotW/2, H-8);
+  ctx.save();
+  ctx.translate(15, padT+plotH/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('T (دما °C)', 0, 0); ctx.restore();
+  ctx.textAlign='right';
+  // plot segments
+  let Q_acc = 0;
+  segs.forEach(s => {
+    const x0 = padL + (Q_acc/total)*plotW;
+    const x1 = padL + ((Q_acc+s.dQ)/total)*plotW;
+    const y0 = padT + plotH - (s.T0+30)/160 * plotH;
+    const y1 = padT + plotH - (s.T1+30)/160 * plotH;
+    ctx.strokeStyle = s.color; ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    Q_acc += s.dQ;
+  });
+  // current position marker
+  const st = currentState(Q_total, segs);
+  const xC = padL + (Math.min(Q_total, total)/total)*plotW;
+  const yC = padT + plotH - (st.T+30)/160 * plotH;
+  ctx.fillStyle = '#a87800';
+  ctx.beginPath(); ctx.arc(xC, yC, 7, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+  // update HUD
+  document.getElementById('T').textContent = faDigit(st.T.toFixed(1)) + '°C';
+  document.getElementById('phase').textContent = st.seg.name;
+  document.getElementById('Q').textContent = faDigit((Q_total/1000).toFixed(1)) + ' kJ';
+  document.getElementById('seg').textContent = faDigit(st.idx+1) + '/۵';
+  ctx.lineWidth = 1;
+}
+
+function tick(){
+  if (running){
+    const segs = segments(mass);
+    if (Q_total < totalQ(segs)) Q_total += dQ_per_frame;
+    else running = false;
+  }
+  draw();
+  requestAnimationFrame(tick);
+}
+
+document.getElementById('play').onclick = ()=> { running = !running;
+  document.getElementById('play').textContent = running ? '⏸️ توقف' : '▶️ ادامه'; };
+document.getElementById('reset').onclick = ()=> { Q_total = 0; running=false;
+  document.getElementById('play').textContent='▶️ شروع گرمایش'; draw(); };
+document.getElementById('mass').oninput = e => { mass = +e.target.value;
+  document.getElementById('mb').textContent = faDigit(mass.toFixed(1))+' kg'; Q_total=0; draw(); };
+
+draw();
+tick();
+</script>
+</body>
+</html>

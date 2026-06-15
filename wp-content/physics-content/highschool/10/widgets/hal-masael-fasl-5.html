@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>حل مسائل — فصل ۵: ترمودینامیک</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --hint:#9b9a93; --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --hint-c:#a87800; --hint-bg:#fef6e0; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --check:#7a4dbd; --check-bg:#efe6f9; --bad:#c43838; --bad-bg:#fce5e5;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --hint:#76746d; --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --hint-c:#e0b860; --hint-bg:#4a3a15; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --check:#b08be8; --check-bg:#3a2858; --bad:#f0807d; --bad-bg:#4a1f1f; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.8;}
+  .problem{border:1px solid var(--border); border-radius:14px; padding:18px 20px;
+    margin-bottom:18px; background:var(--bg);}
+  .pnum{display:inline-block; background:var(--info-bg); color:var(--info);
+    font-weight:700; padding:2px 10px; border-radius:8px; font-size:13px; margin-bottom:8px;}
+  .pq{font-size:15.5px; margin:6px 0 14px; color:var(--text); line-height:1.85;}
+  .ptype{font-size:12px; color:var(--muted); margin-bottom:10px;}
+  .relate{font-size:13px; color:var(--muted); background:var(--surface);
+    padding:8px 12px; border-radius:8px; margin-bottom:12px; border-right:3px solid var(--info);}
+  .controls{margin:10px 0 4px; display:flex; flex-wrap:wrap; gap:8px;}
+  .btn{font-family:inherit; font-size:14px; padding:8px 16px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text);
+    cursor:pointer; transition:.15s;}
+  .btn:hover{background:var(--surface);}
+  .btn-hint{color:var(--hint-c); border-color:var(--hint-c);}
+  .btn-next{color:var(--info); border-color:var(--info);}
+  .btn-check{color:var(--check); border-color:var(--check);}
+  .btn:disabled{opacity:.4; cursor:not-allowed;}
+  .step{margin-top:12px; padding:12px 14px; border-radius:10px; background:var(--info-bg);
+    border-right:3px solid var(--info); animation:fadeIn .25s ease;}
+  .step b{color:var(--info);}
+  .hint-box{margin-top:12px; padding:12px 14px; border-radius:10px;
+    background:var(--hint-bg); border-right:3px solid var(--hint-c);
+    animation:fadeIn .25s ease;}
+  .hint-box b{color:var(--hint-c);}
+  .final{margin-top:12px; padding:14px; border-radius:10px; background:var(--ok-bg);
+    border-right:3px solid var(--ok); animation:fadeIn .25s ease;}
+  .final b{color:var(--ok);}
+  .check-box{margin-top:12px; padding:14px; border-radius:10px; background:var(--check-bg);
+    border-right:3px solid var(--check); animation:fadeIn .25s ease;}
+  .check-box b{color:var(--check);}
+  .check-row{display:flex; align-items:center; gap:8px; margin:6px 0; flex-wrap:wrap;}
+  .check-row label{min-width:24px; font-weight:600; color:var(--text);}
+  .check-row input{flex:1; min-width:120px; padding:7px 10px; border-radius:8px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text);
+    font-family:inherit; font-size:14px;}
+  .check-row .unit{font-size:13px; color:var(--muted); white-space:nowrap;}
+  .check-result{margin-top:10px; padding:10px 12px; border-radius:8px; font-size:14px;}
+  .check-result.ok{background:var(--ok-bg); color:var(--ok); border-right:3px solid var(--ok);}
+  .check-result.bad{background:var(--bad-bg); color:var(--bad); border-right:3px solid var(--bad);}
+  .check-result b{font-weight:700;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:none;}}
+  .label{font-size:11px; font-weight:700; letter-spacing:.5px; margin-bottom:4px;
+    display:inline-block;}
+  h1.page-title{font-size:22px; margin:8px 0 18px; color:var(--text);}
+  .intro{background:var(--surface); padding:14px 16px; border-radius:12px; margin-bottom:18px;
+    font-size:14px; color:var(--muted); line-height:1.8;}
+  .intro b{color:var(--text);}
+
+  /* ---- master-detail layout ---- */
+  .layout{display:grid; grid-template-columns:200px 1fr; gap:22px; align-items:start;}
+  @media (max-width:620px){ .layout{grid-template-columns:1fr;} }
+  .sidebar{background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:14px; position:sticky; top:16px; max-height:calc(100vh - 32px);
+    overflow-y:auto;}
+  .sidebar h2{font-size:13px; font-weight:700; color:var(--muted); letter-spacing:1px;
+    margin:0 0 10px; text-transform:uppercase; padding:0 4px;}
+  .sidebar ol{list-style:none; padding:0; margin:0; counter-reset:msc;}
+  .sidebar li{margin:2px 0;}
+  .sidebar .nav-btn{display:flex; align-items:center; gap:10px; width:100%;
+    text-align:right; font-family:inherit; font-size:14px; color:var(--text);
+    padding:9px 12px; background:transparent; border:none; border-radius:8px;
+    cursor:pointer; line-height:1.5; transition:.12s;}
+  .sidebar .nav-btn:hover{background:var(--bg);}
+  .sidebar .nav-btn.active{background:var(--info-bg); color:var(--info); font-weight:700;}
+  .sidebar .nav-btn .nb-num{flex-shrink:0; min-width:26px; height:26px;
+    border-radius:50%; background:var(--bg); color:var(--muted); display:flex;
+    align-items:center; justify-content:center; font-size:12px; font-weight:700;
+    border:1px solid var(--border);}
+  .sidebar .nav-btn.active .nb-num{background:var(--info); color:#fff; border-color:var(--info);}
+  .sidebar .nav-btn .nb-title{flex:1; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap;}
+  @media (max-width:620px){
+    .sidebar{position:relative; top:0; max-height:none;}
+    .sidebar ol{display:grid; grid-template-columns:repeat(auto-fill, minmax(56px,1fr)); gap:6px;}
+    .sidebar .nav-btn{justify-content:center; padding:8px 6px; font-size:13px;}
+    .sidebar .nav-btn .nb-title{display:none;}
+  }
+  .nav-arrows{display:flex; gap:10px; margin-top:18px; justify-content:space-between;}
+  .nav-arrows .btn{flex:1;}
+  .nav-arrows .btn:disabled{visibility:hidden;}
+</style>
+  <script id="mathjax-config">
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\(','\)']],
+           displayMath: [['$$','$$'], ['\[','\]']],
+           processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+  <h1 class="page-title">حل مسائل فصل ۵ — ترمودینامیک 🔥</h1>
+  <div class="intro">
+    اینجا هر مسئله رو می‌تونی <b>قدم‌به‌قدم</b> پیش بری. اگه گیر کردی <b>💡 راهنمایی</b> بگیر؛ اگه خودت حل کردی و فقط می‌خوای جوابتو چک کنی، رو <b>🔍 بررسی جواب من</b> کلیک کن. تلرانسِ بررسی حدودِ ۵٪ ـه تا اعدادِ رُند هم قبول بشن.
+  </div>
+  <div class="layout">
+    <aside class="sidebar">
+      <h2>فهرست مسائل</h2>
+      <ol id="nav-list"></ol>
+    </aside>
+    <main>
+      <div id="problems"></div>
+      <div class="nav-arrows">
+        <button class="btn" id="prev-btn">← مسئله‌ی قبلی</button>
+        <button class="btn btn-next" id="next-btn">مسئله‌ی بعدی →</button>
+      </div>
+    </main>
+  </div>
+
+<script>
+// ============================================================
+// مسائل فصل ۱
+// ساختار هر مسئله:
+//   n         شماره (نمایشی)
+//   type      نوع
+//   q         صورت سؤال (HTML)
+//   relate    ارتباط با مسائل قبلی (اختیاری)
+//   hint      راهنمایی (اختیاری)
+//   steps     آرایه‌ی قدم‌های حل (HTML)
+//   final     جواب نهایی (HTML)
+//   check     [{label, value, unit, tol?}]  ← اگر بود، دکمه‌ی بررسی جواب فعال می‌شود
+// ============================================================
+var problems = [
+
+  // ---- مسئله ۱ ----
+  {n:"۱", type:"محاسباتی — قانون اول ترمودینامیک",
+   q:"ظرفی شامل <b>۲ کیلوگرم</b> آب داریم. به این آب <b>۸۰ کیلوژول</b> گرما می‌دیم و در همین مدت <b>۴۰ کیلوژول</b> گرما از طریقِ ظرف به بیرون منتقل می‌شه. انرژی درونیِ آب چقدر تغییر می‌کنه؟",
+   relate:"مستقیماً از قانونِ اولِ ترمودینامیک ($\\Delta U = Q + W$). در مقاله‌ی «۵-۳ قانون اول ترمودینامیک» اومده.",
+   hint:"اینجا کاری انجام نشده ($W = 0$، چون فقط گرما رد و بدل شده). پس $\\Delta U = Q_{\\text{خالص}}$. مواظبِ علامت‌ها باش — گرمای وارد مثبت، گرمای خارج منفی.",
+   steps:[
+     "<b>یادآوری قانون اول:</b><br>$\\Delta U = Q + W$<br>تو این مسئله، حجمِ آب تغییر نمی‌کنه و کاری انجام نمی‌شه، پس $W = 0$.",
+     "<b>گرمای خالصِ ورودی به سیستم:</b><br>گرمای واردشده: $+۸۰$ kJ (مثبت)<br>گرمای خارج‌شده: $-۴۰$ kJ (منفی)<br>$Q_{\\text{خالص}} = ۸۰ + (-۴۰) = +۴۰$ kJ",
+     "<b>پس تغییر انرژی درونی:</b><br>$\\Delta U = +۴۰$ kJ $= ۴ \\times ۱۰^۴$ J",
+     "<b>تفسیر:</b> انرژی درونیِ آب <b>افزایش</b> پیدا کرده — یعنی دماش بالا رفته. این چون گرمای بیشتری وارد شده تا اینکه خارج شه. اگه مقدارِ گرمای خروج بیشتر از ورود بود، $\\Delta U$ منفی می‌شد و آب سرد می‌شد."
+   ],
+   final:"$\\Delta U = +۴۰$ کیلوژول (انرژی درونی افزایش پیدا کرده). درس کلیدی: گرما رو می‌تونیم با علامت جبری جمع کنیم — ورودی مثبت، خروجی منفی.",
+   check:[{label:"ΔU", value:40, unit:"kJ"}]
+  },
+
+  // ---- مسئله ۲ ----
+  {n:"۲", type:"مفهومی — فرایندهای ترمودینامیکی",
+   q:"<b>الف)</b> در فرایندِ <b>هم‌حجم</b> چطور می‌تونیم فشارِ گاز رو افزایش یا کاهش بدیم؟<br><b>ب)</b> در فرایندِ <b>هم‌فشار</b> چطور می‌تونیم حجمِ گاز رو افزایش یا کاهش بدیم؟",
+   relate:"کلِ این مفاهیم در مقاله‌ی «۵-۴ فرایندهای ترمودینامیکی» اومده.",
+   hint:"از قانون گازِ آرمانی $PV = nRT$ شروع کن. وقتی یکی از سه تا (P، V، T) ثابته، اون دو تای دیگه چطوری بهم وابسته می‌شن؟",
+   steps:[
+     "<b>الف — فرایند هم‌حجم (V ثابت):</b><br>از $PV = nRT$، چون V ثابته: $P \\propto T$<br>یعنی فشار و دما متناسبِ مستقیم‌اند.",
+     "<b>پس برای افزایش فشار در هم‌حجم:</b> گاز رو <b>گرم</b> کن. دما بالا می‌ره ⇒ فشار هم بالا می‌ره.<br><b>برای کاهش فشار:</b> گاز رو <b>سرد</b> کن.",
+     "<b>چرا؟</b> ذره‌های گاز با گرما تندتر می‌جنبن و با شدتِ بیشتری به دیواره می‌خورن — این یعنی فشار بیشتر. حجم نمی‌تونه بزرگ شه (مثلاً یه قوطی دربسته)، پس فشار بالا می‌ره.",
+     "<b>ب — فرایند هم‌فشار (P ثابت):</b><br>از $PV = nRT$، چون P ثابته: $V \\propto T$<br>یعنی حجم و دما متناسبِ مستقیم‌اند.",
+     "<b>پس برای افزایش حجم در هم‌فشار:</b> گاز رو <b>گرم</b> کن. دما بالا می‌ره ⇒ حجم زیاد می‌شه.<br><b>برای کاهش حجم:</b> گاز رو <b>سرد</b> کن.",
+     "<b>مثالِ عملی:</b> یه پیستونِ آزاد (که می‌تونه بالا و پایین بره) داری. وزنش روی گاز ثابته، پس فشار ثابته. وقتی گاز رو گرم می‌کنی، گاز منبسط می‌شه و پیستونو بالا می‌بره. این یه فرایند هم‌فشاره."
+   ],
+   final:"<b>الف)</b> در هم‌حجم: گرم کردن → افزایش فشار، سرد کردن → کاهش فشار. <b>ب)</b> در هم‌فشار: گرم کردن → افزایش حجم، سرد کردن → کاهش حجم. هر دو از $PV = nRT$ میان."
+  },
+
+  // ---- مسئله ۳ ----
+  {n:"۳", type:"مفهومی — تشخیص فرایند",
+   q:"ته یه سرنگ رو که دسته‌ش می‌تونه آزادانه حرکت کنه مسدود می‌کنیم، اونو درون مقداری آب می‌اندازیم و آب رو به‌تدریج گرم می‌کنیم. هوای درونِ سرنگ چه فرایندی رو طی می‌کنه؟",
+   relate:"تشخیص نوعِ فرایند — مفاهیمِ مقاله‌ی «۵-۴» در عمل.",
+   hint:"کدوم متغیر ثابت می‌مونه: P، V، یا T؟ ته سرنگ بسته شده، ولی دسته آزاده.",
+   steps:[
+     "<b>تحلیل وضعیت:</b><br>ته سرنگ بسته → هوا محبوسه (تعداد ذره‌ها ثابت).<br>دسته‌ی سرنگ آزاده — می‌تونه بالا یا پایین حرکت کنه.<br>سرنگ تو آبه که داره گرم می‌شه — دمای هوای داخل بالا می‌ره.",
+     "<b>سؤال: کدوم متغیر ثابته؟</b>",
+     "<b>P (فشار):</b> چون دسته آزاده، فشارِ بیرون (هوای جو + وزن دسته) ثابته. اگه فشار داخل بیشتر شه، دسته به بیرون رانده می‌شه تا تعادل دوباره برقرار شه. <b>پس فشار داخل = فشار بیرون = ثابت</b>.",
+     "<b>V (حجم):</b> چون دسته حرکت می‌کنه، حجمِ هوای داخل تغییر می‌کنه — وقتی گرم می‌شه، گاز منبسط می‌شه و دسته بیرون می‌ره.",
+     "<b>T (دما):</b> دما داره با گرم شدنِ آب بالا می‌ره.",
+     "<b>نتیجه:</b> فقط <b>فشار</b> ثابت می‌مونه. پس این یه فرایندِ <b>هم‌فشار</b> (Isobaric) ـه.",
+     "<b>چه اتفاقی می‌افته در عمل:</b> با گرم شدنِ هوای داخل، گاز منبسط می‌شه و دسته‌ی سرنگ رو به بیرون می‌رونه. این یه نمونه‌ی واقعی و آشنای فرایندِ هم‌فشاره.",
+     "<b>یه مقایسه:</b> اگه دسته رو با چسب محکم می‌کردیم، هیچ‌چی تکون نمی‌خورد ⇒ V ثابت ⇒ فرایندِ هم‌حجم بود. تنها تفاوت در آزادی دسته‌ست."
+   ],
+   final:"این یه فرایندِ <b>هم‌فشار (Isobaric)</b> ـه. چون دسته آزادانه حرکت می‌کنه، فشار همیشه با هوای بیرون برابر می‌مونه ولی حجم و دما تغییر می‌کنن."
+  },
+
+  // ---- مسئله ۴ ----
+  {n:"۴", type:"محاسباتی — کار و انرژی درونی روی نمودار P-V",
+   q:"نمودارِ P-V یه گازِ رقیق نشون داده شده. در فرایند ۱ → ۲ گاز از <b>(۱٫۰ L، ۳٫۰ atm)</b> به <b>(۳٫۰ L، ۱٫۰ atm)</b> می‌ره. با فرض اینکه انرژی درونی در نقطه‌ی ۲ <b>۴۵۶ ژول</b> بیشتر از نقطه‌ی ۱ ـه، آیا گاز در این فرایند گرما گرفته است یا از دست داده؟ (فرض کن مسیر مستقیم خط است.)",
+   relate:"تلفیقِ کار از روی نمودار + قانون اول ترمودینامیک.",
+   hint:"اول کار رو از <b>مساحتِ زیر نمودار</b> P-V حساب کن. بعد $Q = \\Delta U - W$ (با علامت‌ها).",
+   steps:[
+     "<b>محاسبه‌ی کار (مساحتِ زیر نمودار):</b><br>چون P به‌صورت خطی از ۳ به ۱ کم می‌شه و V از ۱ به ۳ زیاد می‌شه، شکلِ زیرِ نمودار یه ذوزنقه‌ست.<br>$W = \\frac{(P_1 + P_2)}{2} \\cdot (V_2 - V_1)$<br>$W = \\frac{(۳ + ۱)}{2} \\times (۳ - ۱) = ۲ \\times ۲ = ۴$ atm·L",
+     "<b>تبدیل یکای کار به ژول:</b><br>$۱$ atm·L $= ۱٫۰۱۳ \\times ۱۰^۵ \\times ۱۰^{-۳} = ۱۰۱٫۳$ J<br>$W = ۴ \\times ۱۰۱٫۳ = ۴۰۵٫۲$ J",
+     "<b>علامتِ کار:</b><br>گاز در حالِ <b>انبساط</b> (V زیاد شد)، پس روی محیط <b>کار انجام می‌ده</b>. در قراردادِ ما، کاری که گاز روی محیط انجام می‌ده، $W < 0$.<br>پس $W = -۴۰۵٫۲$ J",
+     "<b>استفاده از قانون اول:</b><br>$\\Delta U = Q + W$<br>$۴۵۶ = Q + (-۴۰۵٫۲)$<br>$Q = ۴۵۶ + ۴۰۵٫۲ = ۸۶۱٫۲$ J",
+     "<b>تفسیر:</b> $Q > 0$ یعنی گاز <b>گرما گرفته است</b>. این منطقیه — هم انرژی درونیش زیاد شده، هم کار انجام داده؛ هر دوش انرژی می‌خواد. این انرژی رو از کجا گرفته؟ از گرمای ورودی.",
+     "<b>تفکیک:</b><br>۴۰۵ ژول از گرما رفت به کار (خروج)<br>۴۵۶ ژول از گرما رفت به افزایش انرژی درونی<br>کلاً ۸۶۱ ژول گرما وارد سیستم شده."
+   ],
+   final:"گاز <b>گرما گرفته</b> است (Q = +۸۶۱٫۲ J). از کلِ گرما، ۴۵۶ ژول به انرژی درونی رفت و ۴۰۵ ژول صرف کار شد.",
+   check:[{label:"Q", value:861, unit:"J", tol:0.05}]
+  },
+
+  // ---- مسئله ۵ ----
+  {n:"۵", type:"محاسباتی — مقایسه‌ی مسیرها در نمودار P-V",
+   q:"گازی مطابق شکل، از طریق مسیر <b>a → b → c</b> از حالت a به حالت c می‌ره. در این مسیر، <b>۶۰۰ ژول</b> گرما می‌گیره و <b>۲۴۰ ژول</b> کار انجام می‌ده.<br><b>الف)</b> تغییر انرژی درونی گاز در مسیر a → b → c چقدره؟<br><b>ب)</b> اگه برای رسیدن به حالت c از مسیرِ a → d → c بره (در شکل کتاب)، کارِ انجام‌شده توسط گاز در مقایسه با مسیر اول بیشتر است یا کمتر؟ گرما چی؟<br><b>پ)</b> اگه گاز از مسیر <b>خمیده</b> از حالت c به a برگرده، چقدر گرما باید از آن بگیریم؟",
+   relate:"یه مسئله‌ی کلاسیک که نشون می‌ده $\\Delta U$ به مسیر بستگی نداره ولی Q و W دارن. در مقاله‌ی «۵-۴» اشاره شد.",
+   hint:"<b>الف)</b> $\\Delta U = Q + W$ (با علامت). <b>ب و پ)</b> $\\Delta U$ فقط به حالتِ ابتدا و انتها بستگی داره، نه مسیر.",
+   steps:[
+     "<b>الف — محاسبه‌ی ΔU در مسیر a→b→c:</b><br>گاز ۶۰۰ ژول گرما گرفته: $Q = +۶۰۰$ J<br>گاز ۲۴۰ ژول کار انجام داده: $W = -۲۴۰$ J (منفی چون گاز کار می‌ده)<br>$\\Delta U_{ac} = Q + W = ۶۰۰ + (-۲۴۰) = +۳۶۰$ J",
+     "<b>این ΔU فقط به حالت‌های a و c بستگی داره. هر مسیری بین این دو رو که انتخاب کنیم، ΔU همینه.</b>",
+     "<b>ب — مسیر a→d→c:</b><br>چون این مسیر در نمودار P-V <b>متفاوته</b>، مساحتِ زیر نمودار (و در نتیجه کار) متفاوته. معمولاً مسیرِ a→d→c مساحتِ بیشتری داره (چون از طریق d که فشار بالاتری داره می‌ره).<br>پس <b>کارِ بیشتری انجام می‌شه</b>.",
+     "<b>گرما در این مسیر:</b><br>$\\Delta U$ همون ۳۶۰ J ـه (ثابت).<br>$Q = \\Delta U - W$<br>اگه W (که گاز انجام می‌ده) بزرگ‌تر شد، اون‌گاه W (در فرمول، منفی‌تر) ⇒ Q باید بزرگ‌تر بشه تا $\\Delta U$ ثابت بمونه.<br>پس <b>گرمای بیشتری هم به گاز داده می‌شه</b>.",
+     "<b>پ — مسیر c→a (برگشت، خمیده):</b><br>$\\Delta U_{ca} = -\\Delta U_{ac} = -۳۶۰$ J (انرژی درونی کم می‌شه چون به حالت اولیه برگشت)",
+     "<b>محاسبه‌ی Q:</b><br>اگه مثلاً تو این مسیرِ خمیده، گاز کار خاصی روش انجام شه (مثلاً ۱۸۰ ژول روی گاز کار صورت گیره، $W = +۱۸۰$)، اون‌وقت:<br>$Q = \\Delta U - W = -۳۶۰ - ۱۸۰ = -۵۴۰$ J<br>منفی یعنی گاز <b>گرما از دست می‌ده</b> ⇒ باید ۵۴۰ ژول از گاز گرما گرفته شه.",
+     "<b>نکته:</b> مقدار دقیق در پ به مسیر خاصِ کتاب بستگی داره. ایده‌ی کلیدی اینه: ΔU ثابته، ولی Q و W به مسیر بستگی دارن."
+   ],
+   final:"<b>الف)</b> $\\Delta U_{ac} = +۳۶۰$ J. <b>ب)</b> در مسیر a→d→c، هم کار و هم گرما بیشتره. <b>پ)</b> در برگشت، ΔU = -۳۶۰ J — مقدار دقیقِ Q به مسیر خاص بستگی داره ولی منفیه. درس: ΔU به مسیر مستقل، Q و W وابسته.",
+   check:[{label:"الف) ΔU", value:360, unit:"J"}]
+  },
+
+  // ---- مسئله ۶ ----
+  {n:"۶", type:"محاسباتی — انبساط مکعب آلومینیومی",
+   q:"یه مکعبِ آلومینیومیِ توپُر به ضلع <b>۵۰ سانتی‌متر</b> از <b>۲۰°C</b> به <b>۱۵۰°C</b> در فشارِ ثابتِ <b>۱٫۰۱ × ۱۰⁵ Pa</b> گرم می‌شه. کارِ انجام‌شده توسطِ مکعب رو محاسبه کن.<br>(ضریبِ انبساط طولیِ آلومینیوم = ۲۳ × ۱۰⁻⁶ /°C)",
+   relate:"تلفیقِ انبساط حجمی (از فصل ۴) و کارِ هم‌فشار (از فصل ۵).",
+   hint:"کار در فشار ثابت = $P \\Delta V$. اول $\\Delta V$ رو از انبساطِ حجمی پیدا کن: $\\Delta V = ۳\\alpha V_1 \\Delta T$.",
+   steps:[
+     "<b>محاسبه‌ی حجم اولیه:</b><br>$V_1 = (۵۰)^3 = ۱۲۵۰۰۰$ cm³ $= ۰٫۱۲۵$ m³",
+     "<b>محاسبه‌ی تغییرِ دما:</b><br>$\\Delta T = ۱۵۰ - ۲۰ = ۱۳۰$ °C",
+     "<b>ضریب انبساطِ حجمی (آلومینیوم جامده):</b><br>$\\beta = ۳\\alpha = ۳ \\times ۲۳ \\times ۱۰^{-۶} = ۶۹ \\times ۱۰^{-۶}$ /°C",
+     "<b>افزایش حجم:</b><br>$\\Delta V = \\beta V_1 \\Delta T$<br>$\\Delta V = ۶۹ \\times ۱۰^{-۶} \\times ۰٫۱۲۵ \\times ۱۳۰$<br>$\\Delta V \\approx ۱٫۱۲ \\times ۱۰^{-۳}$ m³",
+     "<b>کارِ هم‌فشار:</b><br>$W = P \\Delta V$<br>$W = ۱٫۰۱ \\times ۱۰^۵ \\times ۱٫۱۲ \\times ۱۰^{-۳}$<br>$W \\approx ۱۱۳$ J",
+     "<b>تفسیر:</b> مکعبِ آلومینیومی در حال انبساط، روی هوای اطرافِ خودش <b>کار انجام می‌ده</b> — هوا رو هل می‌ده. این کار ۱۱۳ ژوله — مقدار کوچیکی!",
+     "<b>چرا کم؟</b> چون آلومینیوم خیلی کم منبسط می‌شه (ΔV/V حدود ۰٫۸٪). برای مقایسه، یه گاز در همون فشار و دما، می‌تونه ۴۰٪ منبسط شه — صدها برابر بیشتر. جامدها در ترمودینامیک سهم کارِ کوچکی دارن."
+   ],
+   final:"کار انجام‌شده توسط مکعب ≈ <b>۱۱۳ ژول</b>. این کارِ نسبتاً کوچیکیه چون انبساطِ جامدها در مقایسه با گازها خیلی کمه.",
+   check:[{label:"W", value:113, unit:"J", tol:0.05}]
+  },
+
+  // ---- مسئله ۷ ----
+  {n:"۷", type:"مفهومی — مقایسه فرایندهای انبساط",
+   q:"حجم گازی آرمانی طی سه فرایند <b>هم‌فشار، هم‌دما</b> و <b>بی‌دررو</b> از حجم V₁ به حجم بزرگ‌تر V₂ می‌رسه (نمودار در کتاب). سه فرایند از یه دما و فشار شروع می‌کنن.<br><b>الف)</b> اندازه‌ی کارِ انجام‌شده توسط گاز در این سه فرایند رو مقایسه کن.<br><b>ب)</b> دمای نهایی رو در این فرایندها مقایسه کن.<br><b>پ)</b> گرمای داده‌شده به گاز رو در این فرایندها مقایسه کن.",
+   relate:"یه مسئله‌ی کلاسیکِ ترمودینامیک. ایده‌ی کلیدی: مساحتِ زیر نمودار = کار، و موقعیتِ منحنی‌ها در نمودار P-V.",
+   hint:"در نمودار P-V، هرکدوم از این سه منحنی شیب متفاوتی داره. هم‌فشار: افقی. هم‌دما: هذلولی. بی‌دررو: شیب تندتر از هم‌دما.",
+   steps:[
+     "<b>یادآوری نمودارها در P-V:</b><br>• <b>هم‌فشار:</b> خطِ افقی (P ثابته)<br>• <b>هم‌دما:</b> منحنی $PV = $ ثابت — منحنی نرم نزولی<br>• <b>بی‌دررو:</b> منحنی $PV^\\gamma = $ ثابت — شیب <b>تندتر</b> از هم‌دما",
+     "<b>الف — مقایسه‌ی کار (مساحتِ زیر نمودار):</b><br>چون هر سه از یه نقطه شروع می‌کنن و به همون $V_2$ می‌رن، اما نمودارهاشون شیب‌های مختلف دارن:<br>• هم‌فشار بزرگ‌ترین مساحت داره (افقی، فشار بالا می‌مونه).<br>• هم‌دما در وسط (P با $1/V$ کم می‌شه).<br>• بی‌دررو کم‌ترین مساحت (P سریع‌تر می‌افته).",
+     "<b>پس:</b> $W_{\\text{هم‌فشار}} > W_{\\text{هم‌دما}} > W_{\\text{بی‌دررو}}$",
+     "<b>ب — مقایسه‌ی دمای نهایی:</b><br>• <b>هم‌فشار:</b> V بزرگ شد، P ثابت ⇒ از $PV=nRT$، $T$ زیاد می‌شه.<br>• <b>هم‌دما:</b> T ثابت می‌مونه طبق تعریف.<br>• <b>بی‌دررو:</b> Q=0. گاز کار می‌کنه ⇒ U کاهش می‌یابد ⇒ T کاهش می‌یابد.",
+     "<b>پس:</b> $T_{\\text{نهایی، هم‌فشار}} > T_{\\text{اولیه}} = T_{\\text{نهایی، هم‌دما}} > T_{\\text{نهایی، بی‌دررو}}$",
+     "<b>پ — مقایسه‌ی گرمای ورودی:</b><br>قانون اول: $Q = \\Delta U + W_{\\text{گاز}}$<br>• <b>هم‌فشار:</b> ΔU > 0 (دما زیاد شد) و W > 0 (کار بزرگ) ⇒ Q خیلی مثبت<br>• <b>هم‌دما:</b> ΔU = 0 (T ثابت) ⇒ Q = W (متوسط)<br>• <b>بی‌دررو:</b> Q = 0 (طبق تعریف)",
+     "<b>پس:</b> $Q_{\\text{هم‌فشار}} > Q_{\\text{هم‌دما}} > Q_{\\text{بی‌دررو}} = ۰$"
+   ],
+   final:"<b>الف)</b> کار: هم‌فشار > هم‌دما > بی‌دررو. <b>ب)</b> دما نهایی: هم‌فشار افزایش، هم‌دما ثابت، بی‌دررو کاهش. <b>پ)</b> گرما: هم‌فشار > هم‌دما > بی‌دررو=۰. این مقایسه‌ی کلاسیک قلبِ ترمودینامیکه."
+  },
+
+  // ---- مسئله ۸ ----
+  {n:"۸", type:"مفهومی — تحلیل چرخه‌ی ترمودینامیکی",
+   q:"برای یه چرخه‌ی گازی (در نمودار P-V نشون داده شده)، علامت‌های $\\Delta U$، $W$ و $Q$ گاز رو تعیین کن — مثبت، منفی، یا برابر صفر؟",
+   relate:"یه چرخه‌ی کاملِ ترمودینامیکی. در مقاله‌ی «۵-۵ چرخه ترمودینامیکی» اومده.",
+   hint:"یادآوری مهم: در یه <b>چرخه‌ی کامل</b>، گاز به حالتِ اولیه برمی‌گرده. پس $\\Delta U = ۰$.",
+   steps:[
+     "<b>اولاً، یه چرخه چی هست؟</b> یه فرایندِ بسته که گاز از حالتی شروع می‌کنه و دقیقاً به همون حالت برمی‌گرده.",
+     "<b>$\\Delta U$ در چرخه:</b><br>چون انرژی درونی به حالت بستگی داره (نه مسیر)، و حالت اول و آخر در چرخه یکی‌اند، پس:<br>$\\boxed{\\Delta U = ۰}$ <b>همیشه</b>!",
+     "<b>$W$ در چرخه:</b><br>کار = مساحتِ داخل حلقه‌ی چرخه در P-V.<br>اگه چرخه <b>ساعت‌گرد</b> طی شه (در P-V)، گاز در حالت کلی کار <b>مثبتی</b> (روی محیط) انجام می‌ده. در قراردادِ ما (کارِ روی گاز)، این یعنی $W < 0$.<br>اگه <b>پاد ساعت‌گرد</b> باشه، گاز کار از محیط می‌گیره ⇒ $W > 0$.",
+     "<b>$Q$ در چرخه:</b><br>چون $\\Delta U = 0$، طبق قانون اول:<br>$0 = Q + W \\Rightarrow Q = -W$<br>",
+     "<b>پس برای چرخه‌ی ساعت‌گرد (موتور گرمایی):</b><br>$\\Delta U = 0$<br>$W < 0$ (گاز کار می‌ده)<br>$Q > 0$ (گاز در مجموع گرما می‌گیره)<br>این موتورِ گرماییه.",
+     "<b>برای چرخه‌ی پاد ساعت‌گرد (یخچال):</b><br>$\\Delta U = 0$<br>$W > 0$ (روی گاز کار می‌شه)<br>$Q < 0$ (گاز در مجموع گرما می‌ده)<br>این یخچاله."
+   ],
+   final:"در هر چرخه: <b>$\\Delta U = ۰$ همیشه</b>. علامت‌های Q و W به جهت چرخه بستگی دارن — ساعت‌گرد (موتور): W<0، Q>0. پادساعت‌گرد (یخچال): W>0، Q<0."
+  },
+
+  // ---- مسئله ۹ ----
+  {n:"۹", type:"محاسباتی — چرخه‌ی مستطیلی",
+   q:"یه گاز چرخه‌ی مستطیلیِ ABCD رو طی می‌کنه (در نمودار P-V، چهار گوشه). از A به B: انبساط هم‌فشار. از B به C: کاهش فشار هم‌حجم. از C به D: تراکم هم‌فشار. از D به A: افزایش فشار هم‌حجم.<br><b>الف)</b> تعیین کن گاز در این چرخه گرما گرفته یا از دست داده.<br><b>ب)</b> اگه مقدار گرمای مبادله‌شده در این چرخه <b>۸۰۰ ژول</b> باشه و چرخه ساعت‌گرد باشه (موتور)، کار انجام‌شده روی گاز چقدره؟",
+   relate:"کاربردِ مفاهیمِ مسئله‌ی ۸ — حالا با عدد.",
+   hint:"چرخه ساعت‌گرده. در چرخه $\\Delta U = 0$، پس $Q = -W$. اگه چرخه ساعت‌گرد باشه، W (روی گاز) منفیه و Q مثبته.",
+   steps:[
+     "<b>الف — تعیین جهت و علامت:</b><br>چرخه ساعت‌گرده (ABCD از بالا و چپ شروع، به راست، پایین، چپ، بالا). در ساعت‌گرد، گاز در مجموع <b>کار می‌ده</b> روی محیط — یعنی موتور.",
+     "<b>برای موتور:</b> از مسئله‌ی ۸: گاز گرما <b>می‌گیره</b> (Q > 0)، گاز کار <b>می‌ده</b> (W < 0).",
+     "<b>پس گاز گرما گرفته است.</b>",
+     "<b>ب — محاسبه‌ی کار:</b><br>$\\Delta U_{\\text{چرخه}} = ۰$<br>$Q + W = ۰$<br>$W = -Q$<br>$W = -۸۰۰$ J",
+     "<b>تفسیر:</b> ۸۰۰ ژول گرما به گاز داده شد. تمامش به کار تبدیل شد (چون $\\Delta U = 0$). گاز روی محیط ۸۰۰ ژول کار انجام داده — این کاره مفیدِ موتور.",
+     "<b>یه نکته‌ی مهم:</b> این ۸۰۰ ژول کاره <b>خالصِ</b> چرخه‌ست — یعنی پس از کسرِ کاری که محیط روی گاز در مرحله‌های تراکم انجام داده. خروجی موتور همینه."
+   ],
+   final:"<b>الف)</b> گاز گرما <b>گرفته</b> است (چرخه‌ی ساعت‌گرد = موتور). <b>ب)</b> کار انجام‌شده روی گاز = $-۸۰۰$ J (یعنی گاز ۸۰۰ ژول کار به محیط داده). این کارِ خالصِ موتوره.",
+   check:[{label:"W روی گاز", value:-800, unit:"J"}]
+  },
+
+  // ---- مسئله ۱۰ ----
+  {n:"۱۰", type:"محاسباتی — چرخه با گاز کامل",
+   q:"یه گاز کامل چرخه‌ی نشون‌داده‌شده رو می‌پیماید (نقاط ۱، ۲، ۳، ۴ روی نمودار P-V). دمای گاز در حالت ۱ معلومه: <b>T₁ = ۳۰۰ K</b>. در نمودار: V₁ = V₄ = ۱ L، V₂ = V₃ = ۳ L. P₁ = P₂ = ۲ atm، P₃ = P₄ = ۱ atm.<br><b>الف)</b> دما در سه نقطه‌ی دیگه چقدره؟<br><b>ب)</b> کارِ انجام‌شده در چرخه چقدره؟<br><b>پ)</b> در چه فرایندهایی گاز گرما گرفته؟<br><b>ت)</b> در چه فرایندهایی گاز گرما از دست داده؟",
+   relate:"کاربردِ کاملِ قانون گاز آرمانی + قانون اول.",
+   hint:"<b>الف)</b> از $PV/T = $ ثابت استفاده کن (به‌خاطر گاز کامل، در چرخه n ثابته). <b>ب)</b> کار = مساحتِ داخلِ مستطیل. <b>پ و ت)</b> در فرایندهایی که T بالا می‌ره گاز گرما می‌گیره، اگه پایین می‌ره گرما می‌ده.",
+   steps:[
+     "<b>الف — محاسبه‌ی دماها:</b><br>برای گاز کامل: $\\frac{PV}{T} = nR = $ ثابت<br>$\\frac{P_1 V_1}{T_1} = \\frac{P_2 V_2}{T_2} = ...$",
+     "<b>برای نقطه ۲:</b> $P_2 = ۲$، $V_2 = ۳$<br>$T_2 = T_1 \\cdot \\frac{P_2 V_2}{P_1 V_1} = ۳۰۰ \\cdot \\frac{۲ \\times ۳}{۲ \\times ۱} = ۹۰۰$ K",
+     "<b>برای نقطه ۳:</b> $P_3 = ۱$، $V_3 = ۳$<br>$T_3 = ۳۰۰ \\cdot \\frac{۱ \\times ۳}{۲ \\times ۱} = ۴۵۰$ K",
+     "<b>برای نقطه ۴:</b> $P_4 = ۱$، $V_4 = ۱$<br>$T_4 = ۳۰۰ \\cdot \\frac{۱ \\times ۱}{۲ \\times ۱} = ۱۵۰$ K",
+     "<b>ب — کار خالصِ چرخه:</b><br>مساحت داخلِ مستطیل در P-V:<br>$W_{\\text{چرخه}} = (P_1 - P_3)(V_2 - V_1) = (۲-۱)(۳-۱) = ۲$ atm·L<br>$W \\approx ۲ \\times ۱۰۱٫۳ = ۲۰۲٫۶$ J",
+     "<b>اگه ساعت‌گرد (۱→۲→۳→۴→۱): گاز کار می‌ده، W_{\\text{گاز}} = +۲۰۲٫۶ J (روی محیط).</b>",
+     "<b>پ — گرما گرفته شده:</b><br>گاز گرما در فرایندهایی می‌گیره که دماش بالا میره یا کار می‌کنه.<br>• ۱→۲: V از ۱ به ۳ زیاد شد، دما از ۳۰۰ به ۹۰۰. <b>گرما گرفت</b> (هم T و هم V زیاد).<br>• ۴→۱: V ثابت، P از ۱ به ۲، T از ۱۵۰ به ۳۰۰. <b>گرما گرفت</b> (T زیاد).",
+     "<b>ت — گرما از دست داده:</b><br>• ۲→۳: V ثابت، T از ۹۰۰ به ۴۵۰. <b>گرما داد</b> (T کم).<br>• ۳→۴: V از ۳ به ۱، T از ۴۵۰ به ۱۵۰. <b>گرما داد</b> (T و V هر دو کم)."
+   ],
+   final:"<b>الف)</b> $T_2 = ۹۰۰$، $T_3 = ۴۵۰$، $T_4 = ۱۵۰$ K. <b>ب)</b> کار چرخه ≈ ۲۰۳ ژول. <b>پ)</b> گرما در ۱→۲ و ۴→۱. <b>ت)</b> گرما از دست در ۲→۳ و ۳→۴.",
+   check:[
+     {label:"T₂", value:900, unit:"K"},
+     {label:"T₃", value:450, unit:"K"},
+     {label:"T₄", value:150, unit:"K"},
+     {label:"W", value:203, unit:"J", tol:0.05}
+   ]
+  },
+
+  // ---- مسئله ۱۱ ----
+  {n:"۱۱", type:"محاسباتی — گرمای مبادله‌شده در چرخه",
+   q:"گازِ داخل یه استوانه چرخه‌ی نشون‌داده‌شده در شکل رو می‌پیماید. کارِ خالصِ چرخه از مساحتِ داخلِ نمودار <b>۳۰۰ ژول</b> ـه. این چرخه‌ی ساعت‌گرده. گرمای مبادله‌شده در این چرخه چند ژوله؟",
+   relate:"کاربردِ مستقیم مسئله‌ی ۸ — قانون اول در چرخه.",
+   hint:"در چرخه $\\Delta U = 0$، پس $Q = -W$.",
+   steps:[
+     "<b>یادآوری از مسئله ۸:</b> در چرخه:<br>$\\Delta U = 0$<br>$Q + W = 0$<br>$Q = -W$",
+     "<b>تشخیص علامت کار:</b><br>چرخه ساعت‌گرده ⇒ گاز روی محیط کار می‌ده ⇒ در قراردادِ ما، کار <b>روی گاز</b> منفیه:<br>$W = -۳۰۰$ J",
+     "<b>محاسبه‌ی Q:</b><br>$Q = -W = -(-۳۰۰) = +۳۰۰$ J",
+     "<b>پس گاز در این چرخه ۳۰۰ ژول گرما <b>گرفته</b> است.</b>",
+     "<b>تفسیر:</b> ۳۰۰ ژول گرما وارد سیستم شد، و دقیقاً همون ۳۰۰ ژول به‌صورتِ کارِ مکانیکی خارج شد. این یه موتور با راندمانِ ۱۰۰٪ به نظر میاد، ولی نه!",
+     "<b>یه نکته‌ی مهم:</b> این ۳۰۰ ژول گرمای <b>خالصه</b>. در واقع گاز در بخشی از چرخه گرمای بیشتری گرفته (Q_h) و در بخشی گرما داده (Q_c). خالص = Q_h - Q_c = ۳۰۰ J. بازده موتور = ۳۰۰/Q_h ـه، که کم‌تر از ۱۰۰٪."
+   ],
+   final:"$Q = +۳۰۰$ ژول (گاز گرما گرفته). در یه چرخه، گرمای خالصِ ورودی برابر کار خروجیه — اصلِ پایه‌ی موتور حرارتی.",
+   check:[{label:"Q", value:300, unit:"J"}]
+  },
+
+  // ---- مسئله ۱۲ ----
+  {n:"۱۲", type:"محاسباتی — چرخه‌ای با فرایند هم‌دما",
+   q:"دستگاهی متشکل از <b>۰٫۲ مول</b> گاز تک‌اتمیِ آرمانی، حجمی برابر <b>۲٫۲ لیتر</b> در فشار <b>۱٫۲ atm</b> اشغال کرده. این دستگاه چرخه‌ی <b>ABC</b> رو می‌پیماید که در آن فرایند A→B هم‌دماست. A و B و C نقاط مشخصی روی نمودار P-V هستن.<br><b>الف)</b> دما در نقطه A چقدره؟<br><b>ب)</b> $\\Delta U$ برای فرایند هم‌دما A→B چقدره؟<br><b>پ)</b> انرژی درونی گاز در کدام نقطه بیشترین است؟",
+   relate:"کاربرد گاز آرمانی + قانون اول در فرایندِ هم‌دما.",
+   hint:"<b>الف)</b> از $PV = nRT$. <b>ب)</b> برای گاز آرمانی، U فقط به T بستگی داره. <b>پ)</b> نقطه‌ای که بالاترین T رو داره.",
+   steps:[
+     "<b>تبدیل یکاها برای نقطه A:</b><br>$P_A = ۱٫۲$ atm $= ۱٫۲ \\times ۱٫۰۱۳ \\times ۱۰^۵ \\approx ۱٫۲۲ \\times ۱۰^۵$ Pa<br>$V_A = ۲٫۲$ L $= ۲٫۲ \\times ۱۰^{-۳}$ m³",
+     "<b>الف — دما در A:</b><br>$T_A = \\frac{P_A V_A}{nR}$<br>$T_A = \\frac{۱٫۲۲ \\times ۱۰^۵ \\times ۲٫۲ \\times ۱۰^{-۳}}{۰٫۲ \\times ۸٫۳۱۴}$<br>$T_A = \\frac{۲۶۸٫۴}{۱٫۶۶۳}$<br>$T_A \\approx ۱۶۱٫۴$ K",
+     "<b>ب — ΔU در فرایند هم‌دما:</b><br>برای گاز آرمانی، انرژی درونی <b>فقط به دما بستگی داره</b>. در هم‌دما، T ثابت ⇒<br>$\\Delta U_{A \\to B} = ۰$",
+     "<b>پ — بیشترین U:</b><br>U متناسب با T. پس نقطه‌ای که بالاترین T رو داره، بیشترین U رو هم داره.",
+     "<b>تشخیص T بیشینه از نمودار:</b><br>$T = \\frac{PV}{nR}$<br>هر چه $PV$ بزرگ‌تر، T بزرگ‌تر. در نمودار P-V، نقطه‌ای که از مبدأ به دورترین نقطه (در فاصله‌ی $PV$) داره، بیشترین T رو داره.",
+     "<b>برای پاسخ دقیق به پ:</b> به مختصاتِ A، B، C نگاه کن و حاصل‌ضرب $P \\times V$ رو در هر نقطه حساب کن — نقطه‌ای که این حاصل‌ضرب بیشتره، U بزرگ‌تر داره.",
+     "<b>نکته‌ی کاربردی:</b> اگه A → B هم‌دماست، U_A = U_B. حالا C باید نقطه‌ی متفاوتی باشه. اگه C در دمای بالاتری از خط هم‌دمای AB قرار داره، U_C > U_A = U_B. وگرنه، U_C < U_A = U_B."
+   ],
+   final:"<b>الف)</b> $T_A \\approx ۱۶۱$ K. <b>ب)</b> $\\Delta U_{A \\to B} = ۰$ (فرایند هم‌دما، گاز آرمانی). <b>پ)</b> نقطه‌ای که بالاترین T (و بالاترین حاصل‌ضرب PV) رو داره. به نمودار کتاب نگاه کن.",
+   check:[{label:"الف) T_A", value:161, unit:"K", tol:0.05}]
+  },
+
+  // ---- مسئله ۱۳ ----
+  {n:"۱۳", type:"محاسباتی — بازده ماشین گرمایی",
+   q:"یه ماشینِ گرمایی در هر چرخه <b>۱۰۰ ژول</b> گرما از منبعِ دما بالا می‌گیره و <b>۶۰ ژول</b> از این گرما رو به منبع دما پایین می‌ده. بقیه‌ش به کار تبدیل می‌شه.<br><b>الف)</b> بازده‌ی این ماشین چقدره؟<br><b>ب)</b> اگه هر چرخه <b>۰٫۵ ثانیه</b> طول بکشه، توان ماشین چقدره؟",
+   relate:"مفاهیمِ ماشینِ گرمایی و بازده، در مقاله‌ی «۵-۶» اومده.",
+   hint:"بازده = (کار مفید) / (گرمای ورودی). کار مفید = گرمای ورودی - گرمای خروجی.",
+   steps:[
+     "<b>الف — محاسبه‌ی بازده:</b><br>کار مفید: $W = Q_H - Q_C = ۱۰۰ - ۶۰ = ۴۰$ J<br>بازده: $\\eta = \\frac{W}{Q_H} = \\frac{۴۰}{۱۰۰} = ۰٫۴ = ۴۰\\%$",
+     "<b>ب — توان:</b><br>$P = \\frac{W}{t} = \\frac{۴۰}{۰٫۵} = ۸۰$ وات",
+     "<b>تفسیر:</b> این موتور هر چرخه ۴۰ ژول کارِ مفید تولید می‌کنه، و ۲ چرخه در ثانیه ⇒ ۸۰ ژول/ثانیه = ۸۰ وات.",
+     "<b>چقدر بازده ۴۰٪ خوبه؟</b><br>• موتور بنزینی واقعی: ۲۰-۳۰٪<br>• موتور دیزل: ۳۵-۴۵٪<br>• نیروگاه برقیِ خوب: ۴۰-۶۰٪<br>پس ۴۰٪ یه ماشینِ نسبتاً خوبه!",
+     "<b>چرا ۱۰۰٪ نیست؟</b> طبقِ قانون دوم ترمودینامیک، هیچ موتورِ حرارتی نمی‌تونه ۱۰۰٪ بازده داشته باشه — همیشه باید گرما به یه منبعِ سرد ریخته شه. اگه می‌شد، این یه «ماشین حرکت دائمی نوع دوم» می‌بود، که غیرممکنه."
+   ],
+   final:"<b>الف)</b> بازده = <b>۴۰٪</b>. <b>ب)</b> توان = <b>۸۰ وات</b>. این یه ماشینِ نسبتاً خوب — مشابه موتور دیزل.",
+   check:[
+     {label:"الف) η", value:0.4, unit:""},
+     {label:"ب) P", value:80, unit:"W"}
+   ]
+  },
+
+  // ---- مسئله ۱۴ ----
+  {n:"۱۴", type:"محاسباتی — ماشین درون‌سوز و سوخت",
+   q:"یه ماشینِ گرماییِ درون‌سوز در هر چرخه <b>۱۲۰ ژول</b> گرما از سوزاندنِ سوخت دریافت می‌کنه. گرمای حاصل از سوخت <b>۴ × ۱۰⁷ J/kg</b> ـه. هر چرخه <b>۰٫۲ ثانیه</b> طول می‌کشه. اگه ماشین به ازای هر چرخه <b>۳۶ ژول</b> گرما به محیط بده و بقیه‌ش به کار تبدیل شه:<br><b>الف)</b> بازده ماشین چقدره؟<br><b>ب)</b> سوختِ مصرف‌شده در هر چرخه چقدره؟<br><b>پ)</b> توان ماشین چقدره؟",
+   relate:"تلفیقِ کاملِ ماشین گرمایی، انرژی سوخت و توان.",
+   hint:"<b>الف)</b> همون فرمول مسئله ۱۳. <b>ب)</b> جرم سوخت = گرما / گرمای ویژه. <b>پ)</b> P = W/t.",
+   steps:[
+     "<b>الف — بازده:</b><br>کار مفید: $W = Q_H - Q_C = ۱۲۰ - ۳۶ = ۸۴$ J<br>$\\eta = \\frac{۸۴}{۱۲۰} = ۰٫۷ = ۷۰\\%$",
+     "<b>ب — جرم سوخت در هر چرخه:</b><br>گرمای آزادشده از سوخت = جرم × گرمای ویژه‌ی سوخت<br>$۱۲۰ = m_{\\text{سوخت}} \\times ۴ \\times ۱۰^۷$<br>$m_{\\text{سوخت}} = ۳ \\times ۱۰^{-۶}$ kg = ۳ میکروگرم!",
+     "<b>پ — توان ماشین:</b><br>$P = \\frac{W}{t} = \\frac{۸۴}{۰٫۲} = ۴۲۰$ وات",
+     "<b>تفسیر:</b><br>• بازده ۷۰٪ خیلی بالاست — این یه ماشینِ ایده‌آله، نه واقعی. (در واقع موتورهای واقعی به‌خاطر اصطکاک و اتلاف، کمتر از ۵۰٪ بازده دارن.)<br>• فقط ۳ میکروگرم سوخت در هر چرخه — یعنی این موتور خیلی کوچیکه! ولی با ۵ چرخه در ثانیه (۱/۰٫۲)، در یه ساعت کلی سوخت می‌سوزه.",
+     "<b>مقدار سوخت در ساعت:</b><br>$m_{\\text{ساعت}} = ۳ \\times ۱۰^{-۶} \\times ۵ \\times ۳۶۰۰ = ۰٫۰۵۴$ kg = ۵۴ گرم/ساعت<br>این مقدار سوختیه که هر موتور کوچیک با این مشخصات مصرف می‌کنه."
+   ],
+   final:"<b>الف)</b> بازده = <b>۷۰٪</b>. <b>ب)</b> سوخت در هر چرخه = <b>۳ میکروگرم</b>. <b>پ)</b> توان = <b>۴۲۰ وات</b>. این بازده در دنیای واقعی غیرمعمولاً بالاست — موتورهای واقعی نزدیک به ۳۰-۴۰٪ بازده دارن.",
+   check:[
+     {label:"الف) η", value:0.7, unit:""},
+     {label:"ب) m سوخت", value:3e-6, unit:"kg"},
+     {label:"پ) P", value:420, unit:"W"}
+   ]
+  }
+
+];
+
+// ============================================================
+// رندر
+// ============================================================
+var faNum = function(n){
+  return String(n).replace(/[0-9]/g, function(d){ return "۰۱۲۳۴۵۶۷۸۹"[d]; });
+};
+
+function formatExpected(v){
+  // برای اعدادِ علمیِ بزرگ، نمایشِ خواناتر
+  if(Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-2 && v !== 0)){
+    return v.toExponential(2);
+  }
+  return String(v);
+}
+
+function checkAnswer(user, expected, tol){
+  // tol پیش‌فرض ۵٪
+  tol = tol || 0.05;
+  if(isNaN(user)) return {ok:false, msg:"عددِ معتبر وارد کن."};
+  if(expected === 0){
+    return {ok: Math.abs(user) < 1e-9, msg:""};
+  }
+  var diff = Math.abs(user - expected) / Math.abs(expected);
+  return {ok: diff <= tol, diff: diff};
+}
+
+var box     = document.getElementById("problems");
+var navList = document.getElementById("nav-list");
+var prevBtn = document.getElementById("prev-btn");
+var nextBtn = document.getElementById("next-btn");
+var problemDivs = [];   // index → DOM
+var navBtns     = [];   // index → DOM
+
+problems.forEach(function(p, pIdx){
+  var div = document.createElement("div");
+  div.className = "problem";
+  div.style.display = "none";   // hidden by default — only one visible at a time
+  problemDivs.push(div);
+
+  // sidebar entry
+  var li  = document.createElement("li");
+  var btn = document.createElement("button");
+  btn.className = "nav-btn";
+  btn.type = "button";
+  btn.innerHTML = '<span class="nb-num">' + p.n + '</span>'
+                + '<span class="nb-title">مسئله ' + p.n + '</span>';
+  btn.addEventListener("click", (function (capturedIdx) {
+    return function () { showProblem(capturedIdx, true); };
+  })(pIdx));
+  li.appendChild(btn);
+  navList.appendChild(li);
+  navBtns.push(btn);
+
+  var num = document.createElement("div");
+  num.className = "pnum";
+  num.textContent = "مسئله‌ی " + p.n;
+  div.appendChild(num);
+
+  var typ = document.createElement("div");
+  typ.className = "ptype";
+  typ.textContent = "نوع: " + p.type;
+  div.appendChild(typ);
+
+  if(p.relate){
+    var rel = document.createElement("div");
+    rel.className = "relate";
+    rel.innerHTML = "🔗 " + p.relate;
+    div.appendChild(rel);
+  }
+
+  var q = document.createElement("div");
+  q.className = "pq";
+  q.innerHTML = p.q;
+  div.appendChild(q);
+
+  // ----- controls -----
+  var ctrl = document.createElement("div");
+  ctrl.className = "controls";
+
+  var hintBtn = null;
+  if(p.hint){
+    hintBtn = document.createElement("button");
+    hintBtn.className = "btn btn-hint";
+    hintBtn.textContent = "💡 راهنمایی";
+    ctrl.appendChild(hintBtn);
+  }
+
+  var nextBtn = document.createElement("button");
+  nextBtn.className = "btn btn-next";
+  nextBtn.textContent = "▶️ شروع حل / قدم بعدی";
+  ctrl.appendChild(nextBtn);
+
+  var checkBtn = null;
+  if(p.check && p.check.length){
+    checkBtn = document.createElement("button");
+    checkBtn.className = "btn btn-check";
+    checkBtn.textContent = "🔍 بررسی جواب من";
+    ctrl.appendChild(checkBtn);
+  }
+
+  div.appendChild(ctrl);
+
+  // hint handler
+  if(hintBtn){
+    var hintShown = false;
+    hintBtn.addEventListener("click", function(){
+      if(hintShown) return;
+      hintShown = true;
+      var h = document.createElement("div");
+      h.className = "hint-box";
+      h.innerHTML = "<b>راهنمایی:</b> " + p.hint;
+      div.appendChild(h);
+      hintBtn.disabled = true;
+    });
+  }
+
+  // step-by-step
+  var idx = 0;
+  nextBtn.addEventListener("click", function(){
+    if(idx < p.steps.length){
+      var s = document.createElement("div");
+      s.className = "step";
+      s.innerHTML = "<span class='label' style='color:var(--info);'>قدم " + faNum(String(idx+1)) + "</span><br>" + p.steps[idx];
+      div.appendChild(s);
+      idx++;
+      if(idx === p.steps.length){
+        nextBtn.textContent = "✅ نمایش جواب نهایی";
+      }
+    } else if(idx === p.steps.length){
+      var f = document.createElement("div");
+      f.className = "final";
+      f.innerHTML = "<b>✅ جواب نهایی:</b><br>" + p.final;
+      div.appendChild(f);
+      nextBtn.disabled = true;
+      nextBtn.textContent = "تمام";
+      idx++;
+    }
+  });
+
+  // check-answer
+  if(checkBtn){
+    var checkShown = false;
+    checkBtn.addEventListener("click", function(){
+      if(checkShown) return;
+      checkShown = true;
+      checkBtn.disabled = true;
+
+      var cb = document.createElement("div");
+      cb.className = "check-box";
+      cb.innerHTML = "<b>🔍 جوابِ خودتو وارد کن:</b><br><span style='font-size:13px; color:var(--muted);'>تلرانس ۵٪؛ از اعدادِ علمی مثل <code>3e4</code> هم می‌تونی استفاده کنی.</span>";
+
+      var inputs = [];
+      p.check.forEach(function(c){
+        var row = document.createElement("div");
+        row.className = "check-row";
+        var lbl = document.createElement("label"); lbl.textContent = c.label + ":"; row.appendChild(lbl);
+        var inp = document.createElement("input"); inp.type = "text"; inp.placeholder = "عدد..."; row.appendChild(inp);
+        var u = document.createElement("span"); u.className = "unit"; u.textContent = c.unit || ""; row.appendChild(u);
+        cb.appendChild(row);
+        inputs.push({c:c, inp:inp});
+      });
+
+      var goBtn = document.createElement("button");
+      goBtn.className = "btn btn-check";
+      goBtn.textContent = "بررسی";
+      goBtn.style.marginTop = "8px";
+      cb.appendChild(goBtn);
+
+      var resultArea = document.createElement("div");
+      cb.appendChild(resultArea);
+
+      goBtn.addEventListener("click", function(){
+        resultArea.innerHTML = "";
+        var allOk = true;
+        inputs.forEach(function(it){
+          var userVal = parseFloat(it.inp.value);
+          var r = checkAnswer(userVal, it.c.value, it.c.tol);
+          var row = document.createElement("div");
+          row.className = "check-result " + (r.ok ? "ok" : "bad");
+          if(r.ok){
+            row.innerHTML = "✅ <b>" + it.c.label + ":</b> درسته! جوابِ تو نزدیک به " + formatExpected(it.c.value) + " " + (it.c.unit||"") + " ـه.";
+          } else {
+            allOk = false;
+            if(isNaN(userVal)){
+              row.innerHTML = "❌ <b>" + it.c.label + ":</b> عددِ معتبر وارد نکردی.";
+            } else {
+              row.innerHTML = "❌ <b>" + it.c.label + ":</b> جوابت با مقدارِ موردِ انتظار (" + formatExpected(it.c.value) + " " + (it.c.unit||"") + ") اختلافِ زیادی داره. حلِ قدم‌به‌قدم رو ببین.";
+            }
+          }
+          resultArea.appendChild(row);
+        });
+        if(allOk){
+          var hooray = document.createElement("div");
+          hooray.className = "check-result ok";
+          hooray.style.marginTop = "8px";
+          hooray.innerHTML = "🎉 آفرین! همه‌ی جواب‌هات درست بود.";
+          resultArea.appendChild(hooray);
+        }
+      });
+
+      div.appendChild(cb);
+    });
+  }
+
+  box.appendChild(div);
+});
+
+// ─── master-detail navigation ────────────────────────────────
+var currentIdx = 0;
+
+function showProblem(idx, updateHash) {
+  if (idx < 0 || idx >= problemDivs.length) return;
+  problemDivs.forEach(function (d, i) { d.style.display = (i === idx) ? "" : "none"; });
+  navBtns.forEach(function (b, i) { b.classList.toggle("active", i === idx); });
+  prevBtn.disabled = (idx === 0);
+  nextBtn.disabled = (idx === problemDivs.length - 1);
+  // scroll the active sidebar item into view (mobile + when list is long)
+  navBtns[idx].scrollIntoView({block: "nearest"});
+  currentIdx = idx;
+  if (updateHash) {
+    try { history.replaceState(null, "", "#mas-" + (idx + 1)); } catch (e) {}
+  }
+  // notify parent iframe (autosize)
+  try { window.parent.postMessage({pmEvent: "problem-changed", idx: idx}, "*"); } catch (e) {}
+}
+
+prevBtn.addEventListener("click", function () { showProblem(currentIdx - 1, true); });
+nextBtn.addEventListener("click", function () { showProblem(currentIdx + 1, true); });
+
+// keyboard left/right
+document.addEventListener("keydown", function (e) {
+  if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  if (e.key === "ArrowLeft")  showProblem(currentIdx + 1, true);   // RTL: left = next
+  if (e.key === "ArrowRight") showProblem(currentIdx - 1, true);
+});
+
+// initial: read hash or default to first
+(function init() {
+  var m = /^#mas-(\d+)$/.exec(location.hash);
+  var start = m ? Math.max(0, Math.min(problems.length - 1, parseInt(m[1], 10) - 1)) : 0;
+  showProblem(start, false);
+})();
+</script>
+</body>
+</html>

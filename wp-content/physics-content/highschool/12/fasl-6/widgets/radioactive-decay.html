@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌ساز نیمه‌عمر</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+<style>
+:root {
+  --bg: #ffffff; --surface: #f4f3ef; --text: #1a1a18; --muted: #5f5e5a;
+  --border: #e0ded7; --info: #185fa5; --info-bg: #e6f1fb;
+  --ok: #1d9e75; --decay: #c33; --active: #d4a847;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+          --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+          --ok:#5dcaa5; --decay:#e58b88; --active:#e0b860; }
+}
+body { margin: 0; padding: 16px; font-family: Vazirmatn, Tahoma, system-ui, sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.7; }
+h2 { color: var(--info); margin: 0 0 10px; font-size: 1.15em; }
+.app { max-width: 780px; margin: 0 auto; }
+.controls { display: grid; gap: 14px; grid-template-columns: 1fr 1fr 1fr; background: var(--surface);
+  border-radius: 12px; padding: 14px; border: 1px solid var(--border); margin-bottom: 12px; }
+.ctrl { display: flex; flex-direction: column; gap: 6px; }
+.ctrl label { font-size: 12px; color: var(--muted); }
+.ctrl input[type=range], .ctrl select { width: 100%; padding: 6px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: inherit; }
+.btn { padding: 9px 16px; border: 0; border-radius: 8px; background: var(--info);
+  color: #fff; font-family: inherit; font-size: 14px; cursor: pointer; }
+.btn.reset { background: var(--muted); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btns { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; flex-wrap: wrap; }
+.row2 { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+.panel { background: var(--surface); border-radius: 12px; padding: 12px;
+  border: 1px solid var(--border); }
+canvas { display: block; width: 100%; border-radius: 8px; background: var(--bg); }
+#dots { height: 260px; }
+#graph { height: 260px; }
+.readout { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+.box { background: var(--info-bg); color: var(--info); padding: 8px;
+  border-radius: 8px; text-align: center; font-size: 12px; }
+.box b { display: block; font-size: 16px; margin-top: 2px; }
+@media (max-width: 620px) { .controls, .readout { grid-template-columns: 1fr 1fr; }
+  .row2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <h2>⏳ شبیه‌ساز نیمه‌عمر — قانون $N(t) = N_0 (1/2)^{t/T_{1/2}}$</h2>
+
+  <div class="controls">
+    <div class="ctrl">
+      <label>ایزوتوپ</label>
+      <select id="iso">
+        <option value="C14|5730|سال" selected>کربن-۱۴ (5730 سال)</option>
+        <option value="Co60|5.27|سال">کبالت-۶۰ (5.27 سال)</option>
+        <option value="I131|8.02|روز">ید-۱۳۱ (8.02 روز)</option>
+        <option value="Tc99m|6.01|ساعت">Tc-99m (6.01 ساعت)</option>
+        <option value="Rn222|3.82|روز">رادون-۲۲۲ (3.82 روز)</option>
+        <option value="U238|4.47e9|سال">اورانیوم-۲۳۸ (4.47 میلیارد سال)</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label>تعداد اولیه $N_0$ = <span id="n0_val">200</span></label>
+      <input type="range" id="n0" min="50" max="500" step="50" value="200">
+    </div>
+    <div class="ctrl">
+      <label>سرعت زمان × <span id="sp_val">1</span></label>
+      <input type="range" id="speed" min="1" max="20" value="5">
+    </div>
+  </div>
+
+  <div class="btns">
+    <button class="btn" id="play">▶ شروع</button>
+    <button class="btn reset" id="reset">↻ ریست</button>
+    <button class="btn" id="jump" style="background:var(--active);color:#1a1a18">⏭ +۱ نیمه‌عمر</button>
+  </div>
+
+  <div class="row2">
+    <div class="panel">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">هسته‌ها</div>
+      <canvas id="dots"></canvas>
+    </div>
+    <div class="panel">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">N(t) — منحنی واپاشی</div>
+      <canvas id="graph"></canvas>
+    </div>
+  </div>
+
+  <div class="readout">
+    <div class="box"><div>زمان سپری‌شده</div><b id="t">0</b></div>
+    <div class="box"><div>تعداد نیمه‌عمر</div><b id="nh">0.00</b></div>
+    <div class="box"><div>باقیمانده</div><b id="rem">200</b></div>
+    <div class="box"><div>درصد باقیمانده</div><b id="pct">100%</b></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const dotsC = $('dots');
+const graphC = $('graph');
+const dctx = dotsC.getContext('2d');
+const gctx = graphC.getContext('2d');
+const dpr = window.devicePixelRatio || 1;
+
+let state = { N0: 200, N: 200, t: 0, running: false, T_half: 5730, unit: 'سال',
+              speedMul: 5, dots: [] };
+let lastReal = null;
+
+function getCSS(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function resizeCV(c) {
+  const r = c.getBoundingClientRect();
+  c.width = r.width * dpr;
+  c.height = r.height * dpr;
+  c.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
+  return { w: r.width, h: r.height };
+}
+
+function reset() {
+  state.t = 0;
+  state.N = state.N0;
+  state.dots = [];
+  for (let i=0;i<state.N0;i++) state.dots.push({alive:true, decayedAt:null});
+  state.running = false;
+  $('play').textContent = '▶ شروع';
+  draw();
+  updateRead();
+}
+
+function step(dtSim) {
+  state.t += dtSim;
+  // probability that a given still-alive nucleus decays in dt: 1 - 0.5^(dt/T)
+  const pDecay = 1 - Math.pow(0.5, dtSim / state.T_half);
+  for (const d of state.dots) {
+    if (d.alive && Math.random() < pDecay) {
+      d.alive = false;
+      d.decayedAt = state.t;
+    }
+  }
+  state.N = state.dots.filter(d => d.alive).length;
+}
+
+function loop(now) {
+  if (!state.running) return;
+  if (!lastReal) lastReal = now;
+  const dtReal = (now - lastReal) / 1000;  // ثانیه واقعی
+  lastReal = now;
+  // ۱ ثانیه واقعی = speedMul × (T_half/30) ثانیه شبیه‌سازی
+  const dtSim = dtReal * state.speedMul * (state.T_half/30);
+  step(dtSim);
+  draw();
+  updateRead();
+  if (state.N > 0 && state.t < state.T_half * 6) {
+    requestAnimationFrame(loop);
+  } else {
+    state.running = false;
+    $('play').textContent = '▶ شروع';
+  }
+}
+
+function fmt(t) {
+  if (t < 0.01) return '0';
+  if (t < 1) return t.toFixed(3);
+  if (t < 100) return t.toFixed(2);
+  if (t < 1e4) return Math.round(t).toLocaleString('fa-IR');
+  if (t < 1e6) return (t/1e3).toFixed(1) + ' هزار';
+  if (t < 1e9) return (t/1e6).toFixed(1) + ' میلیون';
+  return (t/1e9).toFixed(2) + ' میلیارد';
+}
+
+function updateRead() {
+  $('t').textContent = fmt(state.t) + ' ' + state.unit;
+  const nh = state.t / state.T_half;
+  $('nh').textContent = nh.toFixed(2);
+  $('rem').textContent = state.N + ' / ' + state.N0;
+  $('pct').textContent = ((state.N / state.N0) * 100).toFixed(1) + '%';
+}
+
+function drawDots() {
+  const { w, h } = resizeCV(dotsC);
+  dctx.clearRect(0,0,w,h);
+  const cols = Math.ceil(Math.sqrt(state.N0 * w/h));
+  const rows = Math.ceil(state.N0 / cols);
+  const cw = w / cols, ch = h / rows;
+  const r = Math.min(cw, ch) * 0.32;
+  const alive = getCSS('--info');
+  const dead = getCSS('--decay');
+  for (let i=0;i<state.dots.length;i++) {
+    const c = i % cols;
+    const ro = Math.floor(i / cols);
+    const cx = cw * c + cw/2;
+    const cy = ch * ro + ch/2;
+    dctx.fillStyle = state.dots[i].alive ? alive : dead + '55';
+    dctx.beginPath();
+    dctx.arc(cx, cy, r, 0, 2*Math.PI);
+    dctx.fill();
+  }
+}
+
+function drawGraph() {
+  const { w, h } = resizeCV(graphC);
+  gctx.clearRect(0,0,w,h);
+  const m = { l: 36, r: 10, t: 10, b: 28 };
+  const text = getCSS('--text');
+  const muted = getCSS('--muted');
+  const border = getCSS('--border');
+
+  // محورها
+  gctx.strokeStyle = border;
+  gctx.lineWidth = 1;
+  gctx.beginPath();
+  gctx.moveTo(m.l, m.t);
+  gctx.lineTo(m.l, h - m.b);
+  gctx.lineTo(w - m.r, h - m.b);
+  gctx.stroke();
+
+  // tick‌های Y (هر ربع)
+  gctx.fillStyle = muted;
+  gctx.font = '10px Vazirmatn, sans-serif';
+  gctx.textAlign = 'right';
+  for (let f=0; f<=1; f+=0.25) {
+    const yy = (h - m.b) - f * (h - m.b - m.t);
+    gctx.fillText((f*100).toFixed(0)+'٪', m.l - 4, yy + 3);
+    gctx.strokeStyle = border;
+    gctx.setLineDash([2,2]);
+    gctx.beginPath();
+    gctx.moveTo(m.l, yy);
+    gctx.lineTo(w - m.r, yy);
+    gctx.stroke();
+  }
+  gctx.setLineDash([]);
+
+  const T = state.T_half;
+  const tMax = T * 6;
+
+  // tick‌های X (هر T_half)
+  gctx.textAlign = 'center';
+  for (let n=0; n<=6; n++) {
+    const xx = m.l + (n*T/tMax) * (w - m.l - m.r);
+    gctx.strokeStyle = border;
+    gctx.setLineDash([2,2]);
+    gctx.beginPath();
+    gctx.moveTo(xx, m.t);
+    gctx.lineTo(xx, h - m.b);
+    gctx.stroke();
+    gctx.fillStyle = muted;
+    gctx.fillText(n + 'T', xx, h - 8);
+  }
+  gctx.setLineDash([]);
+
+  // منحنی تئوریک (نقطه‌چین مرجع)
+  gctx.strokeStyle = muted;
+  gctx.lineWidth = 1;
+  gctx.setLineDash([3,3]);
+  gctx.beginPath();
+  for (let p=0; p<=1; p+=0.005) {
+    const t = p * tMax;
+    const f = Math.pow(0.5, t / T);
+    const xx = m.l + p * (w - m.l - m.r);
+    const yy = (h - m.b) - f * (h - m.b - m.t);
+    if (p === 0) gctx.moveTo(xx, yy); else gctx.lineTo(xx, yy);
+  }
+  gctx.stroke();
+  gctx.setLineDash([]);
+
+  // داده‌های شبیه‌سازی (پروگرسیو)
+  if (state.t > 0) {
+    // محاسبه‌ی فعالیت در ۸۰ نقطه (هیستوگرام تجمعی برعکس)
+    const N0 = state.N0;
+    const buckets = 80;
+    let history = new Array(buckets).fill(0);
+    // برای هر هسته‌ی هنوز زنده: همه‌ی buckets از 0 تا اواخر، N += 1
+    // برای هر هسته‌ی مرده: buckets قبل از decayedAt += 1
+    for (const d of state.dots) {
+      const endIdx = d.alive ? buckets : Math.floor((d.decayedAt / state.t) * buckets);
+      for (let i=0; i<=endIdx && i<buckets; i++) history[i]++;
+    }
+    gctx.strokeStyle = getCSS('--info');
+    gctx.lineWidth = 2;
+    gctx.beginPath();
+    for (let i=0; i<buckets; i++) {
+      const tHere = (i / (buckets-1)) * state.t;
+      const xx = m.l + (tHere/tMax) * (w - m.l - m.r);
+      const yy = (h - m.b) - (history[i]/N0) * (h - m.b - m.t);
+      if (i === 0) gctx.moveTo(xx, yy); else gctx.lineTo(xx, yy);
+    }
+    gctx.stroke();
+
+    // نقطه‌ی فعلی
+    const xNow = m.l + (state.t/tMax) * (w - m.l - m.r);
+    const yNow = (h - m.b) - (state.N/N0) * (h - m.b - m.t);
+    gctx.fillStyle = getCSS('--decay');
+    gctx.beginPath();
+    gctx.arc(xNow, yNow, 5, 0, 2*Math.PI);
+    gctx.fill();
+  }
+}
+
+function draw() { drawDots(); drawGraph(); }
+
+// رویداد‌ها
+$('iso').addEventListener('change', e => {
+  const [, T, u] = e.target.value.split('|');
+  state.T_half = parseFloat(T);
+  state.unit = u;
+  reset();
+});
+$('n0').addEventListener('input', e => {
+  state.N0 = parseInt(e.target.value);
+  $('n0_val').textContent = state.N0;
+  reset();
+});
+$('speed').addEventListener('input', e => {
+  state.speedMul = parseInt(e.target.value);
+  $('sp_val').textContent = state.speedMul;
+});
+$('play').addEventListener('click', () => {
+  if (state.running) {
+    state.running = false;
+    $('play').textContent = '▶ ادامه';
+  } else {
+    if (state.N === 0) reset();
+    state.running = true;
+    lastReal = null;
+    $('play').textContent = '⏸ توقف';
+    requestAnimationFrame(loop);
+  }
+});
+$('reset').addEventListener('click', reset);
+$('jump').addEventListener('click', () => {
+  state.running = false;
+  $('play').textContent = '▶ شروع';
+  step(state.T_half);
+  draw();
+  updateRead();
+});
+window.addEventListener('resize', () => { draw(); });
+
+reset();
+</script>
+</body>
+</html>

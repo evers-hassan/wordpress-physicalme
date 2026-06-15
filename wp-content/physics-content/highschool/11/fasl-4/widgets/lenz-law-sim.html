@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>قانون لنز — جهت جریان القایی</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed; --warn:#a87800; --warn-bg:#fef6e0;
+    --N:#d6453c; --S:#2f6fd0; --wire:#a87800; --induced-N:#ff6a55; --current:#1d9e75;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e0b860; --warn-bg:#4a3a15;
+      --N:#f06a60; --S:#6aa0ee; --wire:#e0b860; --induced-N:#ff8b78; --current:#5dcaa5;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;
+  }
+  .wrap{max-width:780px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:330px;}
+  .controls{padding:12px; display:flex; gap:8px; border-top:1px solid var(--border); flex-wrap:wrap; align-items:center;}
+  .btn{font-family:inherit; font-size:13px; padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); cursor:pointer; transition:.12s;}
+  .btn:hover{background:var(--info-bg); border-color:var(--info); color:var(--info);}
+  .btn.on{background:var(--info); color:#fff; border-color:var(--info);}
+  .verdict{padding:12px; background:var(--warn-bg); color:var(--warn); border-top:1px solid var(--border); font-size:14px; min-height:46px; line-height:1.6;}
+  .verdict.ok{background:var(--ok-bg); color:var(--ok);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>قانون لنز — جهت جریان القایی در حلقه 🛑🔄</h2>
+  <p class="sub">آهنربا را نزدیک یا دور کن، و قطبش را عوض کن. جریان القایی در حلقه را ببین.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="controls">
+      <button class="btn" id="bApproach">⏩ آهنربا نزدیک می‌شه</button>
+      <button class="btn" id="bRetreat">⏪ آهنربا دور می‌شه</button>
+      <button class="btn" id="bStop">⏸ ایست</button>
+      <button class="btn" id="bFlip">🔁 عوض کردن قطب آهنربا</button>
+    </div>
+    <div id="verdict" class="verdict">برای شروع، یکی از دکمه‌های حرکت رو بزن.</div>
+  </div>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+function resize(){
+  const dpr = window.devicePixelRatio||1;
+  cv.width = cv.clientWidth*dpr; cv.height = cv.clientHeight*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize', resize); resize();
+
+let magnetX = 90, magnetV = 0;
+let polarity = 1; // 1: right side is N (facing the coil)
+let lastT = 0;
+
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || '#000';}
+function toFa(s){return (''+s).replace(/[0-9]/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);}
+
+function draw(t){
+  const dt = Math.min(50, t-lastT); lastT = t;
+  magnetX += magnetV * dt / 16;
+  if(magnetX < 40){ magnetX = 40; magnetV = 0; }
+  if(magnetX > 460){ magnetX = 460; magnetV = 0; }
+
+  const W = cv.clientWidth, H = cv.clientHeight;
+  ctx.clearRect(0,0,W,H);
+
+  // Coil (circular loop seen edge-on)
+  const coilX = 560, coilY = H/2;
+  ctx.strokeStyle = getCss('--wire'); ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.ellipse(coilX, coilY, 14, 80, 0, 0, Math.PI*2); ctx.stroke();
+
+  // Direction of induced current
+  // Approaching with N → induced N faces magnet (repel) → using right-hand rule, current flows counter-clockwise viewed from magnet side
+  // Retreating with N → induced S faces magnet (attract) → current flows clockwise
+  let inducedDir = 0; // +1 = ccw (out top, in bottom from this viewpoint), -1 = cw
+  if(Math.abs(magnetV) > 0.05){
+    // flux increasing if magnet approaching (positive magnetV) and N facing coil (polarity=1)
+    const fluxIncreasing = (magnetV > 0) === (polarity === 1);
+    inducedDir = fluxIncreasing ? +1 : -1;
+  }
+
+  // Draw current arrows on the loop
+  if(inducedDir !== 0){
+    drawCoilCurrent(coilX, coilY, inducedDir);
+    drawInducedPole(coilX, coilY, inducedDir, polarity);
+  }
+
+  // Magnet
+  drawMagnet(magnetX, H/2, 120, 38, polarity);
+
+  // Velocity arrow
+  if(Math.abs(magnetV) > 0.05){
+    const vx = magnetX + (magnetV > 0 ? 70 : -70);
+    drawArrow(magnetX + (magnetV > 0 ? 65 : -5), H/2 - 55, vx, H/2 - 55, getCss('--ok'), 2);
+    ctx.fillStyle = getCss('--ok'); ctx.font='13px Vazirmatn';
+    ctx.fillText('v', (magnetX + vx)/2 - 4, H/2 - 60);
+  }
+
+  // Update verdict
+  updateVerdict(inducedDir, magnetV);
+
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+function drawMagnet(cx, cy, w, h, pol){
+  const x = cx - w/2, y = cy - h/2;
+  // S left / N right if pol=1
+  ctx.fillStyle = (pol === 1) ? getCss('--S') : getCss('--N');
+  ctx.fillRect(x, y, w/2, h);
+  ctx.fillStyle = (pol === 1) ? getCss('--N') : getCss('--S');
+  ctx.fillRect(x + w/2, y, w/2, h);
+  ctx.fillStyle = '#fff'; ctx.font='bold 20px Vazirmatn'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(pol===1 ? 'S':'N', x + w/4, cy);
+  ctx.fillText(pol===1 ? 'N':'S', x + 3*w/4, cy);
+  ctx.textBaseline='alphabetic';
+}
+
+function drawCoilCurrent(cx, cy, dir){
+  // Draw arrows on top and bottom of the coil ellipse
+  ctx.fillStyle = getCss('--current'); ctx.strokeStyle = getCss('--current'); ctx.lineWidth = 2.5;
+  // Top arrow
+  const topAng = dir > 0 ? '→' : '←';
+  const bottomAng = dir > 0 ? '←' : '→';
+  // direct symbols on canvas
+  ctx.font='bold 22px Vazirmatn';
+  ctx.fillText(topAng, cx + (dir>0?-12:12), cy - 60);
+  ctx.fillText(bottomAng, cx + (dir>0?12:-12), cy + 70);
+  // label "I"
+  ctx.font='bold 14px Vazirmatn'; ctx.fillStyle=getCss('--current');
+  ctx.fillText('I', cx + 18, cy - 60);
+}
+
+function drawInducedPole(cx, cy, inducedDir, polarity){
+  // The face of the coil facing the magnet shows a pole
+  // If flux increasing: induced pole opposes magnet's pole (N → induced N to repel)
+  // If flux decreasing: induced pole attracts (N → induced S)
+  // The "face" of the coil is on the LEFT side (cx-14)
+  let inducedPole;
+  const magnetFacingPole = polarity === 1 ? 'N' : 'S';
+  if(inducedDir === +1){
+    // CCW viewed from magnet's side → induced N faces magnet (using right-hand rule with current going up-back)
+    inducedPole = magnetFacingPole; // same as magnet → repel
+  } else {
+    inducedPole = magnetFacingPole === 'N' ? 'S' : 'N';
+  }
+  // Draw a small badge on the left of the coil
+  ctx.fillStyle = inducedPole==='N' ? getCss('--N') : getCss('--S');
+  ctx.beginPath(); ctx.arc(cx - 20, cy, 16, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font='bold 14px Vazirmatn'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(inducedPole, cx - 20, cy);
+  ctx.textBaseline='alphabetic';
+}
+
+function drawArrow(x1,y1,x2,y2,color,lw){
+  ctx.strokeStyle=color; ctx.lineWidth=lw;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const ang = Math.atan2(y2-y1, x2-x1);
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-9*Math.cos(ang-0.4), y2-9*Math.sin(ang-0.4));
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-9*Math.cos(ang+0.4), y2-9*Math.sin(ang+0.4));
+  ctx.stroke();
+}
+
+function updateVerdict(inducedDir, v){
+  const el = document.getElementById('verdict');
+  if(Math.abs(v) < 0.05){
+    el.className = 'verdict';
+    el.innerHTML = 'آهنربا ساکنه → شار ثابته → <b>هیچ جریان القایی نیست.</b> اگه با شدت‌ترین آهنربا هم باشه، تا حرکت نکنه، EMF صفره.';
+    return;
+  }
+  el.className = 'verdict ok';
+  const magnetFacing = polarity === 1 ? 'N' : 'S';
+  const approaching = v > 0;
+  if(approaching){
+    if(magnetFacing === 'N'){
+      el.innerHTML = `قطب <b>N</b> داره به حلقه نزدیک می‌شه → شار رو به افزایش → حلقه قطبِ <b>N</b> القا می‌کنه تا <b>دفع</b> کنه → جریان <b>پادساعت‌گرد</b> از دیدِ آهنربا.`;
+    } else {
+      el.innerHTML = `قطب <b>S</b> داره به حلقه نزدیک می‌شه → شارِ معکوس داره زیاد می‌شه → حلقه قطبِ <b>S</b> القا می‌کنه تا <b>دفع</b> کنه → جریان <b>ساعت‌گرد</b> از دیدِ آهنربا.`;
+    }
+  } else {
+    if(magnetFacing === 'N'){
+      el.innerHTML = `قطب <b>N</b> داره دور می‌شه → شار رو به کاهش → حلقه قطبِ <b>S</b> القا می‌کنه تا N رو <b>جذب کنه</b> و نگه داره → جریان <b>ساعت‌گرد</b> از دیدِ آهنربا.`;
+    } else {
+      el.innerHTML = `قطب <b>S</b> داره دور می‌شه → حلقه قطبِ <b>N</b> القا می‌کنه تا S رو جذب کنه → جریان <b>پادساعت‌گرد</b> از دیدِ آهنربا.`;
+    }
+  }
+}
+
+document.getElementById('bApproach').onclick = ()=>{ magnetV = 2.0; };
+document.getElementById('bRetreat').onclick = ()=>{ magnetV = -2.0; };
+document.getElementById('bStop').onclick = ()=>{ magnetV = 0; };
+document.getElementById('bFlip').onclick = ()=>{ polarity *= -1; };
+</script>
+</body>
+</html>

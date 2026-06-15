@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بردار تعاملی</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --hint:#9b9a93; --border-strong:#cbc9c0; --vec:#d85a30; --vec-dark:#993c1d;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --hint:#76746d; --border-strong:#4a4844; --vec:#f0997b; --vec-dark:#f0997b; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+    background:var(--bg); color:var(--text);}
+  canvas{width:100%; height:auto; background:var(--surface); border-radius:12px;
+    display:block; cursor:grab; touch-action:none;}
+  .stats{display:flex; gap:18px; font-size:14px; color:var(--muted); margin-top:12px;
+    flex-wrap:wrap; justify-content:center;}
+  .stats b{color:var(--text); font-weight:600;}
+  .cap{font-size:13px; color:var(--hint); margin:10px 0 0; text-align:center; line-height:1.7;}
+</style>
+</head>
+<body>
+  <canvas id="cv" width="660" height="360"></canvas>
+  <div class="stats">
+    <span>اندازه: <b id="mag">۰</b> واحد</span>
+    <span>جهت (زاویه با محورِ افقی): <b id="ang">۰</b>°</span>
+  </div>
+  <p class="cap">نوکِ نارنجیِ بردار رو بگیر و بکش 🖱️ — ببین چطور یه بردار با «اندازه» و «جهت» مشخص می‌شه، نه فقط یه عدد.</p>
+<script>
+  var faNum=function(n){return String(n).replace(/[0-9]/g,function(d){return "۰۱۲۳۴۵۶۷۸۹"[d];});};
+  var cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+  var magEl=document.getElementById("mag"),angEl=document.getElementById("ang");
+  function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||"#888";}
+  var ox=120,oy=240,tip={x:420,y:120},dragging=false,scale=4;
+  function draw(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.strokeStyle=css("--border-strong");ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(40,oy);ctx.lineTo(cv.width-20,oy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(ox,40);ctx.lineTo(ox,cv.height-20);ctx.stroke();
+    var dx=tip.x-ox,dy=oy-tip.y,mag=Math.sqrt(dx*dx+dy*dy)/scale,ang=Math.atan2(dy,dx)*180/Math.PI;
+    if(ang<0)ang+=360;
+    ctx.strokeStyle=css("--vec");ctx.fillStyle=css("--vec");ctx.lineWidth=4;
+    ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(tip.x,tip.y);ctx.stroke();
+    var a=Math.atan2(tip.y-oy,tip.x-ox);
+    ctx.beginPath();ctx.moveTo(tip.x,tip.y);
+    ctx.lineTo(tip.x-14*Math.cos(a-0.4),tip.y-14*Math.sin(a-0.4));
+    ctx.lineTo(tip.x-14*Math.cos(a+0.4),tip.y-14*Math.sin(a+0.4));
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle=css("--vec-dark");ctx.beginPath();ctx.arc(tip.x,tip.y,9,0,7);ctx.fill();
+    ctx.fillStyle=css("--muted");ctx.beginPath();ctx.arc(ox,oy,4,0,7);ctx.fill();
+    magEl.textContent=faNum(Math.round(mag));angEl.textContent=faNum(Math.round(ang));
+  }
+  function getPos(e){
+    var r=cv.getBoundingClientRect(),sx=cv.width/r.width,sy=cv.height/r.height;
+    var cx=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
+    var cy=(e.touches?e.touches[0].clientY:e.clientY)-r.top;
+    return {x:cx*sx,y:cy*sy};
+  }
+  function near(p){return Math.hypot(p.x-tip.x,p.y-tip.y)<28;}
+  cv.addEventListener("mousedown",function(e){if(near(getPos(e))){dragging=true;cv.style.cursor="grabbing";}});
+  cv.addEventListener("mousemove",function(e){if(dragging){var p=getPos(e);tip.x=Math.max(40,Math.min(cv.width-20,p.x));tip.y=Math.max(20,Math.min(cv.height-20,p.y));draw();}});
+  window.addEventListener("mouseup",function(){dragging=false;cv.style.cursor="grab";});
+  cv.addEventListener("touchstart",function(e){if(near(getPos(e))){dragging=true;e.preventDefault();}},{passive:false});
+  cv.addEventListener("touchmove",function(e){if(dragging){var p=getPos(e);tip.x=Math.max(40,Math.min(cv.width-20,p.x));tip.y=Math.max(20,Math.min(cv.height-20,p.y));draw();e.preventDefault();}},{passive:false});
+  window.addEventListener("touchend",function(){dragging=false;});
+  draw();
+</script>
+</body>
+</html>

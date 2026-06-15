@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌سازی قانون اهم</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --wire:#8a8676; --bulb:#f4c430; --cur:#d6453c; --grid:#d8d5cc; --line:#185fa5; --diode:#9b59b6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --wire:#9a9482; --bulb:#f4c430; --cur:#f06a60; --grid:#3a3835; --line:#85b7eb; --diode:#c08adb;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8; animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%;}
+  #circuit{height:210px;}
+  #graph{height:200px; border-top:1px solid var(--border);}
+  .readout{display:flex; gap:8px; flex-wrap:wrap; padding:12px; border-top:1px solid var(--border);}
+  .chip{flex:1 1 90px; background:var(--info-bg); color:var(--info); border-radius:10px; padding:8px 10px; text-align:center; font-weight:500; font-size:13px;}
+  .chip b{display:block; font-size:16px; font-weight:700; margin-top:2px; direction:ltr;}
+  .controls{margin-top:14px; display:grid; gap:12px;}
+  .row{display:flex; justify-content:space-between; align-items:center; font-size:14px;}
+  .val{font-weight:700;}
+  input[type=range]{width:100%; accent-color:var(--info); height:6px;}
+  input[type=range]:disabled{opacity:.4;}
+  .btns{display:flex; gap:10px;}
+  .btn{appearance:none;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px;
+       background:var(--surface);color:var(--text);border:1.5px solid var(--border);padding:9px 14px;border-radius:10px;flex:1 1 auto;}
+  .btn.active{background:var(--info);color:#fff;border-color:var(--info);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🔧 شبیه‌سازی: قانون اهم</h2>
+  <p class="sub">ولتاژ و مقاومت را تغییر بده و ببین جریان، توان و روشناییِ لامپ چطور عوض می‌شوند. نمودارِ I-V هم زنده رسم می‌شود.</p>
+
+  <div class="stage">
+    <canvas id="circuit"></canvas>
+    <canvas id="graph"></canvas>
+    <div class="readout">
+      <div class="chip">جریان I <b id="iVal">—</b></div>
+      <div class="chip">توان P=VI <b id="pVal">—</b></div>
+      <div class="chip">مقاومت R <b id="rShow">—</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="btns">
+      <button class="btn active" id="mOhm" type="button">رسانای اهمی (خط راست)</button>
+      <button class="btn" id="mDiode" type="button">دیود/غیراهمی (منحنی)</button>
+    </div>
+    <div class="row"><span>ولتاژ V</span><span class="val"><span id="vSet"></span> V</span></div>
+    <input type="range" id="V" min="0" max="12" step="0.5" value="6">
+    <div class="row"><span>مقاومت R</span><span class="val"><span id="rSet"></span> Ω</span></div>
+    <input type="range" id="R" min="1" max="12" step="1" value="4">
+  </div>
+</div>
+
+<script>
+(function(){
+  var cc=document.getElementById('circuit'), cx=cc.getContext('2d');
+  var gc=document.getElementById('graph'), gx=gc.getContext('2d');
+  var VEl=document.getElementById('V'), REl=document.getElementById('R');
+  var vSet=document.getElementById('vSet'), rSet=document.getElementById('rSet');
+  var iVal=document.getElementById('iVal'), pVal=document.getElementById('pVal'), rShow=document.getElementById('rShow');
+  var mOhm=document.getElementById('mOhm'), mDiode=document.getElementById('mDiode');
+  var mode='ohm', t=0;
+  function toFa(s){return (''+s).replace(/[0-9.]/g,function(d){return d==='.'?'٫':'۰۱۲۳۴۵۶۷۸۹'[+d];});}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  // مدلِ جریان
+  function currentAt(V,R){
+    if(mode==='ohm') return V/R;
+    // دیودِ ساده: تقریباً صفر تا آستانه‌ی ۴ ولت، بعد رشدِ تند
+    var Vth=4;
+    return V<=Vth ? 0.01*V : 0.45*(V-Vth);
+  }
+
+  function drawCircuit(I,P){
+    var rect=cc.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cc.width=rect.width*dpr; cc.height=rect.height*dpr; cx.setTransform(dpr,0,0,dpr,0,0);
+    var W=rect.width, H=rect.height; cx.clearRect(0,0,W,H);
+    var L=40, R_=W-40, Tp=40, B=H-30;
+
+    // سیم‌ها (مستطیلِ مدار)
+    cx.strokeStyle=cssv('--wire'); cx.lineWidth=4; cx.lineJoin='round';
+    cx.strokeRect(L,Tp,R_-L,B-Tp);
+
+    // باتری (ضلعِ چپ)
+    var by=(Tp+B)/2;
+    cx.save();
+    cx.fillStyle=cssv('--bg'); cx.fillRect(L-9,by-22,18,44);
+    cx.strokeStyle=cssv('--text'); cx.lineWidth=3;
+    cx.beginPath(); cx.moveTo(L-12,by-12); cx.lineTo(L+12,by-12); cx.stroke(); // بلند +
+    cx.beginPath(); cx.moveTo(L-6,by+8); cx.lineTo(L+6,by+8); cx.stroke();     // کوتاه -
+    cx.restore();
+    cx.fillStyle=cssv('--muted'); cx.font='12px Vazirmatn, sans-serif'; cx.textAlign='center';
+    cx.fillText('باتری', L+2, by-26);
+
+    // مقاومت (زیگزاگ، ضلعِ بالا)
+    var rx1=W*0.30, rx2=W*0.55;
+    cx.strokeStyle=cssv('--text'); cx.lineWidth=3; cx.beginPath();
+    cx.moveTo(rx1,Tp);
+    var seg=(rx2-rx1)/6;
+    for(var i=0;i<6;i++){ cx.lineTo(rx1+seg*(i+0.5), Tp + (i%2?9:-9)); }
+    cx.lineTo(rx2,Tp); cx.stroke();
+    cx.fillStyle=cssv('--muted'); cx.fillText('مقاومت R', (rx1+rx2)/2, Tp-12);
+
+    // لامپ (ضلعِ راست) — درخششِ ∝ توان
+    var lx=R_, ly=by, glow=Math.min(1, P/12);
+    if(glow>0.02){
+      var g=cx.createRadialGradient(lx,ly,2,lx,ly,40);
+      g.addColorStop(0,'rgba(244,196,48,'+(0.85*glow)+')');
+      g.addColorStop(1,'rgba(244,196,48,0)');
+      cx.fillStyle=g; cx.beginPath(); cx.arc(lx,ly,40,0,Math.PI*2); cx.fill();
+    }
+    cx.fillStyle=cssv('--bg'); cx.strokeStyle=cssv('--text'); cx.lineWidth=2.5;
+    cx.beginPath(); cx.arc(lx,ly,15,0,Math.PI*2); cx.fill(); cx.stroke();
+    cx.beginPath(); cx.moveTo(lx-10,ly-10); cx.lineTo(lx+10,ly+10); cx.moveTo(lx+10,ly-10); cx.lineTo(lx-10,ly+10); cx.stroke();
+    cx.fillStyle=cssv('--muted'); cx.fillText('لامپ', lx, ly+34);
+
+    // جریانِ متحرک (نقطه‌ها دورِ مدار، سرعت ∝ I)
+    var per=2*((R_-L)+(B-Tp));
+    t += I*0.9;
+    var n=14;
+    cx.fillStyle=cssv('--cur');
+    for(var k=0;k<n;k++){
+      var d=((t + k*per/n)%per+per)%per;
+      var pt=perim(d,L,R_,Tp,B);
+      cx.beginPath(); cx.arc(pt.x,pt.y,3.5,0,Math.PI*2); cx.fill();
+    }
+  }
+  function perim(d,L,R_,Tp,B){
+    var w=R_-L, h=B-Tp;
+    // مسیر پادساعتگرد: بالا(چپ→راست), راست(بالا→پایین), پایین(راست→چپ), چپ(پایین→بالا)
+    if(d< w) return {x:L+d, y:Tp};
+    d-=w; if(d< h) return {x:R_, y:Tp+d};
+    d-=h; if(d< w) return {x:R_-d, y:B};
+    d-=w; return {x:L, y:B-d};
+  }
+
+  function drawGraph(V,R,I){
+    var rect=gc.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    gc.width=rect.width*dpr; gc.height=rect.height*dpr; gx.setTransform(dpr,0,0,dpr,0,0);
+    var W=rect.width, H=rect.height; gx.clearRect(0,0,W,H);
+    var pad=34, x0=pad, y0=H-26, xw=W-pad-14, yh=H-26-14;
+    var Vmax=12, Imax=4;
+    function X(v){return x0 + v/Vmax*xw;}
+    function Y(i){return y0 - Math.min(i,Imax)/Imax*yh;}
+
+    // شبکه
+    gx.strokeStyle=cssv('--grid'); gx.lineWidth=1;
+    for(var v=0;v<=12;v+=2){ gx.beginPath(); gx.moveTo(X(v),y0); gx.lineTo(X(v),y0-yh); gx.stroke(); }
+    for(var ii=0;ii<=4;ii++){ gx.beginPath(); gx.moveTo(x0,Y(ii)); gx.lineTo(x0+xw,Y(ii)); gx.stroke(); }
+    // محورها
+    gx.strokeStyle=cssv('--muted'); gx.lineWidth=1.5;
+    gx.beginPath(); gx.moveTo(x0,y0); gx.lineTo(x0+xw,y0); gx.stroke();
+    gx.beginPath(); gx.moveTo(x0,y0); gx.lineTo(x0,y0-yh); gx.stroke();
+    gx.fillStyle=cssv('--muted'); gx.font='11px Vazirmatn, sans-serif';
+    gx.textAlign='center'; gx.fillText('V (ولت)', x0+xw/2, H-8);
+    gx.save(); gx.translate(11,y0-yh/2); gx.rotate(-Math.PI/2); gx.fillText('I (آمپر)',0,0); gx.restore();
+
+    // منحنیِ مشخصه
+    gx.strokeStyle = mode==='ohm'?cssv('--line'):cssv('--diode'); gx.lineWidth=2.5;
+    gx.beginPath();
+    for(var s=0;s<=120;s++){
+      var vv=Vmax*s/120, iv=currentAt(vv,R);
+      var px=X(vv), py=Y(iv);
+      if(s===0) gx.moveTo(px,py); else gx.lineTo(px,py);
+    }
+    gx.stroke();
+
+    // نقطه‌ی کار
+    gx.fillStyle=cssv('--cur');
+    var ox=X(V), oy=Y(I);
+    gx.beginPath(); gx.arc(ox,oy,5,0,Math.PI*2); gx.fill();
+    gx.strokeStyle=cssv('--cur'); gx.setLineDash([4,3]); gx.lineWidth=1.2;
+    gx.beginPath(); gx.moveTo(ox,y0); gx.lineTo(ox,oy); gx.lineTo(x0,oy); gx.stroke(); gx.setLineDash([]);
+  }
+
+  function fmtI(I){ return I>=1? toFa(I.toFixed(2))+' A' : toFa((I*1000).toFixed(0))+' mA'; }
+  function loop(){
+    var V=+VEl.value, R=+REl.value;
+    vSet.textContent=toFa(V); rSet.textContent=toFa(R);
+    REl.disabled = (mode==='diode');
+    var I=currentAt(V,R), P=V*I;
+    iVal.textContent= I<=0? '۰' : fmtI(I);
+    pVal.textContent= toFa(P.toFixed(1))+' W';
+    rShow.textContent= mode==='ohm'? toFa(R)+' Ω' : '—';
+    drawCircuit(I,P);
+    drawGraph(V,R,I);
+    requestAnimationFrame(loop);
+  }
+  function setMode(m){
+    mode=m; mOhm.classList.toggle('active',m==='ohm'); mDiode.classList.toggle('active',m==='diode');
+  }
+  mOhm.addEventListener('click',function(){setMode('ohm');});
+  mDiode.addEventListener('click',function(){setMode('diode');});
+  window.addEventListener('resize',function(){});
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

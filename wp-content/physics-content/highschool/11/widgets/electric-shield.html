@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌سازی قفس فاراده</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --pos:#d6453c; --neg:#2f6fd0; --field:#185fa5; --metal:#cfd6de;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --pos:#f06a60; --neg:#6aa0ee; --field:#85b7eb; --metal:#4a4f55;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8; animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:300px;}
+  .readout{display:flex; gap:10px; flex-wrap:wrap; padding:12px; border-top:1px solid var(--border);}
+  .chip{flex:1 1 150px; background:var(--ok-bg); color:var(--ok); border-radius:10px; padding:8px 12px; text-align:center; font-weight:500;}
+  .chip b{display:block; font-size:16px; font-weight:700; margin-top:2px;}
+  .controls{margin-top:14px; display:grid; gap:12px;}
+  .row{display:flex; justify-content:space-between; align-items:center; font-size:14px;}
+  .val{font-weight:700;}
+  input[type=range]{width:100%; accent-color:var(--info); height:6px;}
+  .btn{appearance:none;border:0;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;color:#fff;
+       background:var(--info);padding:10px 16px;border-radius:10px;}
+  .btn.off{background:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🛡️ شبیه‌سازی: قفس فاراده</h2>
+  <p class="sub">میدانِ خارجی را روشن/خاموش و کم/زیاد کن. ببین داخلِ رسانا (کادرِ فلزی) میدان همیشه صفر می‌ماند.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">میدان بیرونِ رسانا <b id="outVal">—</b></div>
+      <div class="chip">میدان داخلِ رسانا <b id="inVal">۰</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="toggle" type="button">خاموش کردنِ میدانِ خارجی</button>
+    <div class="row"><span>بزرگیِ میدانِ خارجی</span><span class="val"><span id="eVal"></span> N/C</span></div>
+    <input type="range" id="E" min="0" max="100" step="5" value="60">
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var EEl=document.getElementById('E'), eVal=document.getElementById('eVal');
+  var outVal=document.getElementById('outVal'), inVal=document.getElementById('inVal');
+  var toggle=document.getElementById('toggle'), on=true;
+  function toFa(s){return (''+s).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+  function arrow(x,y,len,color){
+    var ex=x+len, hs=6;
+    ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=2.5; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(ex,y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ex,y); ctx.lineTo(ex-hs,y-hs*0.7); ctx.lineTo(ex-hs,y+hs*0.7); ctx.closePath(); ctx.fill();
+  }
+  function draw(){
+    var Eraw=+EEl.value; var E=on?Eraw:0;
+    eVal.textContent=toFa(Eraw);
+    outVal.textContent= toFa(E)+' N/C';
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    var W=rect.width, H=rect.height; ctx.clearRect(0,0,W,H);
+
+    // ناحیه‌ی رسانا (کادر وسط)
+    var bx=W*0.32, by=H*0.22, bw=W*0.36, bh=H*0.56;
+    var len = E/100*26; // طول فلش متناسب با میدان
+
+    // فلش‌های میدان خارجی (چپ به راست) — فقط بیرونِ رسانا
+    var fc=cssv('--field');
+    if(E>0){
+      for(var y=24; y<H; y+=34){
+        // سمت چپِ رسانا
+        for(var x=14; x<bx-len-8; x+=40){ arrow(x,y,len,fc); }
+        // سمت راستِ رسانا
+        for(var x2=bx+bw+8; x2<W-len-4; x2+=40){ arrow(x2,y,len,fc); }
+      }
+    }
+
+    // رسانا
+    ctx.fillStyle=cssv('--metal'); ctx.strokeStyle=cssv('--muted'); ctx.lineWidth=3;
+    roundRect(bx,by,bw,bh,12); ctx.fill(); ctx.stroke();
+
+    // بارهای القایی روی دو وجه (وقتی میدان روشن است)
+    if(E>0){
+      ctx.font='bold 16px Vazirmatn, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillStyle=cssv('--neg');
+      for(var yy=by+22; yy<by+bh-10; yy+=26){ ctx.fillText('−', bx+8, yy); }
+      ctx.fillStyle=cssv('--pos');
+      for(var yy2=by+22; yy2<by+bh-10; yy2+=26){ ctx.fillText('+', bx+bw-8, yy2); }
+    }
+
+    // متنِ داخل
+    ctx.fillStyle=cssv('--ok'); ctx.font='bold 20px Vazirmatn, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('E = ۰', bx+bw/2, by+bh/2);
+    ctx.fillStyle=cssv('--muted'); ctx.font='12px Vazirmatn, sans-serif';
+    ctx.fillText('داخلِ رسانا', bx+bw/2, by+bh/2+24);
+    ctx.textBaseline='alphabetic';
+
+    inVal.textContent='۰';
+  }
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+  }
+  toggle.addEventListener('click', function(){
+    on=!on;
+    toggle.textContent = on ? 'خاموش کردنِ میدانِ خارجی' : 'روشن کردنِ میدانِ خارجی';
+    toggle.classList.toggle('off', !on);
+    draw();
+  });
+  EEl.addEventListener('input', draw);
+  window.addEventListener('resize', draw);
+  draw();
+})();
+</script>
+</body>
+</html>

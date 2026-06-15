@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>پراش — شکاف تنها و توری</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:980px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .layout{display:grid; grid-template-columns:1fr 240px; gap:12px;}
+  @media(max-width:760px){.layout{grid-template-columns:1fr;}}
+  .stage{background:#0a0a18; border:1px solid var(--border); border-radius:14px; padding:8px;}
+  canvas{display:block; width:100%; height:220px;}
+  #cvI{height:140px; background:var(--surface); border-radius:8px; margin-top:8px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:13px; margin:8px 0 6px; color:var(--muted); text-transform:uppercase;}
+  .panel h3:first-child{margin-top:0;}
+  .slider-row{display:grid; grid-template-columns:1fr 60px; gap:6px; align-items:center; font-size:13px; margin-bottom:4px;}
+  .val{font-weight:700; color:var(--info); text-align:left; font-variant-numeric:tabular-nums;}
+  input[type=range]{width:100%; accent-color:var(--info);}
+  select{width:100%; padding:6px; font-family:inherit; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; margin-bottom:6px;}
+  .readout{margin-top:6px;}
+  .read{padding:6px 8px; background:var(--info-bg); color:var(--info); border-radius:6px; text-align:center; font-size:12px; margin-bottom:4px;}
+  .note{font-size:12px; padding:8px; background:var(--ok-bg); color:var(--ok); border-radius:8px; margin-top:8px; line-height:1.6;}
+  .col-band{display:inline-block; width:14px; height:14px; vertical-align:middle; border-radius:3px; margin-left:6px;}
+</style>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']], processEscapes: true },
+    startup: { pageReady: function () { return MathJax.startup.defaultPageReady().then(function () {
+      var obs = new MutationObserver(function () { MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); }); });
+      obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+    }); } }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>پراش 🎭 — الگوی شدت روی پرده</h2>
+  <p class="sub">حالتِ شکافِ تنها یا توری رو انتخاب کن. عرضِ شکاف، طول موج و فاصله‌ی پرده رو تغییر بده و الگوی شدت رو ببین.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <canvas id="cvP"></canvas>
+      <canvas id="cvI"></canvas>
+    </div>
+
+    <div class="panel">
+      <h3>حالت</h3>
+      <select id="mode">
+        <option value="single">شکافِ تنها</option>
+        <option value="grating">توریِ پراش (چندشکاف)</option>
+      </select>
+
+      <h3>رنگ نور</h3>
+      <select id="color">
+        <option value="650">قرمز (λ=۶۵۰ nm) 🔴</option>
+        <option value="532" selected>سبز (λ=۵۳۲ nm) 🟢</option>
+        <option value="450">آبی (λ=۴۵۰ nm) 🔵</option>
+        <option value="600">پرتقالی (λ=۶۰۰ nm) 🟠</option>
+        <option value="white">سفید (همه طیف) ⚪</option>
+      </select>
+
+      <h3>پارامترها</h3>
+      <div class="slider-row"><label>عرضِ شکاف $a$ (µm)</label><span class="val" id="vA">۵۰</span></div>
+      <input type="range" id="A" min="10" max="200" step="5" value="50">
+
+      <div class="slider-row" id="rowD"><label>فاصله‌ی توری $d$ (µm)</label><span class="val" id="vD">۲۰۰</span></div>
+      <input type="range" id="D" min="50" max="800" step="10" value="200">
+
+      <div class="slider-row"><label>فاصله‌ی پرده $L$ (m)</label><span class="val" id="vL">۲٫۰</span></div>
+      <input type="range" id="L" min="0.5" max="5" step="0.1" value="2.0">
+
+      <h3>نتیجه</h3>
+      <div class="readout">
+        <div class="read">پهنای کمینه‌ی مرکزی: <b id="rW">— mm</b></div>
+        <div class="read">فاصله‌ی نوارها: <b id="rDy">— mm</b></div>
+      </div>
+
+      <div class="note">
+        💡 شرطِ کمینه برای شکاف تنها: $a\sin\theta = m\lambda$. توری: ماکزیمم در $d\sin\theta = m\lambda$.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fa=n=>n.toLocaleString('fa-IR');
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const cvP=$('cvP'), ctxP=cvP.getContext('2d');
+const cvI=$('cvI'), ctxI=cvI.getContext('2d');
+let DPR=window.devicePixelRatio||1;
+function fit(cv,c){const r=cv.getBoundingClientRect(); cv.width=r.width*DPR; cv.height=r.height*DPR; c.setTransform(DPR,0,0,DPR,0,0); return {w:r.width, h:r.height};}
+
+let mode='single', a=50e-6, d=200e-6, L=2.0, colorMode='532';
+const colors={
+  '650':[255,40,40],'600':[255,160,40],'532':[80,255,80],'450':[100,140,255]
+};
+
+function spectrum(lam_nm){
+  // approximate visible color from wavelength
+  const lam=lam_nm;
+  let r=0,g=0,b=0;
+  if(lam>=380 && lam<440){ r=-(lam-440)/60; g=0; b=1;}
+  else if(lam<490){ r=0; g=(lam-440)/50; b=1;}
+  else if(lam<510){ r=0; g=1; b=-(lam-510)/20;}
+  else if(lam<580){ r=(lam-510)/70; g=1; b=0;}
+  else if(lam<645){ r=1; g=-(lam-645)/65; b=0;}
+  else { r=1; g=0; b=0;}
+  return [Math.round(r*255), Math.round(g*255), Math.round(b*255)];
+}
+
+function intensity(theta, lam, a, d, mode){
+  const beta = Math.PI*a*Math.sin(theta)/lam;
+  const single = (Math.abs(beta)<1e-6) ? 1 : Math.pow(Math.sin(beta)/beta, 2);
+  if(mode==='single') return single;
+  const N=5;
+  const gamma = Math.PI*d*Math.sin(theta)/lam;
+  const multi = (Math.abs(Math.sin(gamma))<1e-9) ? N*N : Math.pow(Math.sin(N*gamma)/Math.sin(gamma), 2);
+  return single * multi / (N*N);
+}
+
+function draw(){
+  // pattern bar (cvP)
+  const r1=fit(cvP, ctxP);
+  ctxP.fillStyle='#000'; ctxP.fillRect(0,0,r1.w,r1.h);
+  const cyP=r1.h/2;
+  // draw apparatus diagram on top
+  ctxP.fillStyle='#888';
+  ctxP.fillRect(20, 8, 60, r1.h-16);
+  ctxP.fillStyle='#fff';
+  // slit(s) in apparatus
+  const slitsH=8;
+  ctxP.fillRect(20, cyP-slitsH/2, 60, slitsH);
+  // arrow showing incoming light
+  ctxP.fillStyle=css('--ok');
+  ctxP.font='10px Vazirmatn'; ctxP.textAlign='right';
+  ctxP.fillText('نور ورودی →', 19, cyP+3);
+  ctxP.textAlign='left';
+  ctxP.fillText('شکاف', 84, cyP-slitsH/2-3);
+
+  // pattern: x axis is angle/position on screen
+  const halfW=r1.w-100;
+  const screenLeft=100;
+  // half-extent in meters on screen at distance L
+  const yMax=0.03; // 3 cm
+  // determine lambdas
+  let lams=[];
+  if(colorMode==='white'){
+    for(let lam=400; lam<=680; lam+=10) lams.push(lam);
+  } else {
+    lams=[parseFloat(colorMode)];
+  }
+  const img = ctxP.getImageData(screenLeft, 0, halfW, r1.h);
+  for(let px=0; px<halfW; px++){
+    const yPos = -yMax + (2*yMax)*px/halfW;
+    const theta = Math.atan(yPos/L);
+    let R=0,G=0,B=0;
+    lams.forEach(lam=>{
+      const I = intensity(theta, lam*1e-9, a, d, mode);
+      const c=spectrum(lam);
+      R += c[0]*I; G += c[1]*I; B += c[2]*I;
+    });
+    if(colorMode==='white'){
+      const norm = lams.length/3;
+      R/=norm; G/=norm; B/=norm;
+    }
+    R=Math.min(255,R); G=Math.min(255,G); B=Math.min(255,B);
+    for(let py=0; py<r1.h; py++){
+      const idx=(py*halfW + px)*4;
+      img.data[idx]=R; img.data[idx+1]=G; img.data[idx+2]=B; img.data[idx+3]=255;
+    }
+  }
+  ctxP.putImageData(img, screenLeft, 0);
+  // mark center line
+  ctxP.strokeStyle='rgba(255,255,255,0.18)'; ctxP.lineWidth=1; ctxP.setLineDash([3,3]);
+  ctxP.beginPath(); ctxP.moveTo(screenLeft+halfW/2, 0); ctxP.lineTo(screenLeft+halfW/2, r1.h); ctxP.stroke();
+  ctxP.setLineDash([]);
+
+  // intensity curve (cvI)
+  const r2=fit(cvI, ctxI);
+  ctxI.fillStyle=css('--surface'); ctxI.fillRect(0,0,r2.w,r2.h);
+  ctxI.strokeStyle=css('--border'); ctxI.beginPath(); ctxI.moveTo(0, r2.h-12); ctxI.lineTo(r2.w, r2.h-12); ctxI.stroke();
+  // axis label
+  ctxI.fillStyle=css('--muted'); ctxI.font='10px Vazirmatn'; ctxI.textAlign='center';
+  ctxI.fillText('فاصله از مرکز (cm)', r2.w/2, r2.h-2);
+
+  ctxI.strokeStyle=css('--info'); ctxI.lineWidth=1.8;
+  ctxI.beginPath();
+  for(let px=0; px<r2.w; px++){
+    const yPos = -yMax + (2*yMax)*px/r2.w;
+    const theta = Math.atan(yPos/L);
+    let I=0;
+    lams.forEach(lam=>{ I += intensity(theta, lam*1e-9, a, d, mode); });
+    I /= lams.length;
+    const py = (r2.h-14) - I*(r2.h-22);
+    if(px===0) ctxI.moveTo(px, py); else ctxI.lineTo(px, py);
+  }
+  ctxI.stroke();
+  // tick labels
+  ctxI.fillStyle=css('--muted'); ctxI.font='10px Vazirmatn'; ctxI.textAlign='center';
+  for(let i=-3; i<=3; i++){
+    const px = r2.w/2 + (i/3)*(r2.w/2-10);
+    ctxI.fillText(fa(i), px, r2.h-14);
+  }
+
+  // numerical readout
+  const lam0 = (colorMode==='white') ? 550e-9 : parseFloat(colorMode)*1e-9;
+  // single slit: first minimum at sin(theta) = lam/a
+  const yMin = L * Math.tan(Math.asin(Math.min(1, lam0/a)));
+  // central peak width = 2*yMin
+  $('rW').innerHTML = fa((2*yMin*1000).toFixed(2))+' mm';
+  if(mode==='grating'){
+    // grating maxima separation = lam*L/d
+    const dy = lam0*L/d * 1000;
+    $('rDy').innerHTML = fa(dy.toFixed(2))+' mm';
+    $('rowD').style.display='grid';
+    $('D').style.display='block';
+  } else {
+    $('rDy').innerHTML='—';
+    $('rowD').style.display='none';
+    $('D').style.display='none';
+  }
+}
+
+['A','D','L'].forEach(id=>{
+  $(id).addEventListener('input', e=>{
+    const v=parseFloat(e.target.value);
+    if(id==='A'){ a=v*1e-6; $('vA').textContent=fa(v); }
+    if(id==='D'){ d=v*1e-6; $('vD').textContent=fa(v); }
+    if(id==='L'){ L=v; $('vL').textContent=fa(v.toFixed(1)); }
+    draw();
+  });
+});
+$('mode').addEventListener('change', e=>{ mode=e.target.value; draw(); });
+$('color').addEventListener('change', e=>{ colorMode=e.target.value; draw(); });
+window.addEventListener('resize', draw);
+draw();
+</script>
+</body>
+</html>

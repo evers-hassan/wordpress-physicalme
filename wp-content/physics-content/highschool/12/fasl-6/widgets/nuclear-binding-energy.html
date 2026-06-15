@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>منحنی انرژی بستگی به ازای نوکلئون</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+<style>
+:root {
+  --bg: #ffffff; --surface: #f4f3ef; --text: #1a1a18; --muted: #5f5e5a;
+  --border: #e0ded7; --info: #185fa5; --info-bg: #e6f1fb;
+  --ok: #1d9e75; --ok-bg: #e3f5ed; --warn: #c9302c;
+  --fission: #d4a847; --fusion: #c33;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+          --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+          --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e58b88;
+          --fission:#e0b860; --fusion:#ee6a6a; }
+}
+body { margin: 0; padding: 16px; font-family: Vazirmatn, Tahoma, system-ui, sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.7; }
+h2 { color: var(--info); margin: 0 0 12px; font-size: 1.15em; }
+.app { max-width: 780px; margin: 0 auto; }
+.canvas-wrap { background: var(--surface); border-radius: 12px; padding: 12px;
+  border: 1px solid var(--border); }
+canvas { display: block; width: 100%; height: 360px; cursor: crosshair; }
+.info-box { background: var(--info-bg); color: var(--info); padding: 12px 14px;
+  border-radius: 10px; margin-top: 12px; font-size: 14px; min-height: 80px; }
+.info-box.empty { color: var(--muted); text-align: center; }
+.info-box h3 { margin: 0 0 6px; font-size: 16px; }
+.info-box .row { display: flex; justify-content: space-between; padding: 2px 0;
+  border-bottom: 1px dashed rgba(255,255,255,0.18); }
+.info-box .row:last-child { border-bottom: none; }
+.legend { display: flex; gap: 16px; justify-content: center; margin-top: 8px;
+  font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 4px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.hint { text-align: center; color: var(--muted); font-size: 12px; margin: 6px 0 12px; }
+@media (max-width: 620px) { canvas { height: 300px; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <h2>📈 منحنی انرژی بستگی به ازای نوکلئون</h2>
+  <p class="hint">🖱️ روی هر نقطه کلیک کن تا اطلاعات کاملِ هسته رو ببینی</p>
+
+  <div class="canvas-wrap"><canvas id="cv"></canvas></div>
+
+  <div class="legend">
+    <span><span class="dot" style="background:#1d9e75"></span> پایدار</span>
+    <span><span class="dot" style="background:#d4a847"></span> $\alpha$-زا</span>
+    <span><span class="dot" style="background:#c33"></span> $\beta$-زا</span>
+    <span><span class="dot" style="background:var(--info)"></span> هسته‌های نشانه</span>
+  </div>
+
+  <div class="info-box empty" id="info">
+    ← روی یک نقطه کلیک کن تا اطلاعاتش ظاهر بشه
+  </div>
+</div>
+
+<script>
+// داده‌های انتخاب‌شده: A, B/A (MeV/nucleon), رنگ، نام، Z، نمادگذاری، توضیح
+const NUCLEI = [
+  {A:2,  BA:1.11, color:'#1d9e75', name:'دوتریوم', Z:1, sym:'²₁H',  desc:'هیدروژنِ سنگین، پایدار، سوختِ گداخت', stable:true},
+  {A:3,  BA:2.83, color:'#1d9e75', name:'هلیوم-۳', Z:2, sym:'³₂He', desc:'پایدار ولی نادر؛ محصولِ زنجیرهٔ p-p', stable:true},
+  {A:4,  BA:7.07, color:'#185fa5', name:'هلیوم-۴', Z:2, sym:'⁴₂He', desc:'⭐ هسته‌ای بسیار پایدار. ذره‌ی α هم همین است.', stable:true, marker:true},
+  {A:6,  BA:5.33, color:'#1d9e75', name:'لیتیوم-۶', Z:3, sym:'⁶₃Li', desc:'پایدار، در سوختِ گداخت کاربرد دارد', stable:true},
+  {A:7,  BA:5.61, color:'#1d9e75', name:'لیتیوم-۷', Z:3, sym:'⁷₃Li', desc:'پایدار', stable:true},
+  {A:9,  BA:6.46, color:'#1d9e75', name:'بریلیوم-۹', Z:4, sym:'⁹₄Be', desc:'پایدار', stable:true},
+  {A:12, BA:7.68, color:'#185fa5', name:'کربن-۱۲', Z:6, sym:'¹²₆C', desc:'⭐ تعریفِ یکای جرم اتمی $u$ بر اساس همینه', stable:true, marker:true},
+  {A:14, BA:7.49, color:'#c33', name:'کربن-۱۴', Z:6, sym:'¹⁴₆C', desc:'پرتوزای β⁻ — سن‌سنجی باستان‌شناسی، T₁/₂=5730y', stable:false},
+  {A:16, BA:7.98, color:'#1d9e75', name:'اکسیژن-۱۶', Z:8, sym:'¹⁶₈O', desc:'پایدارترین ایزوتوپ اکسیژن', stable:true},
+  {A:23, BA:8.11, color:'#1d9e75', name:'سدیم-۲۳', Z:11, sym:'²³₁₁Na', desc:'تنها ایزوتوپ پایدار سدیم', stable:true},
+  {A:27, BA:8.33, color:'#1d9e75', name:'آلومینیوم-۲۷', Z:13, sym:'²⁷₁₃Al', desc:'پایدار', stable:true},
+  {A:40, BA:8.55, color:'#1d9e75', name:'کلسیم-۴۰', Z:20, sym:'⁴⁰₂₀Ca', desc:'فراوون در استخوان‌ها', stable:true},
+  {A:56, BA:8.79, color:'#185fa5', name:'آهن-۵۶', Z:26, sym:'⁵⁶₂₆Fe', desc:'⭐ پایدارترین هسته! اوج نمودار. عناصرِ سنگین‌تر از آن در ابرنواخترها ساخته می‌شن.', stable:true, marker:true},
+  {A:62, BA:8.79, color:'#1d9e75', name:'نیکل-۶۲', Z:28, sym:'⁶²₂₈Ni', desc:'تکنیکاً پایدارترین، تقریباً برابر با آهن-۵۶', stable:true},
+  {A:84, BA:8.71, color:'#1d9e75', name:'کریپتون-۸۴', Z:36, sym:'⁸⁴₃₆Kr', desc:'پایدار', stable:true},
+  {A:92, BA:8.65, color:'#185fa5', name:'کریپتون-۹۲', Z:36, sym:'⁹²₃₆Kr', desc:'محصولِ شکافت U-235', stable:false, marker:true},
+  {A:107,BA:8.55, color:'#1d9e75', name:'نقره-۱۰۷', Z:47, sym:'¹⁰⁷₄₇Ag', desc:'پایدار', stable:true},
+  {A:120,BA:8.50, color:'#1d9e75', name:'قلع-۱۲۰', Z:50, sym:'¹²⁰₅₀Sn', desc:'پایدار', stable:true},
+  {A:137,BA:8.39, color:'#c33', name:'سزیم-۱۳۷', Z:55, sym:'¹³⁷₅₅Cs', desc:'پرتوزای β⁻، پسماند راکتورها (T₁/₂=30y)', stable:false},
+  {A:141,BA:8.32, color:'#185fa5', name:'باریوم-۱۴۱', Z:56, sym:'¹⁴¹₅₆Ba', desc:'محصولِ شکافت U-235', stable:false, marker:true},
+  {A:197,BA:7.92, color:'#1d9e75', name:'طلا-۱۹۷', Z:79, sym:'¹⁹⁷₇₉Au', desc:'پایدار، ساخته شده در ابرنواختر', stable:true},
+  {A:206,BA:7.88, color:'#1d9e75', name:'سرب-۲۰۶', Z:82, sym:'²⁰⁶₈₂Pb', desc:'محصول نهایی زنجیرهٔ واپاشی U-238', stable:true},
+  {A:208,BA:7.87, color:'#1d9e75', name:'سرب-۲۰۸', Z:82, sym:'²⁰⁸₈₂Pb', desc:'سنگین‌ترین هسته‌ی پایدار', stable:true},
+  {A:226,BA:7.66, color:'#d4a847', name:'رادیوم-۲۲۶', Z:88, sym:'²²⁶₈₈Ra', desc:'پرتوزای α (T₁/₂=1600y)، کشفِ ماری کوری', stable:false},
+  {A:232,BA:7.62, color:'#d4a847', name:'توریوم-۲۳۲', Z:90, sym:'²³²₉₀Th', desc:'α-زا، T₁/₂=14 میلیارد سال', stable:false},
+  {A:235,BA:7.59, color:'#185fa5', name:'اورانیوم-۲۳۵', Z:92, sym:'²³⁵₉₂U', desc:'⭐ سوختِ راکتور و بمبِ هسته‌ای — شکافت‌پذیر', stable:false, marker:true},
+  {A:238,BA:7.57, color:'#d4a847', name:'اورانیوم-۲۳۸', Z:92, sym:'²³⁸₉₂U', desc:'α-زا، T₁/₂=4.47 میلیارد سال، ۹۹.۳٪ اورانیوم طبیعی', stable:false},
+  {A:239,BA:7.56, color:'#d4a847', name:'پلوتونیوم-۲۳۹', Z:94, sym:'²³⁹₉₄Pu', desc:'شکافت‌پذیر، سوختِ راکتورهای پیشرفته', stable:false},
+];
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const info = document.getElementById('info');
+let dpr = window.devicePixelRatio || 1;
+let W, H, plot;
+
+function getCSS(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function resize() {
+  const rect = cv.getBoundingClientRect();
+  cv.width = rect.width * dpr;
+  cv.height = rect.height * dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  W = rect.width;
+  H = rect.height;
+  plot = { left: 50, right: W-12, top: 18, bottom: H-32 };
+  draw();
+}
+
+// نگاشت داده به مختصات
+function x(A) {
+  return plot.left + (A / 245) * (plot.right - plot.left);
+}
+function y(BA) {
+  return plot.bottom - ((BA - 0) / 9.5) * (plot.bottom - plot.top);
+}
+
+function draw() {
+  ctx.clearRect(0,0,W,H);
+  const text = getCSS('--text');
+  const muted = getCSS('--muted');
+  const border = getCSS('--border');
+  const fission = getCSS('--fission');
+  const fusion = getCSS('--fusion');
+
+  // محورها
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(plot.left, plot.top);
+  ctx.lineTo(plot.left, plot.bottom);
+  ctx.lineTo(plot.right, plot.bottom);
+  ctx.stroke();
+
+  // خط‌چین گرید
+  ctx.strokeStyle = border;
+  ctx.setLineDash([3,3]);
+  for (let v=1; v<=9; v++) {
+    const yy = y(v);
+    ctx.beginPath();
+    ctx.moveTo(plot.left, yy);
+    ctx.lineTo(plot.right, yy);
+    ctx.stroke();
+  }
+  for (let A=50; A<=240; A+=50) {
+    const xx = x(A);
+    ctx.beginPath();
+    ctx.moveTo(xx, plot.top);
+    ctx.lineTo(xx, plot.bottom);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // برچسب محور
+  ctx.fillStyle = muted;
+  ctx.font = '11px Vazirmatn, sans-serif';
+  ctx.textAlign = 'center';
+  for (let A=50; A<=240; A+=50) {
+    ctx.fillText(A, x(A), plot.bottom + 16);
+  }
+  ctx.fillText('عدد جرمی A', (plot.left+plot.right)/2, H-4);
+  ctx.textAlign = 'right';
+  for (let v=2; v<=9; v+=1) {
+    ctx.fillText(v, plot.left-6, y(v)+4);
+  }
+  ctx.save();
+  ctx.translate(14, (plot.top+plot.bottom)/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.textAlign = 'center';
+  ctx.fillText('B/A (MeV/نوکلئون)', 0, 0);
+  ctx.restore();
+
+  // ناحیه گداخت/شکافت (پس‌زمینه)
+  ctx.fillStyle = fusion + '22';
+  ctx.fillRect(plot.left, plot.top, x(56)-plot.left, plot.bottom-plot.top);
+  ctx.fillStyle = fission + '22';
+  ctx.fillRect(x(56), plot.top, plot.right-x(56), plot.bottom-plot.top);
+  ctx.fillStyle = fusion;
+  ctx.font = 'bold 13px Vazirmatn, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('گداخت ☀️', (plot.left+x(56))/2, plot.top+18);
+  ctx.fillStyle = fission;
+  ctx.fillText('شکافت 💥', (x(56)+plot.right)/2, plot.top+18);
+
+  // منحنی مرجع (تقریبی برای پر کردنِ بین نقاط)
+  ctx.strokeStyle = muted;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4,3]);
+  ctx.beginPath();
+  let first = true;
+  // تقریب از خود NUCLEI
+  for (const n of NUCLEI) {
+    if (first) { ctx.moveTo(x(n.A), y(n.BA)); first=false; }
+    else ctx.lineTo(x(n.A), y(n.BA));
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // نقاط
+  for (const n of NUCLEI) {
+    ctx.fillStyle = n.color;
+    ctx.beginPath();
+    ctx.arc(x(n.A), y(n.BA), n.marker ? 6.5 : 4.5, 0, 2*Math.PI);
+    ctx.fill();
+    if (n.marker) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
+  // برچسب چند هسته‌ی کلیدی
+  ctx.fillStyle = text;
+  ctx.font = 'bold 11px Vazirmatn, sans-serif';
+  for (const n of NUCLEI) {
+    if (n.marker) {
+      ctx.textAlign = 'center';
+      ctx.fillText(n.name, x(n.A), y(n.BA) - 12);
+    }
+  }
+}
+
+cv.addEventListener('click', (e) => {
+  const rect = cv.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  let best = null, bestD = 20;
+  for (const n of NUCLEI) {
+    const dx = mx - x(n.A);
+    const dy = my - y(n.BA);
+    const d = Math.hypot(dx, dy);
+    if (d < bestD) { bestD = d; best = n; }
+  }
+  if (!best) return;
+  info.classList.remove('empty');
+  info.innerHTML =
+    `<h3>${best.name} — ${best.sym}</h3>` +
+    `<div class="row"><span>عدد اتمی $Z$</span><span><b>${best.Z}</b></span></div>` +
+    `<div class="row"><span>عدد جرمی $A$</span><span><b>${best.A}</b></span></div>` +
+    `<div class="row"><span>تعداد نوترون $N$</span><span><b>${best.A - best.Z}</b></span></div>` +
+    `<div class="row"><span>$E_b/A$</span><span><b>${best.BA.toFixed(2)} MeV/نوکلئون</b></span></div>` +
+    `<div class="row"><span>$E_b$ کل</span><span><b>${(best.BA * best.A).toFixed(1)} MeV</b></span></div>` +
+    `<div class="row"><span>پایداری</span><span><b>${best.stable ? '✅ پایدار' : '☢️ پرتوزا'}</b></span></div>` +
+    `<div style="margin-top:8px;padding-top:6px;border-top:1px dashed rgba(255,255,255,0.18)">${best.desc}</div>`;
+  if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([info]);
+});
+
+window.addEventListener('resize', resize);
+resize();
+</script>
+</body>
+</html>

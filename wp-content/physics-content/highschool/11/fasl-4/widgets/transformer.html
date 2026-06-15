@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ترانسفورماتور — نسبت دور و ولتاژ</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed; --warn:#a87800; --warn-bg:#fef6e0;
+    --primary:#185fa5; --secondary:#c43838; --core:#5f5e5a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e0b860; --warn-bg:#4a3a15;
+      --primary:#85b7eb; --secondary:#f06a60; --core:#a8a69e;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;
+  }
+  .wrap{max-width:780px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .layout{display:grid; grid-template-columns:1fr 240px; gap:14px;}
+  @media(max-width:680px){.layout{grid-template-columns:1fr;}}
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:340px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:13px; margin:8px 0 8px; color:var(--muted); text-transform:uppercase;}
+  .panel h3:first-child{margin-top:0;}
+  .slider-row{display:grid; grid-template-columns:1fr 50px; gap:6px; align-items:center; font-size:13px; margin-bottom:10px;}
+  .val{font-weight:700; text-align:left;}
+  .readout{display:flex; gap:8px; padding:10px 12px; flex-wrap:wrap; border-top:1px solid var(--border); background:var(--bg);}
+  .chip{flex:1 1 100px; background:var(--info-bg); color:var(--info); border-radius:8px; padding:7px 10px; text-align:center; font-size:12.5px;}
+  .chip b{display:block; font-size:15px; margin-top:1px;}
+  .chip.up{background:var(--ok-bg); color:var(--ok);}
+  .chip.down{background:var(--warn-bg); color:var(--warn);}
+  .verdict{padding:10px 12px; font-size:13px; line-height:1.6; border-top:1px solid var(--border); background:var(--bg); color:var(--muted);}
+</style>
+  <script id="mathjax-config">
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+           displayMath: [['$$','$$'], ['\\[','\\]']],
+           processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>ترانسفورماتور — $V_2/V_1 = N_2/N_1$ 🎩⚡</h2>
+  <p class="sub">تعداد دور پیچه‌ها رو تغییر بده، ولتاژ و جریان خروجی رو ببین.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <canvas id="cv"></canvas>
+      <div class="readout">
+        <div class="chip">V₁ ورودی<b id="rV1">۲۲۰ V</b></div>
+        <div class="chip" id="cV2">V₂ خروجی<b id="rV2">۱۲ V</b></div>
+        <div class="chip">I₁<b id="rI1">۰.۰۵ A</b></div>
+        <div class="chip">I₂<b id="rI2">۱ A</b></div>
+      </div>
+      <div class="verdict" id="verdict">یک ترانسِ کاهنده‌ی نمونه — تعداد دورها رو با اسلایدر تغییر بده!</div>
+    </div>
+
+    <div class="panel">
+      <h3>پیچهٔ اولیه N₁</h3>
+      <div class="slider-row">
+        <input type="range" id="n1" min="100" max="5000" step="100" value="2200">
+        <span class="val" id="vN1">۲۲۰۰</span>
+      </div>
+      <h3>پیچهٔ ثانویه N₂</h3>
+      <div class="slider-row">
+        <input type="range" id="n2" min="20" max="5000" step="20" value="120">
+        <span class="val" id="vN2">۱۲۰</span>
+      </div>
+      <h3>ولتاژ ورودی V₁</h3>
+      <div class="slider-row">
+        <input type="range" id="v1" min="12" max="500" step="1" value="220">
+        <span class="val" id="vV1">۲۲۰</span>
+      </div>
+      <h3>توان مصرفی (W)</h3>
+      <div class="slider-row">
+        <input type="range" id="p" min="1" max="200" step="1" value="12">
+        <span class="val" id="vP">۱۲</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+function resize(){
+  const dpr = window.devicePixelRatio||1;
+  cv.width = cv.clientWidth*dpr; cv.height = cv.clientHeight*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize', resize); resize();
+
+let N1 = 2200, N2 = 120, V1 = 220, P = 12;
+
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || '#000';}
+function toFa(s){return (''+s).replace(/[0-9]/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);}
+
+function draw(){
+  const W = cv.clientWidth, H = cv.clientHeight;
+  ctx.clearRect(0,0,W,H);
+
+  // Iron core (rectangle frame)
+  const cx = W/2, cy = H/2;
+  const coreW = 240, coreH = 200;
+  const x = cx - coreW/2, y = cy - coreH/2;
+  // outer
+  ctx.fillStyle = getCss('--core');
+  ctx.fillRect(x, y, coreW, coreH);
+  // inner hole
+  ctx.fillStyle = getCss('--surface');
+  ctx.fillRect(x+40, y+30, coreW-80, coreH-60);
+
+  // Primary coil (left leg)
+  drawCoil(x+20, cy, 25, coreH-70, N1, getCss('--primary'));
+  // Secondary coil (right leg)
+  drawCoil(x+coreW-20, cy, 25, coreH-70, N2, getCss('--secondary'));
+
+  // Labels
+  ctx.fillStyle = getCss('--primary'); ctx.font='bold 13px Vazirmatn'; ctx.textAlign='center';
+  ctx.fillText('اولیه', x+20, y - 8);
+  ctx.fillText('N₁=' + toFa(N1), x+20, y + coreH + 18);
+  ctx.fillStyle = getCss('--secondary');
+  ctx.fillText('ثانویه', x+coreW-20, y - 8);
+  ctx.fillText('N₂=' + toFa(N2), x+coreW-20, y + coreH + 18);
+
+  // Show input AC source on left
+  ctx.strokeStyle = getCss('--primary'); ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(x+20-15, cy-coreH/2+30); ctx.lineTo(20, cy-coreH/2+30);
+  ctx.moveTo(20, cy-coreH/2+30); ctx.lineTo(20, cy+coreH/2-30);
+  ctx.moveTo(20, cy+coreH/2-30); ctx.lineTo(x+20-15, cy+coreH/2-30);
+  ctx.stroke();
+  // AC symbol
+  ctx.beginPath(); ctx.arc(20, cy, 18, 0, Math.PI*2); ctx.stroke();
+  ctx.font='bold 14px Vazirmatn'; ctx.fillStyle = getCss('--primary'); ctx.textAlign='center';
+  ctx.fillText('~', 20, cy+5);
+  ctx.font='11px Vazirmatn';
+  ctx.fillText('V₁=' + toFa(V1) + 'V', 20, cy-25);
+
+  // Output to load on right
+  ctx.strokeStyle = getCss('--secondary');
+  ctx.beginPath();
+  ctx.moveTo(x+coreW-20+15, cy-coreH/2+30); ctx.lineTo(W-30, cy-coreH/2+30);
+  ctx.moveTo(W-30, cy-coreH/2+30); ctx.lineTo(W-30, cy+coreH/2-30);
+  ctx.moveTo(W-30, cy+coreH/2-30); ctx.lineTo(x+coreW-20+15, cy+coreH/2-30);
+  ctx.stroke();
+  // Load (resistor box)
+  ctx.fillStyle = getCss('--bg');
+  ctx.fillRect(W-50, cy-15, 40, 30);
+  ctx.strokeStyle = getCss('--secondary');
+  ctx.strokeRect(W-50, cy-15, 40, 30);
+  ctx.font='10px Vazirmatn'; ctx.fillStyle = getCss('--secondary');
+  ctx.fillText('مصرف', W-30, cy+45);
+
+  // Flux indicator inside core
+  const dir = Math.sin(performance.now()/200);
+  ctx.strokeStyle = getCss('--ok'); ctx.lineWidth = 2; ctx.globalAlpha = 0.4 + 0.4*Math.abs(dir);
+  ctx.beginPath();
+  ctx.moveTo(x + 65, cy);
+  ctx.lineTo(x + coreW - 65, cy);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = getCss('--ok'); ctx.font='bold 12px Vazirmatn'; ctx.fillText('Φ متناوب', cx, cy-5);
+
+  // Update readouts
+  const V2 = V1 * N2 / N1;
+  const I2 = P / V2;
+  const I1 = P / V1;
+  document.getElementById('rV1').textContent = toFa(V1) + ' V';
+  document.getElementById('rV2').textContent = toFa(V2.toFixed(1)) + ' V';
+  document.getElementById('rI1').textContent = toFa(I1.toFixed(3)) + ' A';
+  document.getElementById('rI2').textContent = toFa(I2.toFixed(2)) + ' A';
+  const cV2 = document.getElementById('cV2');
+  cV2.className = 'chip ' + (V2 > V1 ? 'up' : 'down');
+  // verdict
+  const v = document.getElementById('verdict');
+  if(N2 > N1){
+    v.innerHTML = '↗️ <b>ترانس افزاینده</b>: $N_2 > N_1$ → ولتاژ بالا، جریان پایین. کاربرد: انتقال برق در فاصلهٔ دور.';
+  } else if(N2 < N1){
+    v.innerHTML = '↘️ <b>ترانس کاهنده</b>: $N_2 < N_1$ → ولتاژ پایین، جریان بالا. کاربرد: آداپتورها، حلقهٔ خانگی.';
+  } else {
+    v.innerHTML = '⚖️ ترانس <b>۱:۱</b> — فقط جداسازی الکتریکی، تغییری در ولتاژ نمی‌ده.';
+  }
+
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+function drawCoil(cx, cy, w, h, n, color){
+  // Approximate visual density of windings
+  const density = Math.min(20, Math.max(5, n/200));
+  const turns = Math.round(density);
+  ctx.strokeStyle = color; ctx.lineWidth = 2;
+  for(let i=0; i<turns; i++){
+    const y = cy - h/2 + i * (h/turns);
+    ctx.beginPath();
+    ctx.ellipse(cx, y + h/(2*turns), w, h/(2*turns) - 1, 0, 0, Math.PI*2);
+    ctx.stroke();
+  }
+}
+
+document.getElementById('n1').oninput = e=>{ N1 = +e.target.value; document.getElementById('vN1').textContent = toFa(N1); };
+document.getElementById('n2').oninput = e=>{ N2 = +e.target.value; document.getElementById('vN2').textContent = toFa(N2); };
+document.getElementById('v1').oninput = e=>{ V1 = +e.target.value; document.getElementById('vV1').textContent = toFa(V1); };
+document.getElementById('p').oninput = e=>{ P = +e.target.value; document.getElementById('vP').textContent = toFa(P); };
+</script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌ساز چگالی</title>
+<style>
+  :root{--bg:#fff;--surface:#f4f3ef;--text:#1a1a18;--muted:#5f5e5a;--hint:#9b9a93;--border-strong:#cbc9c0;--info:#185fa5;--go:#1d9e75;--sink:#d85a30;}
+  @media (prefers-color-scheme:dark){:root{--bg:#1f1e1c;--surface:#2a2926;--text:#f0efe9;--muted:#a8a69e;--hint:#76746d;--border-strong:#4a4844;--info:#85b7eb;--go:#5dcaa5;--sink:#f0997b;}}
+  *{box-sizing:border-box;}
+  body{margin:0;padding:16px;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;background:var(--bg);color:var(--text);}
+  .row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  label{font-size:13px;color:var(--muted);white-space:nowrap;min-width:80px;}
+  input[type=range]{flex:1;accent-color:var(--info);}
+  .val{font-family:monospace;font-size:13px;min-width:54px;color:var(--info);}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+  .stat{background:var(--surface);border-radius:8px;padding:1rem;text-align:center;}
+  .stat .lbl{font-size:13px;color:var(--muted);}
+  .stat .big{font-size:24px;font-weight:600;}
+  .stat .unit{font-size:13px;color:var(--muted);}
+  canvas{width:100%;height:auto;background:var(--surface);border-radius:12px;display:block;}
+  .cap{font-size:13px;color:var(--hint);margin:10px 0 0;line-height:1.7;text-align:center;}
+</style>
+</head>
+<body>
+  <div class="row"><label>جرم (g)</label><input type="range" min="10" max="500" value="100" step="10" id="m"><span class="val" id="mout">۱۰۰</span></div>
+  <div class="row"><label>حجم (cm³)</label><input type="range" min="10" max="500" value="100" step="10" id="v"><span class="val" id="vout">۱۰۰</span></div>
+  <div class="cards">
+    <div class="stat"><div class="lbl">چگالی</div><div class="big"><span id="rho">۱.۰۰</span> <span class="unit">g/cm³</span></div></div>
+    <div class="stat"><div class="lbl">در آب</div><div class="big" id="float" style="font-size:18px;padding-top:4px;">شناور</div></div>
+  </div>
+  <canvas id="cv" width="660" height="200"></canvas>
+  <p class="cap">هر چی نقطه‌ها توی مکعب فشرده‌تر باشن، چگالی بیشتره. چگالیِ آب ۱ g/cm³ ـه — کمتر از اون یعنی شناور، بیشتر یعنی غرق.</p>
+<script>
+  var faNum=function(s){return String(s).replace(/[0-9]/g,function(d){return "۰۱۲۳۴۵۶۷۸۹"[d];});};
+  var cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+  var mEl=document.getElementById("m"),vEl=document.getElementById("v");
+  var mout=document.getElementById("mout"),vout=document.getElementById("vout");
+  var rhoEl=document.getElementById("rho"),floatEl=document.getElementById("float");
+  function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||"#888";}
+  function draw(){
+    var m=+mEl.value,v=+vEl.value,rho=m/v;
+    mout.textContent=faNum(String(m));vout.textContent=faNum(String(v));
+    rhoEl.textContent=faNum(rho.toFixed(2));
+    if(rho<1){floatEl.textContent="شناور 🛟";floatEl.style.color=css("--go");}
+    else if(rho>1){floatEl.textContent="غرق 🪨";floatEl.style.color=css("--sink");}
+    else{floatEl.textContent="مرز";floatEl.style.color=css("--muted");}
+    ctx.clearRect(0,0,cv.width,cv.height);
+    var bx=cv.width/2-80,by=20,bs=160;
+    ctx.strokeStyle=css("--border-strong");ctx.lineWidth=2;ctx.strokeRect(bx,by,bs,bs);
+    var n=Math.round(rho*40);if(n>400)n=400;if(n<3)n=3;
+    ctx.fillStyle="#378add";
+    for(var i=0;i<n;i++){var x=bx+6+Math.random()*(bs-12),y=by+6+Math.random()*(bs-12);ctx.beginPath();ctx.arc(x,y,2.4,0,7);ctx.fill();}
+  }
+  mEl.addEventListener("input",draw);vEl.addEventListener("input",draw);draw();
+</script>
+</body>
+</html>

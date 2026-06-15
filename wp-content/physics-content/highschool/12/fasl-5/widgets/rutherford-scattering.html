@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>پراکندگی رادرفورد — شبیه‌ساز</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+<style>
+:root { --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a; --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; }
+@media (prefers-color-scheme: dark) { :root { --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e; --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; } }
+body { margin: 0; padding: 16px; font-family: Vazirmatn, Tahoma, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+h2 { color: var(--info); margin: 0 0 14px; font-size: 1.2em; }
+.app { max-width: 760px; margin: 0 auto; }
+.controls { background: var(--surface); border-radius: 12px; padding: 14px; border: 1px solid var(--border); margin-bottom: 14px; display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+.ctrl label { font-size: 13px; color: var(--muted); }
+.ctrl input[type=range] { width: 100%; }
+.ctrl button { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: inherit; cursor: pointer; width: 100%; }
+.ctrl button.active { background: var(--info); color: white; border-color: var(--info); }
+.canvas-wrap { background: #0a0a14; border-radius: 12px; padding: 8px; margin-bottom: 12px; }
+canvas { display: block; width: 100%; height: 360px; border-radius: 8px; }
+.stats { background: var(--info-bg); color: var(--info); padding: 10px; border-radius: 8px; text-align: center; font-size: 13px; }
+.stats b { font-size: 15px; }
+@media (max-width:620px){ .controls { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <h2>🎯 پراکندگی رادرفورد</h2>
+
+  <div class="controls">
+    <div class="ctrl">
+      <label>مدل اتم:</label>
+      <button id="thomson">کلوچه‌ کشمشی (تامسون)</button>
+    </div>
+    <div class="ctrl">
+      <label>&nbsp;</label>
+      <button id="rutherford" class="active">هسته‌ای (رادرفورد)</button>
+    </div>
+    <div class="ctrl">
+      <label>سرعت ذرات آلفا: <span id="vL">۱۰</span></label>
+      <input type="range" id="v" min="3" max="20" value="10">
+    </div>
+    <div class="ctrl">
+      <label>تعداد ذرات در ثانیه: <span id="rL">۱۰</span></label>
+      <input type="range" id="rate" min="2" max="30" value="10">
+    </div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="cv" width="720" height="360"></canvas>
+  </div>
+
+  <div class="stats">
+    کل ذرات شلیک‌شده: <b id="total">0</b> &nbsp;|&nbsp;
+    منحرف بیش از ۱۰°: <b id="def">0</b> &nbsp;|&nbsp;
+    بازگشته (>۹۰°): <b id="back">0</b>
+  </div>
+
+  <div style="background:var(--surface);padding:12px;border-radius:10px;margin-top:12px;border:1px solid var(--border);font-size:14px;">
+    <b>توضیح:</b> ذرات آلفا (سبز) از سمت چپ شلیک می‌شن. در مدل <b>تامسون</b>، بار مثبت در کلِ اتم پخشه — انحرافِ شدید نباید پیش بیاد. در مدل <b>رادرفورد</b>، بار مثبت در یک هسته‌ی کوچک متمرکزه — بعضی ذرات منحرفِ شدید می‌شن. این تفاوت همون چیزیه که رادرفورد، گایگر و مارسدن تو ۱۹۰۹ دیدن.
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var DPR = Math.max(1, window.devicePixelRatio||1);
+  function fit(){ var w = cv.clientWidth, h = cv.clientHeight; cv.width = w*DPR; cv.height = h*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); }
+  window.addEventListener('resize', fit);
+
+  var alphas = [];
+  var trails = [];
+  var total = 0, deflected = 0, backscat = 0;
+  var v0 = 10, rate = 10;
+  var model = 'rutherford';
+
+  document.getElementById('thomson').addEventListener('click', function(){
+    model='thomson'; this.classList.add('active'); document.getElementById('rutherford').classList.remove('active');
+  });
+  document.getElementById('rutherford').addEventListener('click', function(){
+    model='rutherford'; this.classList.add('active'); document.getElementById('thomson').classList.remove('active');
+  });
+  document.getElementById('v').addEventListener('input', function(){
+    v0 = parseInt(this.value); document.getElementById('vL').textContent = v0.toString().replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
+  });
+  document.getElementById('rate').addEventListener('input', function(){
+    rate = parseInt(this.value); document.getElementById('rL').textContent = rate.toString().replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
+  });
+
+  // Nuclei positions (a grid representing gold foil)
+  function nuclei(){
+    var w = cv.clientWidth, h = cv.clientHeight;
+    var arr = [];
+    for(var i=0;i<5;i++){
+      arr.push({x: w*0.4 + i*30 - 60, y: h*0.5});
+      arr.push({x: w*0.4 + i*30 - 60, y: h*0.5 - 40});
+      arr.push({x: w*0.4 + i*30 - 60, y: h*0.5 + 40});
+    }
+    return arr;
+  }
+  var NUCLEI = null;
+
+  function spawn(){
+    var w = cv.clientWidth, h = cv.clientHeight;
+    alphas.push({
+      x: 0,
+      y: h*0.5 + (Math.random()-0.5)*120,
+      vx: v0*0.5,
+      vy: 0,
+      countedDef:false, countedBack:false
+    });
+    total++;
+    document.getElementById('total').textContent = total;
+  }
+
+  var lastT=0, acc=0;
+  function loop(t){
+    if(!lastT) lastT = t;
+    var dt = Math.min(50, t-lastT); lastT=t;
+    acc += dt*rate/1000;
+    while(acc>=1){ spawn(); acc-=1; }
+    draw(dt);
+    requestAnimationFrame(loop);
+  }
+
+  function draw(dt){
+    var w = cv.clientWidth, h = cv.clientHeight;
+    if(!NUCLEI) NUCLEI = nuclei();
+    ctx.fillStyle='#0a0a14'; ctx.fillRect(0,0,w,h);
+
+    // foil region
+    if(model === 'thomson'){
+      ctx.fillStyle='rgba(255,180,100,0.25)';
+      ctx.fillRect(w*0.32, h*0.5-80, w*0.16, 160);
+      ctx.strokeStyle='#cfa75f';
+      ctx.strokeRect(w*0.32, h*0.5-80, w*0.16, 160);
+      // small electrons-as-raisins inside
+      for(var i=0;i<25;i++){
+        ctx.fillStyle='#5eb9ff';
+        var rx = w*0.32 + (i*53%(w*0.16));
+        var ry = h*0.5 - 80 + (i*37%160);
+        ctx.beginPath(); ctx.arc(rx,ry,2,0,Math.PI*2); ctx.fill();
+      }
+    } else {
+      ctx.fillStyle='rgba(255,180,100,0.10)';
+      ctx.fillRect(w*0.32, h*0.5-80, w*0.16, 160);
+      NUCLEI.forEach(function(n){
+        ctx.fillStyle='#ff7855';
+        ctx.shadowColor='#ff7855'; ctx.shadowBlur=10;
+        ctx.beginPath(); ctx.arc(n.x, n.y, 4, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur=0;
+      });
+    }
+
+    // labels
+    ctx.fillStyle='#fff'; ctx.font='12px Vazirmatn, Tahoma'; ctx.textAlign='left';
+    ctx.fillText('چشمه‌ی آلفا', 6, 18);
+    ctx.fillText('ورقه‌ی طلا', w*0.36, h*0.5-90);
+    ctx.fillText('آشکارساز', w-110, 18);
+
+    // alphas update
+    alphas.forEach(function(a){
+      if(model === 'rutherford'){
+        // Coulomb-like force from each nucleus when nearby
+        NUCLEI.forEach(function(n){
+          var dx = a.x - n.x, dy = a.y - n.y;
+          var r2 = dx*dx + dy*dy;
+          if(r2 < 1500){
+            var r = Math.sqrt(r2);
+            // approximate impulse with smoother near-field
+            var k = 8000 / (r2 + 30) / r;
+            a.vx += dx * k * (dt/16);
+            a.vy += dy * k * (dt/16);
+          }
+        });
+      } else {
+        // Thomson: very weak deflection
+        if(a.x > w*0.32 && a.x < w*0.48){
+          a.vy += (Math.random()-0.5) * 0.05;
+        }
+      }
+      a.x += a.vx * (dt/16);
+      a.y += a.vy * (dt/16);
+
+      // draw trail
+      ctx.strokeStyle = '#5dffa1';
+      ctx.lineWidth = 1.2;
+      ctx.fillStyle = '#5dffa1';
+      ctx.beginPath(); ctx.arc(a.x, a.y, 3, 0, Math.PI*2); ctx.fill();
+
+      // track stats
+      var angle = Math.atan2(a.vy, a.vx) * 180 / Math.PI;
+      if(Math.abs(angle) > 10 && !a.countedDef){
+        a.countedDef = true; deflected++;
+        document.getElementById('def').textContent = deflected;
+      }
+      if(a.vx < 0 && !a.countedBack){
+        a.countedBack = true; backscat++;
+        document.getElementById('back').textContent = backscat;
+      }
+    });
+
+    alphas = alphas.filter(function(a){ return a.x > -50 && a.x < w+50 && a.y > -50 && a.y < h+50; });
+  }
+
+  fit(); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌سازی برق‌نما (الکتروسکوپ)</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --pos:#d6453c; --neg:#2f6fd0; --metal:#9aa3ad; --glass:#cfe0f2; --rod:#c9a14a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --pos:#f06a60; --neg:#6aa0ee; --metal:#6b7480; --glass:#33424f; --rod:#b8923f;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8; animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .wrap{max-width:680px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  svg{display:block; width:100%; height:auto;}
+  .leaf, .rod, .knob-charge, .leaf-charge{transition:all .25s ease;}
+  .msg{padding:10px 12px; border-top:1px solid var(--border); font-size:14px; text-align:center; font-weight:600; min-height:22px;}
+  .controls{margin-top:14px; display:grid; gap:12px;}
+  .row{display:flex; justify-content:space-between; align-items:center; font-size:14px;}
+  .val{font-weight:700;}
+  input[type=range]{width:100%; accent-color:var(--info); height:6px;}
+  .btns{display:flex; gap:10px; flex-wrap:wrap;}
+  .btn{appearance:none;border:0;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px;color:#fff;
+       background:var(--info);padding:9px 14px;border-radius:10px;flex:1 1 auto;}
+  .btn.sign{background:var(--surface);color:var(--text);border:1.5px solid var(--border);}
+  .btn.sign.active{background:var(--info);color:#fff;border-color:var(--info);}
+  .btn.ghost{background:var(--muted);}
+  .btn.touch{background:var(--ok);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🔍 شبیه‌سازی: برق‌نما (الکتروسکوپ)</h2>
+  <p class="sub">میله‌ی باردار را با لغزنده به کلاهک نزدیک کن و ببین ورقه‌ها چطور باز می‌شوند. با «تماس» می‌توانی برق‌نما را باردار کنی.</p>
+
+  <div class="stage">
+    <svg id="svg" viewBox="0 0 320 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="برق‌نما">
+      <!-- میله‌ی باردار -->
+      <g id="rodG" class="rod">
+        <rect x="40" y="14" width="120" height="16" rx="8" fill="var(--rod)"/>
+        <text id="rodCharges" x="100" y="26" font-size="13" text-anchor="middle" font-family="Vazirmatn, sans-serif" fill="#fff"></text>
+      </g>
+
+      <!-- بدنه‌ی شیشه‌ای -->
+      <rect x="95" y="150" width="130" height="150" rx="14" fill="var(--glass)" opacity="0.5" stroke="var(--metal)" stroke-width="2"/>
+      <!-- درپوش/پایه‌ی فلزی -->
+      <rect x="120" y="140" width="80" height="14" rx="5" fill="var(--metal)"/>
+
+      <!-- کلاهک (گوی فلزی) -->
+      <circle id="knob" cx="160" cy="86" r="24" fill="var(--metal)"/>
+      <text id="knobCharges" class="knob-charge" x="160" y="90" font-size="14" text-anchor="middle" font-family="Vazirmatn, sans-serif"></text>
+      <!-- میله‌ی رابط -->
+      <rect x="156" y="108" width="8" height="120" fill="var(--metal)"/>
+
+      <!-- ورقه‌ها (لولا در نقطه‌ی ۱۶۰,۲۲۸) -->
+      <g id="leafL" class="leaf">
+        <rect x="152" y="228" width="8" height="62" rx="3" fill="var(--metal)"/>
+        <text class="leaf-charge" x="148" y="270" font-size="12" text-anchor="middle" font-family="Vazirmatn, sans-serif" id="leafChargeL"></text>
+      </g>
+      <g id="leafR" class="leaf">
+        <rect x="160" y="228" width="8" height="62" rx="3" fill="var(--metal)"/>
+        <text class="leaf-charge" x="172" y="270" font-size="12" text-anchor="middle" font-family="Vazirmatn, sans-serif" id="leafChargeR"></text>
+      </g>
+    </svg>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div class="controls">
+    <div class="row"><span>فاصله‌ی میله از کلاهک</span><span class="val">دور ↔ نزدیک</span></div>
+    <input type="range" id="dist" min="0" max="100" step="1" value="0">
+    <div class="btns">
+      <button class="btn sign active" id="signPos" type="button">میله: مثبت ➕</button>
+      <button class="btn sign" id="signNeg" type="button">میله: منفی ➖</button>
+    </div>
+    <div class="btns">
+      <button class="btn touch" id="touch" type="button">⚡ تماس بده (باردار کن)</button>
+      <button class="btn ghost" id="reset" type="button">↺ از نو</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var svg=document.getElementById('svg');
+  var distEl=document.getElementById('dist'), msg=document.getElementById('msg');
+  var signPos=document.getElementById('signPos'), signNeg=document.getElementById('signNeg');
+  var touch=document.getElementById('touch'), reset=document.getElementById('reset');
+  var rodG=document.getElementById('rodG'), rodCharges=document.getElementById('rodCharges');
+  var knobCharges=document.getElementById('knobCharges');
+  var leafL=document.getElementById('leafL'), leafR=document.getElementById('leafR');
+  var leafChargeL=document.getElementById('leafChargeL'), leafChargeR=document.getElementById('leafChargeR');
+  var rodSign=+1;      // +1 مثبت، -1 منفی
+  var charged=false;   // آیا با تماس باردار شده؟
+  var storedSign=0;
+
+  function rep(sym,k){ var s=''; for(var i=0;i<k;i++) s+=sym; return s; }
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  function render(){
+    var dist=+distEl.value;            // 0 دور .. 100 نزدیک
+    var prox=dist/100;
+    // جابه‌جاییِ میله به‌سمتِ پایین (نزدیک‌شدن به کلاهک)
+    rodG.setAttribute('transform','translate(0,'+(prox*88)+')');
+    rodCharges.textContent = rep(rodSign>0?'+':'−', 4);
+    rodCharges.setAttribute('fill', '#fff');
+
+    var posC=cssv('--pos'), negC=cssv('--neg');
+    var angle;
+
+    if(charged){
+      // حالتِ رسانش: برق‌نما باردار مانده، ورقه‌ها باز
+      angle=26;
+      var c = storedSign>0?posC:negC, sym = storedSign>0?'+':'−';
+      knobCharges.textContent=rep(sym,2); knobCharges.setAttribute('fill',c);
+      leafChargeL.textContent=sym; leafChargeR.textContent=sym;
+      leafChargeL.setAttribute('fill',c); leafChargeR.setAttribute('fill',c);
+      msg.textContent='برق‌نما با تماس باردار شد — ورقه‌ها باز می‌مانند، حتی اگر میله را دور کنی. ⚡';
+      msg.style.color=cssv('--ok');
+    } else {
+      // حالتِ القا: کلاهک بارِ ناهم‌نام، ورقه‌ها بارِ هم‌نامِ میله → باز می‌شوند
+      angle = 26*prox;
+      var knobSign = -rodSign;                  // القا: ناهم‌نام نزدیکِ میله
+      var leafSign = rodSign;                   // هم‌نامِ میله روی ورقه‌ها
+      var kc = knobSign>0?posC:negC, ks = knobSign>0?'+':'−';
+      var lc = leafSign>0?posC:negC, ls = leafSign>0?'+':'−';
+      if(prox<0.06){
+        knobCharges.textContent=''; leafChargeL.textContent=''; leafChargeR.textContent='';
+        msg.textContent='میله دور است — ورقه‌ها بسته‌اند.'; msg.style.color=cssv('--muted');
+      } else {
+        knobCharges.textContent=rep(ks,2); knobCharges.setAttribute('fill',kc);
+        leafChargeL.textContent=ls; leafChargeR.textContent=ls;
+        leafChargeL.setAttribute('fill',lc); leafChargeR.setAttribute('fill',lc);
+        msg.textContent='القا: کلاهک بارِ ناهم‌نام و ورقه‌ها بارِ هم‌نام می‌گیرند، پس همدیگر را می‌رانند و باز می‌شوند.';
+        msg.style.color=cssv('--info');
+      }
+    }
+    leafL.setAttribute('transform','rotate('+(-angle)+',160,228)');
+    leafR.setAttribute('transform','rotate('+(angle)+',160,228)');
+  }
+  function setSign(s){
+    rodSign=s;
+    signPos.classList.toggle('active', s>0);
+    signNeg.classList.toggle('active', s<0);
+    render();
+  }
+  signPos.addEventListener('click',function(){ setSign(1); });
+  signNeg.addEventListener('click',function(){ setSign(-1); });
+  touch.addEventListener('click',function(){
+    // تماس فقط وقتی میله نزدیک است معنا دارد
+    if(+distEl.value>40){ charged=true; storedSign=rodSign; }
+    render();
+  });
+  reset.addEventListener('click',function(){
+    charged=false; storedSign=0; distEl.value=0; render();
+  });
+  distEl.addEventListener('input', function(){ if(charged){charged=false;storedSign=0;} render(); });
+  render();
+})();
+</script>
+</body>
+</html>

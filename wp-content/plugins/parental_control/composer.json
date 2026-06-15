@@ -1,0 +1,17 @@
+{
+    "name": "hbvsoft/parental-customers",
+    "description": "parents can modrate childrens access to the contents",
+    "type": "project",
+    "license": "GPL-3.0",
+    "authors": [
+        {
+            "name": "Hassan Bagheri",
+            "email": "bagheri.h@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {},
+    "autoload": {
+        "psr-4": {"HBVSoft\\Pcpc\\Inc\\": "./inc"}
+    }
+}

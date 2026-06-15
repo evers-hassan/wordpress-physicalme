@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌سازی قانون کولن</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75;
+    --ok-bg:#e3f5ed; --hint-c:#a87800; --hint-bg:#fef6e0;
+    --pos:#d6453c; --neg:#2f6fd0; --force:#c2410c;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5;
+      --ok-bg:#1a4a35; --hint-c:#e0b860; --hint-bg:#4a3a15;
+      --pos:#f06a60; --neg:#6aa0ee; --force:#fb923c;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8;
+    animation:fadeIn .25s ease;
+  }
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; overflow:hidden;
+  }
+  canvas{display:block; width:100%; height:260px;}
+  .readout{
+    display:flex; gap:10px; flex-wrap:wrap; align-items:stretch;
+    padding:12px; border-top:1px solid var(--border);
+  }
+  .chip{
+    flex:1 1 140px; background:var(--info-bg); color:var(--info);
+    border-radius:10px; padding:8px 12px; text-align:center; font-weight:500;
+  }
+  .chip.kind{background:var(--ok-bg); color:var(--ok);}
+  .chip b{display:block; font-size:19px; font-weight:700; margin-top:2px;}
+  .controls{margin-top:14px; display:grid; gap:14px;}
+  .ctrl{display:grid; gap:6px;}
+  .ctrl .row{display:flex; justify-content:space-between; align-items:center; font-size:14px;}
+  .ctrl .val{font-weight:700;}
+  input[type=range]{
+    width:100%; accent-color:var(--info); height:6px;
+  }
+  .formula{
+    margin-top:14px; background:var(--hint-bg); color:var(--hint-c);
+    border-radius:10px; padding:10px 14px; font-size:14px; text-align:center;
+  }
+  .formula code{font-size:15px; direction:ltr; display:inline-block;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🧲 شبیه‌سازی تعاملی: قانون کولن</h2>
+  <p class="sub">بارها و فاصله را تغییر بده و ببین نیروی الکتریکی چطور عوض می‌شود. (فاصله را نصف کن — نیرو چند برابر می‌شود؟)</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">نیروی الکتریکی <b id="fVal">—</b></div>
+      <div class="chip kind" id="kindChip">نوع نیرو <b id="kindVal">—</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl">
+      <div class="row"><span>بارِ اول q₁</span><span class="val"><span id="q1Val"></span> µC</span></div>
+      <input type="range" id="q1" min="-10" max="10" step="1" value="5">
+    </div>
+    <div class="ctrl">
+      <div class="row"><span>بارِ دوم q₂</span><span class="val"><span id="q2Val"></span> µC</span></div>
+      <input type="range" id="q2" min="-10" max="10" step="1" value="5">
+    </div>
+    <div class="ctrl">
+      <div class="row"><span>فاصله r</span><span class="val"><span id="rVal"></span> cm</span></div>
+      <input type="range" id="r" min="2" max="12" step="1" value="6">
+    </div>
+  </div>
+
+  <div class="formula">
+    <code>F = k·|q₁·q₂| / r²</code> &nbsp;،&nbsp; k = ۹×۱۰⁹ N·m²/C²
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var q1El=document.getElementById('q1'), q2El=document.getElementById('q2'), rEl=document.getElementById('r');
+  var q1V=document.getElementById('q1Val'), q2V=document.getElementById('q2Val'), rV=document.getElementById('rVal');
+  var fVal=document.getElementById('fVal'), kindVal=document.getElementById('kindVal'), kindChip=document.getElementById('kindChip');
+  var k=9e9;
+  function toFa(s){return (''+s).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+  function fmtF(F){
+    if(F===0) return '۰';
+    if(F>=1000) return toFa((F/1000).toFixed(1))+'k';
+    if(F>=1) return toFa(F.toFixed(F<10?1:0));
+    return toFa(F.toFixed(2));
+  }
+  function arrow(x,y,dir,len,color){
+    if(len<2) return;
+    var ex=x+dir*len, hs=9;
+    ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=4; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(ex,y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ex,y); ctx.lineTo(ex-dir*hs,y-hs*0.75); ctx.lineTo(ex-dir*hs,y+hs*0.75); ctx.closePath(); ctx.fill();
+  }
+  function draw(){
+    var q1=+q1El.value, q2=+q2El.value, r=+rEl.value;
+    q1V.textContent=(q1>0?'+':'')+toFa(q1); q2V.textContent=(q2>0?'+':'')+toFa(q2); rV.textContent=toFa(r);
+
+    var F=k*Math.abs(q1*q2)*1e-12/Math.pow(r/100,2);
+    var Fmax=k*100*1e-12/Math.pow(2/100,2); // q=±10, r=2cm
+    fVal.textContent=fmtF(F)+' N';
+    var prod=q1*q2;
+    if(prod===0){kindVal.textContent='—'; kindChip.style.opacity=.5;}
+    else{kindVal.textContent= prod>0 ? 'دافعه ↔' : 'جاذبه →←'; kindChip.style.opacity=1;}
+
+    // canvas sizing (crisp)
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    var W=rect.width, H=rect.height, yc=H/2;
+    ctx.clearRect(0,0,W,H);
+
+    // positions
+    var gapMin=80, gapMax=W-150;
+    var gap=gapMin+(r-2)/10*(gapMax-gapMin);
+    var x1=W/2-gap/2, x2=W/2+gap/2;
+    var rad1=14+Math.abs(q1)/10*12, rad2=14+Math.abs(q2)/10*12;
+
+    // distance line
+    ctx.strokeStyle=cssv('--border'); ctx.lineWidth=2; ctx.setLineDash([5,5]);
+    ctx.beginPath(); ctx.moveTo(x1,yc); ctx.lineTo(x2,yc); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=cssv('--muted'); ctx.font='13px Vazirmatn, Tahoma, sans-serif'; ctx.textAlign='center';
+    ctx.fillText('r = '+toFa(r)+' cm', (x1+x2)/2, yc-12);
+
+    // force arrows (behind charges)
+    var len=(F/Fmax)*90; if(F>0) len=Math.max(len,10);
+    var fc=cssv('--force');
+    if(prod>0){ // repel
+      arrow(x1-rad1, yc, -1, len, fc);
+      arrow(x2+rad2, yc, +1, len, fc);
+    } else if(prod<0){ // attract
+      arrow(x1+rad1, yc, +1, len, fc);
+      arrow(x2-rad2, yc, -1, len, fc);
+    }
+
+    // charges
+    function charge(x,q,rad){
+      ctx.beginPath(); ctx.arc(x,yc,rad,0,Math.PI*2);
+      ctx.fillStyle = q>0?cssv('--pos'): q<0?cssv('--neg'):cssv('--muted');
+      ctx.fill();
+      ctx.fillStyle='#fff'; ctx.font='bold '+(rad)+'px Vazirmatn, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(q>0?'+':q<0?'−':'0', x, yc+1);
+      ctx.textBaseline='alphabetic';
+    }
+    charge(x1,q1,rad1); charge(x2,q2,rad2);
+  }
+  [q1El,q2El,rEl].forEach(function(el){el.addEventListener('input',draw);});
+  window.addEventListener('resize',draw);
+  draw();
+})();
+</script>
+</body>
+</html>

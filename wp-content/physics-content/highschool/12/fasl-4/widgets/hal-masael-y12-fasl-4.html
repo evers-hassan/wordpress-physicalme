@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>حل مسائل — فصل ۱ دوازدهم: حرکت بر خط راست</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --hint:#9b9a93; --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --hint-c:#a87800; --hint-bg:#fef6e0; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --check:#7a4dbd; --check-bg:#efe6f9; --bad:#c43838; --bad-bg:#fce5e5;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --hint:#76746d; --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --hint-c:#e0b860; --hint-bg:#4a3a15; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --check:#b08be8; --check-bg:#3a2858; --bad:#f0807d; --bad-bg:#4a1f1f; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.8;}
+  .problem{border:1px solid var(--border); border-radius:14px; padding:18px 20px;
+    margin-bottom:18px; background:var(--bg);}
+  .pnum{display:inline-block; background:var(--info-bg); color:var(--info);
+    font-weight:700; padding:2px 10px; border-radius:8px; font-size:13px; margin-bottom:8px;}
+  .pq{font-size:15.5px; margin:6px 0 14px; color:var(--text); line-height:1.85;}
+  .ptype{font-size:12px; color:var(--muted); margin-bottom:10px;}
+  .relate{font-size:13px; color:var(--muted); background:var(--surface);
+    padding:8px 12px; border-radius:8px; margin-bottom:12px; border-right:3px solid var(--info);}
+  .controls{margin:10px 0 4px; display:flex; flex-wrap:wrap; gap:8px;}
+  .btn{font-family:inherit; font-size:14px; padding:8px 16px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text);
+    cursor:pointer; transition:.15s;}
+  .btn:hover{background:var(--surface);}
+  .btn-hint{color:var(--hint-c); border-color:var(--hint-c);}
+  .btn-next{color:var(--info); border-color:var(--info);}
+  .btn-check{color:var(--check); border-color:var(--check);}
+  .btn:disabled{opacity:.4; cursor:not-allowed;}
+  .step{margin-top:12px; padding:12px 14px; border-radius:10px; background:var(--info-bg);
+    border-right:3px solid var(--info); animation:fadeIn .25s ease;}
+  .step b{color:var(--info);}
+  .hint-box{margin-top:12px; padding:12px 14px; border-radius:10px;
+    background:var(--hint-bg); border-right:3px solid var(--hint-c);
+    animation:fadeIn .25s ease;}
+  .hint-box b{color:var(--hint-c);}
+  .final{margin-top:12px; padding:14px; border-radius:10px; background:var(--ok-bg);
+    border-right:3px solid var(--ok); animation:fadeIn .25s ease;}
+  .final b{color:var(--ok);}
+  .check-box{margin-top:12px; padding:14px; border-radius:10px; background:var(--check-bg);
+    border-right:3px solid var(--check); animation:fadeIn .25s ease;}
+  .check-box b{color:var(--check);}
+  .check-row{display:flex; align-items:center; gap:8px; margin:6px 0; flex-wrap:wrap;}
+  .check-row label{min-width:24px; font-weight:600; color:var(--text);}
+  .check-row input{flex:1; min-width:120px; padding:7px 10px; border-radius:8px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text);
+    font-family:inherit; font-size:14px;}
+  .check-row .unit{font-size:13px; color:var(--muted); white-space:nowrap;}
+  .check-result{margin-top:10px; padding:10px 12px; border-radius:8px; font-size:14px;}
+  .check-result.ok{background:var(--ok-bg); color:var(--ok); border-right:3px solid var(--ok);}
+  .check-result.bad{background:var(--bad-bg); color:var(--bad); border-right:3px solid var(--bad);}
+  .check-result b{font-weight:700;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:none;}}
+  .label{font-size:11px; font-weight:700; letter-spacing:.5px; margin-bottom:4px;
+    display:inline-block;}
+  h1.page-title{font-size:22px; margin:8px 0 18px; color:var(--text);}
+  .intro{background:var(--surface); padding:14px 16px; border-radius:12px; margin-bottom:18px;
+    font-size:14px; color:var(--muted); line-height:1.8;}
+  .intro b{color:var(--text);}
+
+  /* ---- master-detail layout ---- */
+  .layout{display:grid; grid-template-columns:200px 1fr; gap:22px; align-items:start;}
+  @media (max-width:620px){ .layout{grid-template-columns:1fr;} }
+  .sidebar{background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:14px; position:sticky; top:16px; max-height:calc(100vh - 32px);
+    overflow-y:auto;}
+  .sidebar h2{font-size:13px; font-weight:700; color:var(--muted); letter-spacing:1px;
+    margin:0 0 10px; text-transform:uppercase; padding:0 4px;}
+  .sidebar ol{list-style:none; padding:0; margin:0; counter-reset:msc;}
+  .sidebar li{margin:2px 0;}
+  .sidebar .nav-btn{display:flex; align-items:center; gap:10px; width:100%;
+    text-align:right; font-family:inherit; font-size:14px; color:var(--text);
+    padding:9px 12px; background:transparent; border:none; border-radius:8px;
+    cursor:pointer; line-height:1.5; transition:.12s;}
+  .sidebar .nav-btn:hover{background:var(--bg);}
+  .sidebar .nav-btn.active{background:var(--info-bg); color:var(--info); font-weight:700;}
+  .sidebar .nav-btn .nb-num{flex-shrink:0; min-width:26px; height:26px;
+    border-radius:50%; background:var(--bg); color:var(--muted); display:flex;
+    align-items:center; justify-content:center; font-size:12px; font-weight:700;
+    border:1px solid var(--border);}
+  .sidebar .nav-btn.active .nb-num{background:var(--info); color:#fff; border-color:var(--info);}
+  .sidebar .nav-btn .nb-title{flex:1; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap;}
+  @media (max-width:620px){
+    .sidebar{position:relative; top:0; max-height:none;}
+    .sidebar ol{display:grid; grid-template-columns:repeat(auto-fill, minmax(56px,1fr)); gap:6px;}
+    .sidebar .nav-btn{justify-content:center; padding:8px 6px; font-size:13px;}
+    .sidebar .nav-btn .nb-title{display:none;}
+  }
+  .nav-arrows{display:flex; gap:10px; margin-top:18px; justify-content:space-between;}
+  .nav-arrows .btn{flex:1;}
+  .nav-arrows .btn:disabled{visibility:hidden;}
+</style>
+  <script id="mathjax-config">
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\(','\)']],
+           displayMath: [['$$','$$'], ['\[','\]']],
+           processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+  <h1 class="page-title">حل مسائل فصل ۴ — برهم‌کنش‌های موج 🌊🔁</h1>
+  <div class="intro">
+    اینجا هر مسئله رو می‌تونی <b>قدم‌به‌قدم</b> پیش بری. اگه گیر کردی <b>💡 راهنمایی</b> بگیر؛ اگه خودت حل کردی و فقط می‌خوای جوابتو چک کنی، رو <b>🔍 بررسی جواب من</b> کلیک کن. تلرانسِ بررسی حدودِ ۵٪ ـه تا اعدادِ رُند هم قبول بشن.
+  </div>
+  <div class="layout">
+    <aside class="sidebar">
+      <h2>فهرست مسائل</h2>
+      <ol id="nav-list"></ol>
+    </aside>
+    <main>
+      <div id="problems"></div>
+      <div class="nav-arrows">
+        <button class="btn" id="prev-btn">← مسئله‌ی قبلی</button>
+        <button class="btn btn-next" id="next-btn">مسئله‌ی بعدی →</button>
+      </div>
+    </main>
+  </div>
+
+<script>
+// ============================================================
+// مسائل فصل ۱
+// ساختار هر مسئله:
+//   n         شماره (نمایشی)
+//   type      نوع
+//   q         صورت سؤال (HTML)
+//   relate    ارتباط با مسائل قبلی (اختیاری)
+//   hint      راهنمایی (اختیاری)
+//   steps     آرایه‌ی قدم‌های حل (HTML)
+//   final     جواب نهایی (HTML)
+//   check     [{label, value, unit, tol?}]  ← اگر بود، دکمه‌ی بررسی جواب فعال می‌شود
+// ============================================================
+var problems = [
+  // ============= بازتاب موج (سؤال‌های ۱-۵) =============
+  {
+    n: "۱",
+    type: "نظری — بازتاب موج",
+    q: "موج صوتیِ یک خفاش به دیوار می‌خوره و پس از ۰٫۰۸ ثانیه برمی‌گرده. اگه سرعت صوت در هوا ۳۴۰ m/s باشه، فاصله‌ی دیوار از خفاش چقدره؟",
+    hint: "موج رفت و برگشت کرده. زمانِ کلِ سفر = ۲ × زمانِ یک طرف.",
+    steps: [
+      "<b>قدم اول:</b> موج رفت تا دیوار و برگشت. پس مسافتِ کلِ پیموده‌شده $d_\\text{کل} = v \\cdot t$.",
+      "<b>قدم دوم:</b> $d_\\text{کل} = ۳۴۰ \\times ۰٫۰۸ = ۲۷٫۲$ m",
+      "<b>قدم سوم:</b> فاصله‌ی دیوار از خفاش = نیمی از مسافت کل: $d = ۲۷٫۲ / ۲ = ۱۳٫۶$ m"
+    ],
+    final: "<b>جواب نهایی:</b> فاصله‌ی دیوار ≈ ۱۳٫۶ متر است. <i>(این همون اصلِ سونار و رادار است.)</i>",
+    check: [{ label: "d", value: 13.6, unit: "m", tol: 0.05 }]
+  },
+  {
+    n: "۲",
+    type: "نظری — قانون بازتاب",
+    q: "پرتویی با زاویه‌ی فرود ۲۵° به یه آینه‌ی تخت برخورد می‌کنه. زاویه‌ی بین پرتوی فرود و پرتوی بازتابیده چقدره؟",
+    hint: "قانون $\\theta_i = \\theta_r$ نسبت به <b>خط عمود</b>ـه، نه نسبت به سطحِ آینه.",
+    steps: [
+      "<b>قدم اول:</b> طبق قانون بازتاب: $\\theta_r = \\theta_i = ۲۵°$",
+      "<b>قدم دوم:</b> پرتوی فرود ۲۵° از خط عمود، پرتوی بازتاب هم ۲۵° از خط عمود (در طرف دیگه).",
+      "<b>قدم سوم:</b> پس زاویه بین این دو پرتو = $۲۵° + ۲۵° = ۵۰°$"
+    ],
+    final: "<b>جواب نهایی:</b> زاویه بین پرتوی فرود و بازتاب = ۵۰° است.",
+    check: [{ label: "θ", value: 50, unit: "°", tol: 0.02 }]
+  },
+  {
+    n: "۳",
+    type: "نظری — انواع بازتاب",
+    q: "چرا تو دیوارِ گچی صورتت رو نمی‌بینی ولی تو آینه‌ی شیشه‌ای می‌بینی؟ توضیح بده.",
+    hint: "بازتابِ آینه‌ای (specular) در مقابل بازتاب پراکنده (diffuse).",
+    steps: [
+      "<b>قدم اول:</b> قانونِ بازتاب ($\\theta_i = \\theta_r$) روی هر نقطه‌ی سطح برقراره — مهم نیست سطح صاف باشه یا زبر.",
+      "<b>قدم دوم:</b> سطحِ آینه‌ای صاف و یکنواخت ⇒ همه‌ی خطوطِ عمود موازی‌اند ⇒ پرتوهای بازتاب هم موازی ⇒ تصویرِ منظم می‌بینی.",
+      "<b>قدم سوم:</b> سطح زبر (دیوار، کاغذ، پوست) خطوطِ عمود تو هر نقطه به سمتِ متفاوتی هستن ⇒ پرتوها پراکنده می‌شن ⇒ تصویر تشکیل نمی‌شه ولی روشنایی پخش می‌شه."
+    ],
+    final: "<b>جواب نهایی:</b> دو نوع بازتاب داریم: <b>آینه‌ای</b> (در سطوحِ صاف ⇒ تصویر) و <b>پراکنده</b> (در سطوحِ زبر ⇒ روشناییِ پخش، بدون تصویر)."
+  },
+  {
+    n: "۴",
+    type: "محاسباتی — تَپ روی طناب",
+    q: "یه تَپِ بالا روی طنابی به طولِ ۳ متر فرستاده می‌شه. سرعتِ موج ۵ m/s و انتهای دیگه به دیوار بسته‌ست. پس از چند ثانیه تَپ به نقطه‌ی شروع برمی‌گرده، و به چه شکل؟",
+    hint: "زمان رفت و برگشت رو حساب کن. انتهای ثابت ⇒ وارونگی.",
+    steps: [
+      "<b>قدم اول:</b> مسافت رفت و برگشت = $۲ \\times ۳ = ۶$ m.",
+      "<b>قدم دوم:</b> زمان = $d / v = ۶ / ۵ = ۱٫۲$ s",
+      "<b>قدم سوم:</b> چون انتها ثابته، تَپِ بازتابیده <b>وارونه</b> برمی‌گرده ⇒ تَپِ پایین."
+    ],
+    final: "<b>جواب نهایی:</b> پس از ۱٫۲ ثانیه، تَپِ <b>وارونه</b> (پایین) به نقطه‌ی شروع می‌رسه.",
+    check: [{ label: "t", value: 1.2, unit: "s", tol: 0.02 }]
+  },
+  {
+    n: "۵",
+    type: "نظری — اکو در آب",
+    q: "یه کشتیِ تجاری از سونار استفاده می‌کنه. پالسِ صوتی ۱٫۲ ثانیه بعد برمی‌گرده. اگه سرعت صوت در آب ۱۴۸۰ m/s باشه، عمق آب چقدره؟",
+    relate: "🔗 مفهوم همون مسئله‌ی ۱ ـه ولی برای آب.",
+    hint: "همون فرمول $d = v \\cdot t / 2$.",
+    steps: [
+      "<b>قدم اول:</b> $d = v \\cdot t / 2 = ۱۴۸۰ \\times ۱٫۲ / ۲$",
+      "<b>قدم دوم:</b> $d = ۸۸۸$ m"
+    ],
+    final: "<b>جواب نهایی:</b> عمق آب ≈ ۸۸۸ متر. <i>(این روش، عمیق‌ترین نقاط اقیانوس رو نقشه‌برداری کرد.)</i>",
+    check: [{ label: "d", value: 888, unit: "m", tol: 0.05 }]
+  },
+
+  // ============= شکست موج (سؤال‌های ۶-۱۲) =============
+  {
+    n: "۶",
+    type: "محاسباتی — قانون اسنل",
+    q: "پرتویی با زاویه‌ی فرود ۳۰° از هوا ($n_1 = ۱$) به آب ($n_2 = ۱٫۳۳$) وارد می‌شه. زاویه‌ی شکست رو حساب کن.",
+    hint: "$n_1 \\sin\\theta_1 = n_2 \\sin\\theta_2$",
+    steps: [
+      "<b>قدم اول:</b> $\\sin\\theta_2 = \\dfrac{n_1 \\sin\\theta_1}{n_2} = \\dfrac{۱ \\times \\sin ۳۰°}{۱٫۳۳} = \\dfrac{۰٫۵}{۱٫۳۳}$",
+      "<b>قدم دوم:</b> $\\sin\\theta_2 ≈ ۰٫۳۷۶$",
+      "<b>قدم سوم:</b> $\\theta_2 ≈ ۲۲٫۱°$ (پرتو به خط عمود نزدیک می‌شه — چون از رقیق به غلیظ رفت)."
+    ],
+    final: "<b>جواب نهایی:</b> $\\theta_2 ≈ ۲۲٫۱°$",
+    check: [{ label: "θ₂", value: 22.1, unit: "°", tol: 0.05 }]
+  },
+  {
+    n: "۷",
+    type: "محاسباتی — سرعت تو محیط",
+    q: "ضریب شکست شیشه ۱٫۵ ـه. سرعت نور تو شیشه چقدره؟",
+    hint: "$n = c/v$",
+    steps: [
+      "<b>قدم اول:</b> $v = c/n$",
+      "<b>قدم دوم:</b> $v = (۳ \\times ۱۰^۸) / ۱٫۵ = ۲ \\times ۱۰^۸$ m/s"
+    ],
+    final: "<b>جواب نهایی:</b> $v = ۲ \\times ۱۰^۸$ m/s (یک‌سومِ کمتر از خلاء).",
+    check: [{ label: "v", value: 2e8, unit: "m/s", tol: 0.02 }]
+  },
+  {
+    n: "۸",
+    type: "محاسباتی — زاویه‌ی بحرانی",
+    q: "زاویه‌ی بحرانیِ شیشه‌-هوا ($n = ۱٫۵$) رو پیدا کن.",
+    relate: "🔗 ادامه‌ی مسئله‌ی ۷ — حالا نور می‌خواد از شیشه به هوا بره.",
+    hint: "$\\sin\\theta_c = n_2 / n_1$، و چون از غلیظ به رقیق هستیم: $\\sin\\theta_c = ۱/۱٫۵$.",
+    steps: [
+      "<b>قدم اول:</b> $\\sin\\theta_c = n_\\text{هوا}/n_\\text{شیشه} = ۱/۱٫۵$",
+      "<b>قدم دوم:</b> $\\sin\\theta_c = ۰٫۶۶۷$",
+      "<b>قدم سوم:</b> $\\theta_c = \\arcsin(۰٫۶۶۷) ≈ ۴۱٫۸°$"
+    ],
+    final: "<b>جواب نهایی:</b> $\\theta_c ≈ ۴۱٫۸°$. اگه پرتویی تو شیشه با زاویه‌ی بیشتر از ۴۱٫۸° به سطح برخورد کنه، نمی‌تونه به هوا بره ⇒ بازتابِ کلی.",
+    check: [{ label: "θ_c", value: 41.8, unit: "°", tol: 0.05 }]
+  },
+  {
+    n: "۹",
+    type: "نظری — فیبر نوری",
+    q: "چرا فیبر نوری بدونِ افتِ قابل‌توجهی نور رو می‌بره؟",
+    hint: "بازتابِ کلیِ داخلی + هندسه‌ی هوشمند.",
+    steps: [
+      "<b>قدم اول:</b> هسته‌ی فیبر، شیشه‌ای با ضریب شکستِ بالاتر از پوسته‌ست.",
+      "<b>قدم دوم:</b> نور با زاویه‌ای بزرگ‌تر از زاویه‌ی بحرانی به دیواره برخورد می‌کنه ⇒ <b>بازتابِ کلیِ داخلی</b>.",
+      "<b>قدم سوم:</b> چون هیچ نوری از مرز عبور نمی‌کنه، تمامِ انرژی تو هسته باقی می‌مونه ⇒ افتِ ناچیز.",
+      "<b>قدم چهارم:</b> این پدیده توی هر بازتاب تکرار می‌شه ⇒ نور صدها کیلومتر تو فیبر سفر می‌کنه."
+    ],
+    final: "<b>جواب نهایی:</b> فیبر از <b>بازتابِ کلیِ داخلی</b> روی مرز شیشه-پوسته استفاده می‌کنه ⇒ هیچ انرژی‌ای به بیرون نمی‌ره و سیگنال با کمترین تلفات منتقل می‌شه."
+  },
+  {
+    n: "۱۰",
+    type: "محاسباتی — اسنل از غلیظ به رقیق",
+    q: "پرتویی تو آب ($n = ۱٫۳۳$) با زاویه‌ی ۴۰° به سطح می‌خوره. آیا به هوا می‌ره یا بازتاب کلی می‌کنه؟ اگه می‌ره، زاویه‌ش چقدره؟",
+    hint: "اول زاویه‌ی بحرانی رو حساب کن، بعد مقایسه.",
+    steps: [
+      "<b>قدم اول:</b> $\\sin\\theta_c = ۱/۱٫۳۳ = ۰٫۷۵۲$ ⇒ $\\theta_c ≈ ۴۸٫۷°$",
+      "<b>قدم دوم:</b> ۴۰° < ۴۸٫۷° ⇒ پرتو به هوا می‌ره (بازتاب کلی نداریم).",
+      "<b>قدم سوم:</b> $\\sin\\theta_2 = (۱٫۳۳/۱) \\sin ۴۰° = ۱٫۳۳ \\times ۰٫۶۴۳ = ۰٫۸۵۵$",
+      "<b>قدم چهارم:</b> $\\theta_2 ≈ ۵۸٫۸°$"
+    ],
+    final: "<b>جواب نهایی:</b> پرتو به هوا می‌ره با زاویه ≈ ۵۸٫۸° (از خط عمود دور شده — چون از غلیظ به رقیق رفت).",
+    check: [{ label: "θ_2", value: 58.8, unit: "°", tol: 0.05 }]
+  },
+  {
+    n: "۱۱",
+    type: "محاسباتی — اسنل پیشرفته",
+    q: "پرتویی از شیشه ($n_1 = ۱٫۵$) به آب ($n_2 = ۱٫۳۳$) با زاویه‌ی ۴۵° می‌ره. آیا بازتاب کلی داریم؟",
+    relate: "🔗 ایده‌ی همون مسئله‌ی ۱۰ ـه ولی با دو محیطِ غلیظ نزدیک به هم.",
+    hint: "زاویه‌ی بحرانی رو از $\\sin\\theta_c = n_2/n_1 = ۱٫۳۳/۱٫۵$ پیدا کن.",
+    steps: [
+      "<b>قدم اول:</b> $\\sin\\theta_c = ۱٫۳۳/۱٫۵ = ۰٫۸۸۷$ ⇒ $\\theta_c ≈ ۶۲٫۵°$",
+      "<b>قدم دوم:</b> ۴۵° < ۶۲٫۵° ⇒ <b>بازتاب کلی نداریم</b>.",
+      "<b>قدم سوم:</b> $\\sin\\theta_2 = (۱٫۵/۱٫۳۳) \\sin ۴۵° = ۱٫۱۲۸ \\times ۰٫۷۰۷ = ۰٫۷۹۷$",
+      "<b>قدم چهارم:</b> $\\theta_2 ≈ ۵۲٫۹°$"
+    ],
+    final: "<b>جواب نهایی:</b> بازتاب کلی نداریم. پرتو وارد آب می‌شه با زاویه‌ی ≈ ۵۲٫۹°.",
+    check: [{ label: "θ_2", value: 52.9, unit: "°", tol: 0.05 }]
+  },
+  {
+    n: "۱۲",
+    type: "نظری — اصل هویگنس",
+    q: "اصل هویگنس چی می‌گه؟ چرا این اصل، علتِ شکست رو توضیح می‌ده؟",
+    hint: "هر نقطه از جبهه‌ی موج، یه چشمه‌ی موجِ ثانوی‌ـه.",
+    steps: [
+      "<b>قدم اول:</b> <b>اصلِ هویگنس:</b> هر نقطه از جبهه‌ی موج، خودش یه چشمه‌ی نقطه‌ایِ موجِ ثانوی‌ـه. جبهه‌ی موجِ بعدی، پوش (envelope) این موج‌های ثانویه است.",
+      "<b>قدم دوم:</b> وقتی موج از یه محیط به محیط دیگه می‌ره، چشمه‌های ثانوی تو محیط جدید با <b>سرعتِ متفاوت</b> پخش می‌شن.",
+      "<b>قدم سوم:</b> این تفاوتِ سرعت باعث می‌شه پوش (جبهه‌ی موجِ جدید) تحتِ یه زاویه‌ی متفاوت بسته بشه ⇒ خم شدنِ پرتو ⇒ شکست.",
+      "<b>قدم چهارم:</b> از همین استدلال هندسی می‌شه قانون اسنل رو اثبات کرد."
+    ],
+    final: "<b>جواب نهایی:</b> اصل هویگنس یه مدلِ هندسی‌ـه که می‌گه هر نقطه‌ی جبهه‌ی موج یه چشمه‌ی نقطه‌ای‌ـه. علتِ شکست = تفاوتِ سرعت تو محیط جدید ⇒ تغییرِ زاویه‌ی پوش."
+  },
+
+  // ============= پراش (سؤال‌های ۱۳-۱۸) =============
+  {
+    n: "۱۳",
+    type: "محاسباتی — پراش شکاف تنها",
+    q: "نور قرمز ($\\lambda = ۶۵۰$ nm) از شکافی به عرضِ ۰٫۱ mm رد می‌شه. زاویه‌ی اولین کمینه چقدره؟",
+    hint: "$\\sin\\theta = \\lambda / a$ برای اولین کمینه.",
+    steps: [
+      "<b>قدم اول:</b> $\\sin\\theta = \\lambda / a = (۶۵۰ \\times ۱۰^{-۹}) / (۱۰^{-۴})$",
+      "<b>قدم دوم:</b> $\\sin\\theta = ۶٫۵ \\times ۱۰^{-۳}$",
+      "<b>قدم سوم:</b> $\\theta ≈ ۰٫۳۷°$ (خیلی کوچک — چون شکاف از طول موج بسیار بزرگ‌تره)."
+    ],
+    final: "<b>جواب نهایی:</b> $\\theta ≈ ۰٫۳۷°$. اگه پرده ۲ متر دور باشه، فاصله‌ی نوار مرکزی تا اولین کمینه ≈ ۱٫۳ cm.",
+    check: [{ label: "θ", value: 0.37, unit: "°", tol: 0.05 }]
+  },
+  {
+    n: "۱۴",
+    type: "نظری — شرطِ پراش محسوس",
+    q: "چرا پراش نور تو زندگیِ روزمره به ندرت دیده می‌شه ولی پراش صدا دائماً اتفاق می‌افته؟",
+    hint: "مقایسه‌ی طول موج با اندازه‌ی شکاف‌ها.",
+    steps: [
+      "<b>قدم اول:</b> شرطِ پراشِ محسوس: $w \\sim \\lambda$ یا $w < \\lambda$ (عرض شکاف یا مانع، هم‌اندازه‌ی طول موج).",
+      "<b>قدم دوم:</b> طول موجِ نور مرئی: ۴۰۰ تا ۷۰۰ نانومتر (۱۰⁻⁷ متر). شکاف‌های روزمره (پنجره، در): ۱۰⁻¹ متر ⇒ خیلی بزرگ‌تر از $\\lambda$ ⇒ پراش ناچیز.",
+      "<b>قدم سوم:</b> طول موجِ صدای شنیداری: ۲ سانتی‌متر تا ۱۷ متر ⇒ هم‌اندازه‌ی شکاف‌های روزمره ⇒ پراش زیاد."
+    ],
+    final: "<b>جواب نهایی:</b> چون <b>طول موجِ صدا</b> با اندازه‌ی شکاف‌های روزمره مقایسه‌پذیره (متر) ولی <b>طول موجِ نور</b> از این اشیاء میلیون‌ها برابر کوچک‌تره (نانومتر)، پراشِ نور تو دفعات روزمره ناچیزه."
+  },
+  {
+    n: "۱۵",
+    type: "محاسباتی — توریِ پراش",
+    q: "توری‌ای داریم با ۵۰۰ شکاف در میلی‌متر. نور سبز ($\\lambda = ۵۲۰$ nm) از روش می‌گذره. زاویه‌ی اولین ماکزیمم چقدره؟",
+    hint: "فاصله‌ی شکاف $d = ۱/۵۰۰$ mm. شرط: $d \\sin\\theta = m\\lambda$.",
+    steps: [
+      "<b>قدم اول:</b> $d = ۱/۵۰۰$ mm = $۲ \\times ۱۰^{-۶}$ m",
+      "<b>قدم دوم:</b> برای اولین ماکزیمم ($m=۱$): $\\sin\\theta = \\lambda / d = (۵۲۰ \\times ۱۰^{-۹}) / (۲ \\times ۱۰^{-۶})$",
+      "<b>قدم سوم:</b> $\\sin\\theta = ۰٫۲۶$",
+      "<b>قدم چهارم:</b> $\\theta ≈ ۱۵٫۱°$"
+    ],
+    final: "<b>جواب نهایی:</b> $\\theta ≈ ۱۵٫۱°$. این جداسازی برای دیدن طیفِ نور کافیه.",
+    check: [{ label: "θ", value: 15.1, unit: "°", tol: 0.05 }]
+  },
+  {
+    n: "۱۶",
+    type: "محاسباتی — پراش پیشرفته",
+    q: "اگه عرضِ شکاف رو ۲ برابر کنیم، عرضِ کمینه‌ی مرکزیِ الگوی پراش چه تغییری می‌کنه؟",
+    relate: "🔗 ادامه‌ی مسئله‌ی ۱۳.",
+    hint: "رابطه‌ی $\\sin\\theta \\propto ۱/a$.",
+    steps: [
+      "<b>قدم اول:</b> اولین کمینه در $\\sin\\theta = \\lambda/a$ ـه.",
+      "<b>قدم دوم:</b> اگه $a \\to ۲a$ بشه، $\\sin\\theta \\to (\\lambda/۲a) = \\sin\\theta/۲$.",
+      "<b>قدم سوم:</b> پس عرض کمینه‌ی مرکزی (دو برابر فاصله از مرکز تا اولین کمینه) <b>نصف</b> می‌شه."
+    ],
+    final: "<b>جواب نهایی:</b> عرضِ کمینه‌ی مرکزی <b>نصف</b> می‌شه (پراش کاهش می‌یابد).",
+    check: [{ label: "ratio", value: 0.5, unit: "×", tol: 0.05 }]
+  },
+  {
+    n: "۱۷",
+    type: "نظری — حدِّ پراشی",
+    q: "چرا میکروسکوپ‌های نوری نمی‌تونن چیزی کوچک‌تر از حدود ۲۰۰ نانومتر رو نشون بدن؟",
+    hint: "حدِّ پراشی: $\\sim \\lambda/۲$.",
+    steps: [
+      "<b>قدم اول:</b> برای دیدنِ یه جزء، باید موج بتونه از کنارش بدون پراشِ زیاد رد بشه.",
+      "<b>قدم دوم:</b> اگه اندازه‌ی جزء از $\\lambda$ کوچک‌تر باشه، موج خودش رو دورش می‌پیچه و جزء دیده نمی‌شه.",
+      "<b>قدم سوم:</b> کوتاه‌ترین طول موج مرئی ≈ ۴۰۰ nm. حدِّ پراشی ≈ $\\lambda/۲$ ≈ ۲۰۰ nm.",
+      "<b>قدم چهارم:</b> برای دیدنِ ساختار اتم از <b>میکروسکوپ الکترونی</b> استفاده می‌کنیم — چون طول موجِ الکترون می‌تونه پیکومتری باشه."
+    ],
+    final: "<b>جواب نهایی:</b> به‌خاطر <b>حدِّ پراشی</b> ≈ $\\lambda/۲$. برای نور مرئی، این یعنی حدوداً ۲۰۰ nm."
+  },
+  {
+    n: "۱۸",
+    type: "محاسباتی — پراش تو زندگی",
+    q: "اگه طول موج صوت ۱ متر و عرض درگاه ۱ متر باشه، آیا پراش محسوسه؟ و اگه طول موج نور ۵۰۰ nm و عرض درگاه همون ۱ متر باشه چی؟",
+    hint: "نسبت $\\lambda/w$ معیار است.",
+    steps: [
+      "<b>قدم اول:</b> برای صوت: $\\lambda/w = ۱/۱ = ۱$ ⇒ پراش <b>خیلی زیاد</b> (صدا به همه طرف می‌ره).",
+      "<b>قدم دوم:</b> برای نور: $\\lambda/w = ۵۰۰ \\times ۱۰^{-۹} / ۱ = ۵ \\times ۱۰^{-۷}$ ⇒ پراش <b>تقریباً صفر</b> (نور تقریباً مستقیم رد می‌شه).",
+      "<b>قدم سوم:</b> به همین خاطر صدا از پشت دیوار شنیده می‌شه ولی نور نه."
+    ],
+    final: "<b>جواب نهایی:</b> صدا: پراش زیاد. نور: پراش ناچیز. علتش اختلافِ <b>۶ مرتبه‌ای</b> در طول موجه."
+  },
+
+  // ============= تداخل (سؤال‌های ۱۹-۲۵) =============
+  {
+    n: "۱۹",
+    type: "محاسباتی — آزمایش یانگ",
+    q: "تو آزمایش دو شکاف یانگ، فاصله‌ی شکاف‌ها $d = ۰٫۲$ mm، فاصله‌ی پرده $L = ۲$ m و نور قرمز $\\lambda = ۶۵۰$ nm. فاصله‌ی نوارهای روشنِ مجاور چقدره؟",
+    hint: "$\\Delta y = \\lambda L / d$",
+    steps: [
+      "<b>قدم اول:</b> $\\Delta y = \\dfrac{\\lambda L}{d}$",
+      "<b>قدم دوم:</b> $\\Delta y = \\dfrac{(۶۵۰ \\times ۱۰^{-۹}) \\times ۲}{۲ \\times ۱۰^{-۴}}$",
+      "<b>قدم سوم:</b> $\\Delta y = ۶٫۵ \\times ۱۰^{-۳}$ m = $۶٫۵$ mm"
+    ],
+    final: "<b>جواب نهایی:</b> فاصله‌ی نوارها ≈ ۶٫۵ میلی‌متر — به‌راحتی قابل دیدن.",
+    check: [{ label: "Δy", value: 6.5, unit: "mm", tol: 0.05 }]
+  },
+  {
+    n: "۲۰",
+    type: "محاسباتی — یانگ پیشرفته",
+    q: "تو همون آزمایش (شکاف $۰٫۲$ mm، پرده $۲$ m)، اگه نور آبی ($\\lambda = ۴۵۰$ nm) استفاده کنیم، فاصله‌ی نوارها چقدر می‌شه؟",
+    relate: "🔗 ادامه‌ی مسئله‌ی ۱۹.",
+    hint: "همون فرمول، فقط $\\lambda$ عوض می‌شه.",
+    steps: [
+      "<b>قدم اول:</b> $\\Delta y = \\dfrac{(۴۵۰ \\times ۱۰^{-۹}) \\times ۲}{۲ \\times ۱۰^{-۴}}$",
+      "<b>قدم دوم:</b> $\\Delta y = ۴٫۵ \\times ۱۰^{-۳}$ m = $۴٫۵$ mm",
+      "<b>قدم سوم:</b> نوارهای آبی نزدیک‌ترن — چون $\\lambda$ کمتر."
+    ],
+    final: "<b>جواب نهایی:</b> فاصله ≈ ۴٫۵ mm (کمتر از قرمز).",
+    check: [{ label: "Δy", value: 4.5, unit: "mm", tol: 0.05 }]
+  },
+  {
+    n: "۲۱",
+    type: "محاسباتی — تعیین طول موج",
+    q: "تو آزمایش یانگ با $d = ۰٫۵$ mm و $L = ۱$ m، فاصله‌ی نوارها $۱٫۲$ mm اندازه‌گیری شده. طول موج چقدره؟",
+    hint: "از فرمول معکوس: $\\lambda = d \\Delta y / L$.",
+    steps: [
+      "<b>قدم اول:</b> $\\lambda = \\dfrac{d \\cdot \\Delta y}{L}$",
+      "<b>قدم دوم:</b> $\\lambda = \\dfrac{(۵ \\times ۱۰^{-۴}) \\times (۱٫۲ \\times ۱۰^{-۳})}{۱} = ۶ \\times ۱۰^{-۷}$ m",
+      "<b>قدم سوم:</b> $\\lambda = ۶۰۰$ nm — این رنگِ نارنجی است."
+    ],
+    final: "<b>جواب نهایی:</b> $\\lambda ≈ ۶۰۰$ nm (نور نارنجی).",
+    check: [{ label: "λ", value: 600, unit: "nm", tol: 0.05 }]
+  },
+  {
+    n: "۲۲",
+    type: "محاسباتی — بسامد ضربان",
+    q: "دو دیپازون با بسامدهای ۲۵۶ Hz و ۲۶۰ Hz هم‌زمان به صدا درمی‌آن. شخصی چند ضربان در ثانیه می‌شنوه؟",
+    hint: "$f_\\text{ضربان} = |f_1 - f_2|$",
+    steps: [
+      "<b>قدم اول:</b> $f_\\text{ضربان} = |۲۶۰ - ۲۵۶| = ۴$ Hz",
+      "<b>قدم دوم:</b> یعنی هر $۱/۴ = ۰٫۲۵$ ثانیه، یه ضربان می‌شنوه."
+    ],
+    final: "<b>جواب نهایی:</b> ۴ ضربان در ثانیه.",
+    check: [{ label: "f_b", value: 4, unit: "Hz", tol: 0.02 }]
+  },
+  {
+    n: "۲۳",
+    type: "محاسباتی — کوک‌ساز",
+    q: "شخصی پیانو رو کوک می‌کنه. سیمِ A۴ باید ۴۴۰ Hz باشه. وقتی با دیپازونِ ۴۴۰ Hz می‌نوازه، ۳ ضربان در ثانیه می‌شنوه. بسامدِ سیم چقدره؟",
+    relate: "🔗 مفهوم همون مسئله‌ی ۲۲ — اینجا یکی از فرکانس‌ها معلومه.",
+    hint: "ضربان = $|f_\\text{سیم} - ۴۴۰|$. دو جواب ممکنه.",
+    steps: [
+      "<b>قدم اول:</b> $|f_\\text{سیم} - ۴۴۰| = ۳$",
+      "<b>قدم دوم:</b> پس $f_\\text{سیم} = ۴۴۳$ Hz <b>یا</b> $f_\\text{سیم} = ۴۳۷$ Hz.",
+      "<b>قدم سوم:</b> برای فهمیدنِ کدوم درسته، سیم رو کمی شُل می‌کنه ⇒ بسامد کمتر می‌شه ⇒ اگه ضربان <b>کمتر</b> شد، سیم بالاتر بود ($۴۴۳$). اگه <b>بیشتر</b> شد، سیم پایین‌تر بود ($۴۳۷$)."
+    ],
+    final: "<b>جواب نهایی:</b> $f_\\text{سیم} = ۴۴۳$ یا $۴۳۷$ Hz. تشخیص نهایی با تغییرِ کششِ سیم."
+  },
+  {
+    n: "۲۴",
+    type: "محاسباتی — موج ایستاده",
+    q: "یه سیمِ گیتار به طول ۶۵ cm و سرعتِ موج $v = ۲۶۰$ m/s. بسامد بنیادی (هارمونیک اول) چقدره؟",
+    hint: "$f_۱ = v/(۲L)$ برای سیم با دو سر بسته.",
+    steps: [
+      "<b>قدم اول:</b> $f_۱ = v/(۲L) = ۲۶۰/(۲ \\times ۰٫۶۵)$",
+      "<b>قدم دوم:</b> $f_۱ = ۲۶۰/۱٫۳ = ۲۰۰$ Hz",
+      "<b>قدم سوم:</b> هارمونیک‌های بعدی $f_۲ = ۴۰۰$ Hz, $f_۳ = ۶۰۰$ Hz... که رنگِ صدای گیتار رو می‌سازن."
+    ],
+    final: "<b>جواب نهایی:</b> $f_۱ = ۲۰۰$ Hz.",
+    check: [{ label: "f₁", value: 200, unit: "Hz", tol: 0.02 }]
+  },
+  {
+    n: "۲۵",
+    type: "نظری — اثبات موجی بودن نور",
+    q: "چرا آزمایشِ یانگ ثابت کرد نور موجه و نه ذره؟",
+    hint: "ذرات نمی‌تونن نوارهای متناوبِ روشن-تاریک بسازن.",
+    steps: [
+      "<b>قدم اول:</b> اگه نور ذره باشه: از دو شکاف رد می‌شه و دو لکه‌ی روشن می‌سازه (یا حتی فقط یه لکه‌ی مه‌آلود).",
+      "<b>قدم دوم:</b> اگه نور موج باشه: از هر شکاف یه موج ثانوی پخش می‌شه (هویگنس)، این دو موج <b>برهم‌نهی</b> می‌کنن.",
+      "<b>قدم سوم:</b> تو نقاطی که قله رو قله ⇒ تداخل سازنده ⇒ نوار روشن. تو نقاطی که قله رو دره ⇒ ویرانگر ⇒ نوار تاریک.",
+      "<b>قدم چهارم:</b> یانگ <b>نوارهای متناوب</b> روشن-تاریک دید ⇒ این فقط با مدلِ موجی توضیح‌پذیره."
+    ],
+    final: "<b>جواب نهایی:</b> چون فقط مدلِ موجی می‌تونه <b>نوارهای متناوبِ روشن-تاریک</b> رو توضیح بده — همچین الگویی از ذرات هرگز بیرون نمی‌آد."
+  },
+
+  // ============= مسائلِ ترکیبی و کاربردی (سؤال‌های ۲۶-۲۸) =============
+  {
+    n: "۲۶",
+    type: "محاسباتی — مایکروویو",
+    q: "اجاق مایکروویوی با بسامد ۲٫۴۵ GHz کار می‌کنه. طول موج رو پیدا کن و توضیح بده چرا غذا چرخش لازم داره.",
+    hint: "$\\lambda = c/f$. موجِ ایستاده نقاطِ شکم و گره داره.",
+    steps: [
+      "<b>قدم اول:</b> $\\lambda = c/f = (۳ \\times ۱۰^۸)/(۲٫۴۵ \\times ۱۰^۹)$",
+      "<b>قدم دوم:</b> $\\lambda ≈ ۰٫۱۲۲$ m = ۱۲٫۲ cm",
+      "<b>قدم سوم:</b> داخل اجاق، موج‌های بازتابیده با موج ورودی تداخل می‌کنن و <b>موجِ ایستاده</b> تشکیل می‌دن.",
+      "<b>قدم چهارم:</b> فاصله‌ی شکم‌های متوالی = $\\lambda/۲ ≈ ۶$ cm. غذا تو نقاطِ گره گرم نمی‌شه. صفحه‌ی چرخان غذا رو از همه‌ی نقاط رد می‌کنه."
+    ],
+    final: "<b>جواب نهایی:</b> $\\lambda ≈ ۱۲٫۲$ cm. صفحه می‌چرخه تا غذا یکنواخت بشه — نقاطِ گره و شکم ثابت‌ـن، فقط غذا حرکت می‌کنه.",
+    check: [{ label: "λ", value: 12.2, unit: "cm", tol: 0.05 }]
+  },
+  {
+    n: "۲۷",
+    type: "نظری — کاربردِ تداخل",
+    q: "هدفون‌های نویز کنسلر چطور کار می‌کنن؟",
+    hint: "تداخل ویرانگر + موجِ معکوس.",
+    steps: [
+      "<b>قدم اول:</b> یه میکروفون داخل هدفون، صدای محیط رو می‌گیره.",
+      "<b>قدم دوم:</b> یه پردازنده‌ی صوتی، موجِ <b>معکوس</b> (شیفت فاز ۱۸۰°) صدای محیط رو می‌سازه.",
+      "<b>قدم سوم:</b> این موجِ معکوس + موجِ محیط ⇒ تداخل ویرانگر ⇒ صدای کلی به صفر می‌رسه.",
+      "<b>قدم چهارم:</b> این اصل به‌خصوص برای صداهای پایوسته (موتور هواپیما، کولر) عالی کار می‌کنه."
+    ],
+    final: "<b>جواب نهایی:</b> با تولید <b>موجِ معکوس</b> و ایجاد <b>تداخل ویرانگر</b> با صدای محیط."
+  },
+  {
+    n: "۲۸",
+    type: "محاسباتی — اکوی دوگانه",
+    q: "تو غاری ایستاده‌ای و فریاد می‌زنی. دو اکوی متفاوت می‌شنوی: اولی پس از ۰٫۵ ثانیه و دومی پس از ۲ ثانیه. فاصله‌ی هر دیوار رو حساب کن.",
+    relate: "🔗 ادامه‌ی مفهومی مسئله‌ی ۱.",
+    hint: "هر اکو از یه دیوار. $d = vt/2$.",
+    steps: [
+      "<b>قدم اول:</b> دیوار نزدیک: $d_۱ = ۳۴۰ \\times ۰٫۵ / ۲ = ۸۵$ m",
+      "<b>قدم دوم:</b> دیوار دور: $d_۲ = ۳۴۰ \\times ۲ / ۲ = ۳۴۰$ m",
+      "<b>قدم سوم:</b> اختلاف فاصله = ۲۵۵ m. اگه دو دیوار رو‌به‌رو هم باشن، طولِ غار $۸۵ + ۳۴۰ = ۴۲۵$ m."
+    ],
+    final: "<b>جواب نهایی:</b> دیوار نزدیک ۸۵ متر، دیوار دور ۳۴۰ متر.",
+    check: [
+      { label: "d₁", value: 85, unit: "m", tol: 0.05 },
+      { label: "d₂", value: 340, unit: "m", tol: 0.05 }
+    ]
+  }
+];
+
+// ============================================================
+// رندر
+// ============================================================
+var faNum = function(n){
+  return String(n).replace(/[0-9]/g, function(d){ return "۰۱۲۳۴۵۶۷۸۹"[d]; });
+};
+
+function formatExpected(v){
+  // برای اعدادِ علمیِ بزرگ، نمایشِ خواناتر
+  if(Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-2 && v !== 0)){
+    return v.toExponential(2);
+  }
+  return String(v);
+}
+
+function checkAnswer(user, expected, tol){
+  // tol پیش‌فرض ۵٪
+  tol = tol || 0.05;
+  if(isNaN(user)) return {ok:false, msg:"عددِ معتبر وارد کن."};
+  if(expected === 0){
+    return {ok: Math.abs(user) < 1e-9, msg:""};
+  }
+  var diff = Math.abs(user - expected) / Math.abs(expected);
+  return {ok: diff <= tol, diff: diff};
+}
+
+var box     = document.getElementById("problems");
+var navList = document.getElementById("nav-list");
+var prevBtn = document.getElementById("prev-btn");
+var nextBtn = document.getElementById("next-btn");
+var problemDivs = [];   // index → DOM
+var navBtns     = [];   // index → DOM
+
+problems.forEach(function(p, pIdx){
+  var div = document.createElement("div");
+  div.className = "problem";
+  div.style.display = "none";   // hidden by default — only one visible at a time
+  problemDivs.push(div);
+
+  // sidebar entry
+  var li  = document.createElement("li");
+  var btn = document.createElement("button");
+  btn.className = "nav-btn";
+  btn.type = "button";
+  btn.innerHTML = '<span class="nb-num">' + p.n + '</span>'
+                + '<span class="nb-title">مسئله ' + p.n + '</span>';
+  btn.addEventListener("click", (function (capturedIdx) {
+    return function () { showProblem(capturedIdx, true); };
+  })(pIdx));
+  li.appendChild(btn);
+  navList.appendChild(li);
+  navBtns.push(btn);
+
+  var num = document.createElement("div");
+  num.className = "pnum";
+  num.textContent = "مسئله‌ی " + p.n;
+  div.appendChild(num);
+
+  var typ = document.createElement("div");
+  typ.className = "ptype";
+  typ.textContent = "نوع: " + p.type;
+  div.appendChild(typ);
+
+  if(p.relate){
+    var rel = document.createElement("div");
+    rel.className = "relate";
+    rel.innerHTML = "🔗 " + p.relate;
+    div.appendChild(rel);
+  }
+
+  var q = document.createElement("div");
+  q.className = "pq";
+  q.innerHTML = p.q;
+  div.appendChild(q);
+
+  // ----- controls -----
+  var ctrl = document.createElement("div");
+  ctrl.className = "controls";
+
+  var hintBtn = null;
+  if(p.hint){
+    hintBtn = document.createElement("button");
+    hintBtn.className = "btn btn-hint";
+    hintBtn.textContent = "💡 راهنمایی";
+    ctrl.appendChild(hintBtn);
+  }
+
+  var nextBtn = document.createElement("button");
+  nextBtn.className = "btn btn-next";
+  nextBtn.textContent = "▶️ شروع حل / قدم بعدی";
+  ctrl.appendChild(nextBtn);
+
+  var checkBtn = null;
+  if(p.check && p.check.length){
+    checkBtn = document.createElement("button");
+    checkBtn.className = "btn btn-check";
+    checkBtn.textContent = "🔍 بررسی جواب من";
+    ctrl.appendChild(checkBtn);
+  }
+
+  div.appendChild(ctrl);
+
+  // hint handler
+  if(hintBtn){
+    var hintShown = false;
+    hintBtn.addEventListener("click", function(){
+      if(hintShown) return;
+      hintShown = true;
+      var h = document.createElement("div");
+      h.className = "hint-box";
+      h.innerHTML = "<b>راهنمایی:</b> " + p.hint;
+      div.appendChild(h);
+      hintBtn.disabled = true;
+    });
+  }
+
+  // step-by-step
+  var idx = 0;
+  nextBtn.addEventListener("click", function(){
+    if(idx < p.steps.length){
+      var s = document.createElement("div");
+      s.className = "step";
+      s.innerHTML = "<span class='label' style='color:var(--info);'>قدم " + faNum(String(idx+1)) + "</span><br>" + p.steps[idx];
+      div.appendChild(s);
+      idx++;
+      if(idx === p.steps.length){
+        nextBtn.textContent = "✅ نمایش جواب نهایی";
+      }
+    } else if(idx === p.steps.length){
+      var f = document.createElement("div");
+      f.className = "final";
+      f.innerHTML = "<b>✅ جواب نهایی:</b><br>" + p.final;
+      div.appendChild(f);
+      nextBtn.disabled = true;
+      nextBtn.textContent = "تمام";
+      idx++;
+    }
+  });
+
+  // check-answer
+  if(checkBtn){
+    var checkShown = false;
+    checkBtn.addEventListener("click", function(){
+      if(checkShown) return;
+      checkShown = true;
+      checkBtn.disabled = true;
+
+      var cb = document.createElement("div");
+      cb.className = "check-box";
+      cb.innerHTML = "<b>🔍 جوابِ خودتو وارد کن:</b><br><span style='font-size:13px; color:var(--muted);'>تلرانس ۵٪؛ از اعدادِ علمی مثل <code>3e4</code> هم می‌تونی استفاده کنی.</span>";
+
+      var inputs = [];
+      p.check.forEach(function(c){
+        var row = document.createElement("div");
+        row.className = "check-row";
+        var lbl = document.createElement("label"); lbl.textContent = c.label + ":"; row.appendChild(lbl);
+        var inp = document.createElement("input"); inp.type = "text"; inp.placeholder = "عدد..."; row.appendChild(inp);
+        var u = document.createElement("span"); u.className = "unit"; u.textContent = c.unit || ""; row.appendChild(u);
+        cb.appendChild(row);
+        inputs.push({c:c, inp:inp});
+      });
+
+      var goBtn = document.createElement("button");
+      goBtn.className = "btn btn-check";
+      goBtn.textContent = "بررسی";
+      goBtn.style.marginTop = "8px";
+      cb.appendChild(goBtn);
+
+      var resultArea = document.createElement("div");
+      cb.appendChild(resultArea);
+
+      goBtn.addEventListener("click", function(){
+        resultArea.innerHTML = "";
+        var allOk = true;
+        inputs.forEach(function(it){
+          var userVal = parseFloat(it.inp.value);
+          var r = checkAnswer(userVal, it.c.value, it.c.tol);
+          var row = document.createElement("div");
+          row.className = "check-result " + (r.ok ? "ok" : "bad");
+          if(r.ok){
+            row.innerHTML = "✅ <b>" + it.c.label + ":</b> درسته! جوابِ تو نزدیک به " + formatExpected(it.c.value) + " " + (it.c.unit||"") + " ـه.";
+          } else {
+            allOk = false;
+            if(isNaN(userVal)){
+              row.innerHTML = "❌ <b>" + it.c.label + ":</b> عددِ معتبر وارد نکردی.";
+            } else {
+              row.innerHTML = "❌ <b>" + it.c.label + ":</b> جوابت با مقدارِ موردِ انتظار (" + formatExpected(it.c.value) + " " + (it.c.unit||"") + ") اختلافِ زیادی داره. حلِ قدم‌به‌قدم رو ببین.";
+            }
+          }
+          resultArea.appendChild(row);
+        });
+        if(allOk){
+          var hooray = document.createElement("div");
+          hooray.className = "check-result ok";
+          hooray.style.marginTop = "8px";
+          hooray.innerHTML = "🎉 آفرین! همه‌ی جواب‌هات درست بود.";
+          resultArea.appendChild(hooray);
+        }
+      });
+
+      div.appendChild(cb);
+    });
+  }
+
+  box.appendChild(div);
+});
+
+// ─── master-detail navigation ────────────────────────────────
+var currentIdx = 0;
+
+function showProblem(idx, updateHash) {
+  if (idx < 0 || idx >= problemDivs.length) return;
+  problemDivs.forEach(function (d, i) { d.style.display = (i === idx) ? "" : "none"; });
+  navBtns.forEach(function (b, i) { b.classList.toggle("active", i === idx); });
+  prevBtn.disabled = (idx === 0);
+  nextBtn.disabled = (idx === problemDivs.length - 1);
+  // scroll the active sidebar item into view (mobile + when list is long)
+  navBtns[idx].scrollIntoView({block: "nearest"});
+  currentIdx = idx;
+  if (updateHash) {
+    try { history.replaceState(null, "", "#mas-" + (idx + 1)); } catch (e) {}
+  }
+  // notify parent iframe (autosize)
+  try { window.parent.postMessage({pmEvent: "problem-changed", idx: idx}, "*"); } catch (e) {}
+}
+
+prevBtn.addEventListener("click", function () { showProblem(currentIdx - 1, true); });
+nextBtn.addEventListener("click", function () { showProblem(currentIdx + 1, true); });
+
+// keyboard left/right
+document.addEventListener("keydown", function (e) {
+  if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  if (e.key === "ArrowLeft")  showProblem(currentIdx + 1, true);   // RTL: left = next
+  if (e.key === "ArrowRight") showProblem(currentIdx - 1, true);
+});
+
+// initial: read hash or default to first
+(function init() {
+  var m = /^#mas-(\d+)$/.exec(location.hash);
+  var start = m ? Math.max(0, Math.min(problems.length - 1, parseInt(m[1], 10) - 1)) : 0;
+  showProblem(start, false);
+})();
+</script>
+</body>
+</html>

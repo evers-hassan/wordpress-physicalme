@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>حل مسائل — فصل ۱ دوازدهم: حرکت بر خط راست</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --hint:#9b9a93; --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --hint-c:#a87800; --hint-bg:#fef6e0; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --check:#7a4dbd; --check-bg:#efe6f9; --bad:#c43838; --bad-bg:#fce5e5;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --hint:#76746d; --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --hint-c:#e0b860; --hint-bg:#4a3a15; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --check:#b08be8; --check-bg:#3a2858; --bad:#f0807d; --bad-bg:#4a1f1f; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.8;}
+  .problem{border:1px solid var(--border); border-radius:14px; padding:18px 20px;
+    margin-bottom:18px; background:var(--bg);}
+  .pnum{display:inline-block; background:var(--info-bg); color:var(--info);
+    font-weight:700; padding:2px 10px; border-radius:8px; font-size:13px; margin-bottom:8px;}
+  .pq{font-size:15.5px; margin:6px 0 14px; color:var(--text); line-height:1.85;}
+  .ptype{font-size:12px; color:var(--muted); margin-bottom:10px;}
+  .relate{font-size:13px; color:var(--muted); background:var(--surface);
+    padding:8px 12px; border-radius:8px; margin-bottom:12px; border-right:3px solid var(--info);}
+  .controls{margin:10px 0 4px; display:flex; flex-wrap:wrap; gap:8px;}
+  .btn{font-family:inherit; font-size:14px; padding:8px 16px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text);
+    cursor:pointer; transition:.15s;}
+  .btn:hover{background:var(--surface);}
+  .btn-hint{color:var(--hint-c); border-color:var(--hint-c);}
+  .btn-next{color:var(--info); border-color:var(--info);}
+  .btn-check{color:var(--check); border-color:var(--check);}
+  .btn:disabled{opacity:.4; cursor:not-allowed;}
+  .step{margin-top:12px; padding:12px 14px; border-radius:10px; background:var(--info-bg);
+    border-right:3px solid var(--info); animation:fadeIn .25s ease;}
+  .step b{color:var(--info);}
+  .hint-box{margin-top:12px; padding:12px 14px; border-radius:10px;
+    background:var(--hint-bg); border-right:3px solid var(--hint-c);
+    animation:fadeIn .25s ease;}
+  .hint-box b{color:var(--hint-c);}
+  .final{margin-top:12px; padding:14px; border-radius:10px; background:var(--ok-bg);
+    border-right:3px solid var(--ok); animation:fadeIn .25s ease;}
+  .final b{color:var(--ok);}
+  .check-box{margin-top:12px; padding:14px; border-radius:10px; background:var(--check-bg);
+    border-right:3px solid var(--check); animation:fadeIn .25s ease;}
+  .check-box b{color:var(--check);}
+  .check-row{display:flex; align-items:center; gap:8px; margin:6px 0; flex-wrap:wrap;}
+  .check-row label{min-width:24px; font-weight:600; color:var(--text);}
+  .check-row input{flex:1; min-width:120px; padding:7px 10px; border-radius:8px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text);
+    font-family:inherit; font-size:14px;}
+  .check-row .unit{font-size:13px; color:var(--muted); white-space:nowrap;}
+  .check-result{margin-top:10px; padding:10px 12px; border-radius:8px; font-size:14px;}
+  .check-result.ok{background:var(--ok-bg); color:var(--ok); border-right:3px solid var(--ok);}
+  .check-result.bad{background:var(--bad-bg); color:var(--bad); border-right:3px solid var(--bad);}
+  .check-result b{font-weight:700;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:none;}}
+  .label{font-size:11px; font-weight:700; letter-spacing:.5px; margin-bottom:4px;
+    display:inline-block;}
+  h1.page-title{font-size:22px; margin:8px 0 18px; color:var(--text);}
+  .intro{background:var(--surface); padding:14px 16px; border-radius:12px; margin-bottom:18px;
+    font-size:14px; color:var(--muted); line-height:1.8;}
+  .intro b{color:var(--text);}
+
+  /* ---- master-detail layout ---- */
+  .layout{display:grid; grid-template-columns:200px 1fr; gap:22px; align-items:start;}
+  @media (max-width:620px){ .layout{grid-template-columns:1fr;} }
+  .sidebar{background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:14px; position:sticky; top:16px; max-height:calc(100vh - 32px);
+    overflow-y:auto;}
+  .sidebar h2{font-size:13px; font-weight:700; color:var(--muted); letter-spacing:1px;
+    margin:0 0 10px; text-transform:uppercase; padding:0 4px;}
+  .sidebar ol{list-style:none; padding:0; margin:0; counter-reset:msc;}
+  .sidebar li{margin:2px 0;}
+  .sidebar .nav-btn{display:flex; align-items:center; gap:10px; width:100%;
+    text-align:right; font-family:inherit; font-size:14px; color:var(--text);
+    padding:9px 12px; background:transparent; border:none; border-radius:8px;
+    cursor:pointer; line-height:1.5; transition:.12s;}
+  .sidebar .nav-btn:hover{background:var(--bg);}
+  .sidebar .nav-btn.active{background:var(--info-bg); color:var(--info); font-weight:700;}
+  .sidebar .nav-btn .nb-num{flex-shrink:0; min-width:26px; height:26px;
+    border-radius:50%; background:var(--bg); color:var(--muted); display:flex;
+    align-items:center; justify-content:center; font-size:12px; font-weight:700;
+    border:1px solid var(--border);}
+  .sidebar .nav-btn.active .nb-num{background:var(--info); color:#fff; border-color:var(--info);}
+  .sidebar .nav-btn .nb-title{flex:1; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap;}
+  @media (max-width:620px){
+    .sidebar{position:relative; top:0; max-height:none;}
+    .sidebar ol{display:grid; grid-template-columns:repeat(auto-fill, minmax(56px,1fr)); gap:6px;}
+    .sidebar .nav-btn{justify-content:center; padding:8px 6px; font-size:13px;}
+    .sidebar .nav-btn .nb-title{display:none;}
+  }
+  .nav-arrows{display:flex; gap:10px; margin-top:18px; justify-content:space-between;}
+  .nav-arrows .btn{flex:1;}
+  .nav-arrows .btn:disabled{visibility:hidden;}
+</style>
+  <script id="mathjax-config">
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\(','\)']],
+           displayMath: [['$$','$$'], ['\[','\]']],
+           processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+  <h1 class="page-title">حل مسائل فصل ۱ دوازدهم — حرکت بر خط راست 🏃‍♂️</h1>
+  <div class="intro">
+    اینجا هر مسئله رو می‌تونی <b>قدم‌به‌قدم</b> پیش بری. اگه گیر کردی <b>💡 راهنمایی</b> بگیر؛ اگه خودت حل کردی و فقط می‌خوای جوابتو چک کنی، رو <b>🔍 بررسی جواب من</b> کلیک کن. تلرانسِ بررسی حدودِ ۵٪ ـه تا اعدادِ رُند هم قبول بشن.
+  </div>
+  <div class="layout">
+    <aside class="sidebar">
+      <h2>فهرست مسائل</h2>
+      <ol id="nav-list"></ol>
+    </aside>
+    <main>
+      <div id="problems"></div>
+      <div class="nav-arrows">
+        <button class="btn" id="prev-btn">← مسئله‌ی قبلی</button>
+        <button class="btn btn-next" id="next-btn">مسئله‌ی بعدی →</button>
+      </div>
+    </main>
+  </div>
+
+<script>
+// ============================================================
+// مسائل فصل ۱
+// ساختار هر مسئله:
+//   n         شماره (نمایشی)
+//   type      نوع
+//   q         صورت سؤال (HTML)
+//   relate    ارتباط با مسائل قبلی (اختیاری)
+//   hint      راهنمایی (اختیاری)
+//   steps     آرایه‌ی قدم‌های حل (HTML)
+//   final     جواب نهایی (HTML)
+//   check     [{label, value, unit, tol?}]  ← اگر بود، دکمه‌ی بررسی جواب فعال می‌شود
+// ============================================================
+var problems = [
+
+  // ===== ۱-۱ شناخت حرکت: مسافت/جابه‌جایی/سرعت متوسط =====
+  {n:"۱", type:"مفهومی — مسافت و جابه‌جایی",
+   q:"یه دونده‌ی دو میدانی، روی پیستی به‌طول $400$ متر یه دور کامل می‌زنه و سرِ جای اولش بر می‌گرده. <b>مسافت</b> و <b>جابه‌جایی</b> این دونده چقدره؟",
+   hint:"به تعریف هر کدوم برگرد. مسافت طولِ مسیره؛ جابه‌جایی بردارِ بین نقطه‌ی شروع و پایانه.",
+   steps:[
+     "<b>مسافت:</b> طولِ کلِ مسیری که پای دونده روش رفته. $d = 400$ متر.",
+     "<b>جابه‌جایی:</b> بردار از نقطه‌ی شروع به نقطه‌ی پایان. چون شروع و پایان روی یه نقطه‌ست، $|\\Delta \\vec{r}| = 0$.",
+   ],
+   final:"<b>درسِ کلیدی:</b> مسافت همیشه مثبته، ولی جابه‌جایی می‌تونه صفر باشه — حتی اگه ساعت‌ها بدوی. اگه یه نفر بگه «مسافت متوسطم بیشتر از سرعت متوسطم بود» باور کن، چون $|v_{av}| \\le s_{av}$ همیشه.",
+   check:[{label:"مسافت", value:400, unit:"m", tol:0.01},{label:"|جابه‌جایی|", value:0, unit:"m", tol:0.01}]
+  },
+
+  {n:"۲", type:"محاسباتی — سرعت متوسط روی محور",
+   q:"یه ذره در راستای محورِ $x$ حرکت می‌کنه. در $t_1=0$ در $x_1 = +6$ متر بود و در $t_2=10$ s در $x_2 = -14$ متر. <b>سرعت متوسط</b> رو پیدا کن.",
+   hint:"$v_{av} = (x_2 - x_1)/(t_2 - t_1)$ — حواست به علامت‌ها باشه.",
+   steps:[
+     "<b>قدم ۱ — جابه‌جایی:</b> $\\Delta x = x_2 - x_1 = -14 - 6 = -20$ متر",
+     "<b>قدم ۲ — زمانِ سپری‌شده:</b> $\\Delta t = 10 - 0 = 10$ ثانیه",
+     "<b>قدم ۳ — سرعت متوسط:</b> $$v_{av} = \\frac{\\Delta x}{\\Delta t} = \\frac{-20}{10} = -2~\\text{m/s}$$"
+   ],
+   final:"<b>جواب:</b> $v_{av} = -2$ m/s. علامتِ منفی یعنی در خلافِ جهتِ محورِ $x$ جابه‌جا شده.",
+   check:[{label:"v_av", value:-2, unit:"m/s", tol:0.02}]
+  },
+
+  {n:"۳", type:"محاسباتی — تندیِ متوسط در یه سفر دومرحله‌ای",
+   q:"یه ماشین از تهران تا قم ($150$ km) رو با تندیِ ثابتِ $75$ km/h می‌ره و برگشتشو با تندیِ $50$ km/h. <b>تندیِ متوسط در رفت‌و‌برگشت</b> چقدره؟",
+   relate:"🔗 توجه: این میانگین حسابیِ ساده <b>نیست</b>!",
+   hint:"تندیِ متوسط = مسافتِ کل / زمانِ کل. زمانِ هر بخش رو جدا حساب کن.",
+   steps:[
+     "<b>قدم ۱ — زمانِ رفت:</b> $t_1 = 150 / 75 = 2$ ساعت",
+     "<b>قدم ۲ — زمانِ برگشت:</b> $t_2 = 150 / 50 = 3$ ساعت",
+     "<b>قدم ۳ — مسافتِ کل:</b> $d = 300$ km؛ <b>زمانِ کل:</b> $5$ ساعت",
+     "<b>قدم ۴ — تندیِ متوسط:</b> $$s_{av} = \\frac{300}{5} = 60~\\text{km/h}$$"
+   ],
+   final:"<b>جواب:</b> $60$ km/h — نه $62.5$ (که میانگین حسابی بود). تندیِ متوسط همیشه به <b>زمانِ هر بخش</b> وزن‌دار می‌شه، نه به مسافت.",
+   check:[{label:"s_av", value:60, unit:"km/h", tol:0.02}]
+  },
+
+  // ===== ۱-۲ حرکت با سرعت ثابت =====
+  {n:"۴", type:"مفهومی — تفسیر نمودار x-t",
+   q:"نمودار $x$-$t$ یه جسم یه خطِ راست با شیبِ منفیه. این جسم چه نوع حرکتی داره؟",
+   hint:"شیب در نمودار x-t برابر چی هست؟",
+   steps:[
+     "<b>قانون:</b> شیب نمودار $x$-$t$ = سرعتِ لحظه‌ای.",
+     "<b>چون خطِ راست:</b> شیب در همه‌ی نقطه‌ها یکسان، یعنی سرعتِ ثابت — حرکتِ یکنواخت.",
+     "<b>چون شیب منفیه:</b> سرعت در خلافِ جهتِ محور مثبت."
+   ],
+   final:"<b>پاسخ:</b> حرکتِ یکنواخت در خلافِ جهتِ محور $x$ — یعنی $v < 0$ ثابت."
+  },
+
+  {n:"۵", type:"محاسباتی — رسیدنِ دو خودرو",
+   q:"دو خودرو از دو سرِ یه جاده‌ی $400$ کیلومتری هم‌زمان به طرفِ هم حرکت می‌کنن. سرعتِ خودروی $A = 80$ km/h و خودروی $B = 120$ km/h. کِی و کجا به هم می‌رسن؟",
+   hint:"سرعتِ نسبیِ نزدیک‌شدن = مجموع سرعت‌ها. زمانِ رسیدن = فاصله/سرعتِ نسبی.",
+   steps:[
+     "<b>قدم ۱ — سرعت نسبی:</b> چون به سمت هم می‌رن، $v_{rel} = 80 + 120 = 200$ km/h",
+     "<b>قدم ۲ — زمانِ برخورد:</b> $$t = \\frac{400}{200} = 2~\\text{h}$$",
+     "<b>قدم ۳ — مکان برخورد (از سمتِ $A$):</b> $$x = 80 \\times 2 = 160~\\text{km}$$"
+   ],
+   final:"<b>جواب:</b> بعد از <b>۲ ساعت</b>، در فاصله‌ی <b>۱۶۰ کیلومتر از $A$</b> (یا $240$ km از $B$).",
+   check:[{label:"t", value:2, unit:"h", tol:0.02},{label:"x از A", value:160, unit:"km", tol:0.02}]
+  },
+
+  {n:"۶", type:"محاسباتی — قطار از پلِ راه‌آهن",
+   q:"یه قطار به طولِ $200$ متر با سرعتِ ثابتِ $25$ m/s داره از روی پلی به طولِ $300$ متر می‌گذره. <b>چقدر طول می‌کشه</b> تا کلِ قطار از پل رد بشه؟",
+   hint:"از لحظه‌ای که دماغه‌ی قطار وارد پل می‌شه تا لحظه‌ای که دُمِ قطار از پل خارج می‌شه، دماغه باید چقدر طی کرده باشه؟",
+   steps:[
+     "<b>قدم ۱:</b> برای اینکه کل قطار از پل رد بشه، دماغه باید $L_{\\text{پل}} + L_{\\text{قطار}}$ طی کرده باشه:",
+     "$d = 300 + 200 = 500$ متر",
+     "<b>قدم ۲ — زمان:</b> $$t = \\frac{500}{25} = 20~\\text{s}$$"
+   ],
+   final:"<b>جواب:</b> $20$ ثانیه. این نکته‌ی کلاسیکیه — همیشه برای اجسامِ امتداددار، طولِ خودِ جسم رو به فاصله‌ی طی‌شده اضافه کن.",
+   check:[{label:"t", value:20, unit:"s", tol:0.02}]
+  },
+
+  // ===== ۱-۳ حرکت با شتاب ثابت =====
+  {n:"۷", type:"محاسباتی — شتاب‌گیریِ خودرو",
+   q:"یه خودرو از حالتِ سکون شروع به حرکت می‌کنه و در $8$ ثانیه به سرعتِ $72$ km/h می‌رسه. <b>شتاب</b> و <b>مسافتِ طی‌شده</b> رو پیدا کن.",
+   hint:"اول سرعت رو به m/s تبدیل کن، بعد $a = (v - v_0)/t$.",
+   steps:[
+     "<b>قدم ۱ — تبدیل یکا:</b> $v = 72 / 3.6 = 20$ m/s. $v_0 = 0$.",
+     "<b>قدم ۲ — شتاب:</b> $$a = \\frac{v - v_0}{t} = \\frac{20 - 0}{8} = 2.5~\\text{m/s}^2$$",
+     "<b>قدم ۳ — مسافت (با معادله ۴):</b> $$\\Delta x = \\frac{v_0 + v}{2} \\cdot t = \\frac{0 + 20}{2} \\cdot 8 = 80~\\text{m}$$"
+   ],
+   final:"<b>جواب:</b> $a = 2.5$ m/s² و $\\Delta x = 80$ m. می‌تونی با معادله ۲ هم چک کنی: $\\Delta x = \\tfrac{1}{2}(2.5)(8)^2 = 80$ ✓",
+   check:[{label:"a", value:2.5, unit:"m/s²", tol:0.02},{label:"Δx", value:80, unit:"m", tol:0.02}]
+  },
+
+  {n:"۸", type:"محاسباتی — ترمزِ اضطراری",
+   q:"یه ماشین با سرعتِ $108$ km/h در حرکته. راننده ترمز می‌زنه و خودرو با شتابِ ثابت در $75$ متر متوقف می‌شه. <b>شتابِ ترمز</b> رو پیدا کن.",
+   hint:"زمان نداری، زمان نمی‌خوای — معادله ۳ بهترین انتخابه: $v^2 = v_0^2 + 2a\\Delta x$.",
+   steps:[
+     "<b>قدم ۱ — تبدیل یکا:</b> $v_0 = 108/3.6 = 30$ m/s. $v = 0$. $\\Delta x = 75$ m.",
+     "<b>قدم ۲ — معادله ۳:</b> $$0 = (30)^2 + 2a(75)$$",
+     "<b>قدم ۳ — حل:</b> $0 = 900 + 150 a \\;\\Rightarrow\\; a = -6~\\text{m/s}^2$"
+   ],
+   final:"<b>جواب:</b> $a = -6$ m/s² (یا اندازه‌ی $|a| = 6$ m/s²). علامتِ منفی به این معناست که شتاب در خلافِ جهتِ حرکته (یعنی ترمزه).",
+   check:[{label:"a", value:-6, unit:"m/s²", tol:0.02}]
+  },
+
+  {n:"۹", type:"محاسباتی — هواپیما در باند پرواز",
+   q:"یه هواپیما برای برخاستن نیاز به سرعتِ $80$ m/s داره. اگه با شتابِ ثابتِ $4$ m/s² از سکون شتاب بگیره، چه طولی از باند رو لازم داره؟ چقدر زمان می‌بره؟",
+   hint:"$v_0 = 0$، $v = 80$، $a = 4$. هم مسافت می‌خوای، هم زمان.",
+   steps:[
+     "<b>قدم ۱ — زمان از معادله ۱:</b> $$t = \\frac{v - v_0}{a} = \\frac{80 - 0}{4} = 20~\\text{s}$$",
+     "<b>قدم ۲ — مسافت از معادله ۳ یا ۴:</b> $$\\Delta x = \\frac{v + v_0}{2} \\cdot t = \\frac{80}{2} \\cdot 20 = 800~\\text{m}$$"
+   ],
+   final:"<b>جواب:</b> $t = 20$ s، $\\Delta x = 800$ m. هواپیما به $800$ متر باند نیاز داره. (در عمل، باندها معمولاً $2$-$3$ کیلومتر هستن، چون اضطراری هم در نظر می‌گیرن.)",
+   check:[{label:"t", value:20, unit:"s", tol:0.02},{label:"Δx", value:800, unit:"m", tol:0.02}]
+  },
+
+  {n:"۱۰", type:"مفهومی — شتاب منفی و کند شدن",
+   q:"یه جسم در راستای محورِ $x$ با سرعتِ $-10$ m/s در حرکته و شتابش $-2$ m/s². <b>جسم تندتر می‌شه یا کندتر؟</b> چرا؟",
+   hint:"تندتر/کندتر شدن به علامتِ نسبیِ $v$ و $a$ بستگی داره — نه به علامتِ مطلقشون.",
+   steps:[
+     "<b>قاعده:</b> اگه $\\vec{v}$ و $\\vec{a}$ <b>هم‌جهت</b> باشن، جسم تندتر می‌شه؛ اگه مخالف، کندتر.",
+     "<b>این مسئله:</b> هم $v$ و هم $a$ منفی‌اند → <b>هم‌جهت</b>اند.",
+     "<b>نتیجه:</b> جسم تندتر می‌شه (در جهتِ منفیِ محور، سرعتش بزرگ‌تر می‌شه)."
+   ],
+   final:"<b>درسِ کلیدی:</b> «شتابِ منفی» الزاماً یعنی کند شدن نیست! این یه خطای رایج تو دانش‌آموزاست. به علامتِ نسبیِ $v$ و $a$ نگاه کن، نه به علامتِ مطلق."
+  },
+
+  {n:"۱۱", type:"محاسباتی — برخوردِ شتاب‌دار و یکنواخت",
+   q:"خودروی $A$ از $x = 0$ از سکون با شتابِ $+2$ m/s² شروع می‌کنه. هم‌زمان خودروی $B$ از $x = 100$ m با سرعتِ ثابتِ $-5$ m/s به طرفش می‌آد. کِی و کجا به هم می‌رسن؟",
+   hint:"معادله‌ی حرکت هر کدوم رو بنویس، $x_A = x_B$ بذار، حل کن.",
+   steps:[
+     "<b>قدم ۱ — معادله‌ها:</b> $x_A = 0 + 0 \\cdot t + \\tfrac{1}{2}(2)t^2 = t^2$<br>$x_B = 100 + (-5)t = 100 - 5t$",
+     "<b>قدم ۲ — برخورد:</b> $t^2 = 100 - 5t \\;\\Rightarrow\\; t^2 + 5t - 100 = 0$",
+     "<b>قدم ۳ — فرمول ریشه‌ها:</b> $t = \\frac{-5 \\pm \\sqrt{25 + 400}}{2} = \\frac{-5 \\pm \\sqrt{425}}{2}$",
+     "<b>قدم ۴ — جوابِ مثبت:</b> $t \\approx \\frac{-5 + 20.6}{2} \\approx 7.8~\\text{s}$",
+     "<b>قدم ۵ — مکان:</b> $x = (7.8)^2 \\approx 60.8$ m"
+   ],
+   final:"<b>جواب:</b> حدود $7.8$ ثانیه بعد، در $x \\approx 61$ متر. ⚠️ مسائلِ شتاب‌دار همیشه به معادله‌ی درجه دو منجر می‌شن — هر دو ریشه رو حساب کن، اون منفی رو دور بنداز.",
+   check:[{label:"t", value:7.81, unit:"s", tol:0.05},{label:"x", value:61, unit:"m", tol:0.05}]
+  },
+
+  // ===== ۱-۴ سقوط آزاد =====
+  {n:"۱۲", type:"محاسباتی — رهاکردن از پنجره",
+   q:"یه گوی از پنجره‌ای به ارتفاعِ $20$ متر از زمین رها می‌شه (یعنی $v_0 = 0$). از $g = 10$ m/s² استفاده کن. <b>الف)</b> چقدر طول می‌کشه به زمین برسه؟ <b>ب)</b> با چه سرعتی به زمین می‌خوره؟",
+   hint:"محورِ بالا مثبت. $y_0 = 20$، $v_0 = 0$، $a = -g = -10$. رسیدن به زمین یعنی $y = 0$.",
+   steps:[
+     "<b>قدم ۱ — زمان (از معادله ۲):</b> $0 = 20 + 0 - \\tfrac{1}{2}(10)t^2 \\;\\Rightarrow\\; t^2 = 4 \\;\\Rightarrow\\; t = 2~\\text{s}$",
+     "<b>قدم ۲ — سرعت (از معادله ۱):</b> $v = 0 - 10(2) = -20$ m/s",
+     "<b>قدم ۳ — تفسیر:</b> اندازه‌ی سرعت = $20$ m/s = $72$ km/h. علامتِ منفی یعنی به سمتِ پایین حرکت می‌کرد (که بدیهیه)."
+   ],
+   final:"<b>جواب:</b> $t = 2$ ثانیه، با سرعتِ $20$ m/s (≈ $72$ km/h) به زمین می‌خوره — همینه دلیل اینکه پرتاب از ارتفاعِ ۲۰ متر می‌تونه کشنده باشه.",
+   check:[{label:"t", value:2, unit:"s", tol:0.02},{label:"v", value:-20, unit:"m/s", tol:0.02}]
+  },
+
+  {n:"۱۳", type:"محاسباتی — پرتاب قائم به بالا",
+   q:"یه توپ رو از زمین با سرعتِ $20$ m/s مستقیماً به بالا پرتاب می‌کنیم. ($g = 10$ m/s²) <b>الف)</b> به چه ارتفاعی می‌رسه؟ <b>ب)</b> چقدر طول می‌کشه به اوج برسه؟ <b>پ)</b> کِی به زمین برمی‌گرده؟",
+   hint:"در اوج، $v = 0$. زمانِ کل، دو برابر زمانِ اوجه (تقارن).",
+   steps:[
+     "<b>الف — ارتفاع اوج (از معادله ۳):</b> $0 = (20)^2 - 2(10)\\Delta y \\;\\Rightarrow\\; \\Delta y = 20$ متر",
+     "<b>ب — زمانِ اوج:</b> $0 = 20 - 10 t_{\\max} \\;\\Rightarrow\\; t_{\\max} = 2$ ثانیه",
+     "<b>پ — زمانِ کل:</b> به دلیلِ تقارن، $t_{\\text{کل}} = 2 \\times t_{\\max} = 4$ ثانیه (یا حل معادله ۲ با $y = 0$)"
+   ],
+   final:"<b>جواب:</b> اوجِ $20$ متر، اوج بعد از $2$ ثانیه، برگشت در $4$ ثانیه. سرعتِ برگشت به زمین = $-20$ m/s (همون اندازه‌ی اولیه، علامت معکوس).",
+   check:[{label:"y_max", value:20, unit:"m", tol:0.02},{label:"t_max", value:2, unit:"s", tol:0.02},{label:"t_total", value:4, unit:"s", tol:0.02}]
+  },
+
+  {n:"۱۴", type:"محاسباتی — توپ از پشتِ بام",
+   q:"از پشتِ بامی به ارتفاعِ $25$ متر، یه توپ با سرعتِ $10$ m/s به سمتِ <b>بالا</b> پرتاب می‌شه. ($g = 10$) <b>چقدر طول می‌کشه</b> به زمین برسه و با <b>چه سرعتی</b>؟",
+   hint:"$y_0 = 25$، $v_0 = +10$، $a = -10$. رسیدن به زمین یعنی $y = 0$.",
+   steps:[
+     "<b>قدم ۱ — معادله ۲:</b> $0 = 25 + 10 t - 5 t^2 \\;\\Rightarrow\\; 5 t^2 - 10 t - 25 = 0 \\;\\Rightarrow\\; t^2 - 2t - 5 = 0$",
+     "<b>قدم ۲ — فرمول ریشه‌ها:</b> $t = \\frac{2 \\pm \\sqrt{4 + 20}}{2} = \\frac{2 \\pm \\sqrt{24}}{2} = 1 \\pm \\sqrt{6}$",
+     "<b>قدم ۳ — جواب مثبت:</b> $t = 1 + \\sqrt{6} \\approx 3.45$ ثانیه",
+     "<b>قدم ۴ — سرعتِ برخورد:</b> $v = 10 - 10(3.45) \\approx -24.5$ m/s"
+   ],
+   final:"<b>جواب:</b> حدود $3.45$ ثانیه و سرعتِ برخوردِ ≈ $24.5$ m/s (≈ $88$ km/h). توجه: توپ اول می‌ره بالا، بعد بر می‌گرده و از کنارِ پشتِ بام رد می‌شه و می‌خوره به زمین.",
+   check:[{label:"t", value:3.45, unit:"s", tol:0.04},{label:"v", value:-24.5, unit:"m/s", tol:0.04}]
+  },
+
+  {n:"۱۵", type:"مفهومی — اوجِ پرتاب",
+   q:"یه توپ به بالا پرت می‌شه و در اوجش یه لحظه ساکن می‌شه. در اون لحظه، <b>شتابِ توپ</b> چقدره؟",
+   hint:"اوج فقط لحظه‌ای‌ست که $v = 0$. ولی شتاب چی؟",
+   steps:[
+     "<b>تله‌ی رایج:</b> خیلی‌ها فکر می‌کنن چون $v = 0$، پس $a = 0$. این غلطه!",
+     "<b>واقعیت:</b> توپ تو هواست و فقط گرانش روش اثر می‌کنه. شتاب همچنان $-g$ (یا $-10$ m/s²) هست.",
+     "<b>اگه $a$ صفر بود:</b> توپ تو اوج برای همیشه ایستاده می‌موند! ولی می‌بینیم برمی‌گرده پایین، پس شتاب باید غیر صفر باشه."
+   ],
+   final:"<b>درسِ کلیدی:</b> «سرعتِ صفر در یه لحظه» با «شتابِ صفر» یکی نیست. لحظه‌ی اوج، توپ یه «لحظه‌ی گذرا» داره که $v = 0$ ـه ولی $\\vec{a} = -g\\hat{j}$."
+  },
+
+  {n:"۱۶", type:"محاسباتی — رهاکردنِ سنگ تو چاه",
+   q:"یه سنگ رو توی چاهی رها می‌کنیم و $3$ ثانیه بعد صدای برخوردش با کفِ چاه شنیده می‌شه. ($g = 10$، مقاومتِ هوا و زمانِ صدا را صفر بگیر.) <b>عمقِ چاه</b> چقدره؟",
+   hint:"محورِ پایین مثبت ساده‌تره. $v_0 = 0$، $a = +g = +10$. مسافت طی‌شده تو ۳ ثانیه = عمق چاه.",
+   steps:[
+     "<b>قدم ۱ — معادله ۲ (پایین مثبت):</b> $d = v_0 t + \\tfrac{1}{2}g t^2 = 0 + \\tfrac{1}{2}(10)(3)^2$",
+     "<b>قدم ۲ — محاسبه:</b> $d = \\tfrac{1}{2}(10)(9) = 45$ متر"
+   ],
+   final:"<b>جواب:</b> $45$ متر. در عمل، اگه عمق بیشتر بود می‌بایست زمانِ رفتنِ صدا رو هم حساب کنیم (با سرعتِ صدا ≈ $340$ m/s)، ولی برای چاه‌های کم‌عمق قابلِ صرف‌نظره.",
+   check:[{label:"d", value:45, unit:"m", tol:0.02}]
+  },
+
+  // ===== نمودارها و تحلیل =====
+  {n:"۱۷", type:"تحلیلِ نمودار — مساحت زیر v-t",
+   q:"نمودارِ $v$-$t$ یه قطار از $t=0$ تا $t=20$ s این الگو رو داره: از $0$ تا $5$ s سرعت به طور خطی از $0$ به $30$ m/s می‌رسه. از $5$ تا $15$ s سرعت ثابت $30$ m/s. از $15$ تا $20$ s سرعت خطی به صفر می‌رسه. <b>جابه‌جاییِ کل</b> چقدره؟",
+   hint:"از $\\Delta x = $ مساحت زیر منحنیِ $v$-$t$ استفاده کن. این یه ذوزنقه‌ست.",
+   steps:[
+     "<b>قدم ۱ — مثلث اول ($0$ تا $5$):</b> $A_1 = \\tfrac{1}{2}(5)(30) = 75$ متر",
+     "<b>قدم ۲ — مستطیل وسط ($5$ تا $15$):</b> $A_2 = (10)(30) = 300$ متر",
+     "<b>قدم ۳ — مثلث آخر ($15$ تا $20$):</b> $A_3 = \\tfrac{1}{2}(5)(30) = 75$ متر",
+     "<b>قدم ۴ — جمع:</b> $\\Delta x = 75 + 300 + 75 = 450$ متر"
+   ],
+   final:"<b>جواب:</b> $\\Delta x = 450$ متر. این روشِ هندسی، خصوصاً وقتی نمودار از تکه‌های ساده ساخته شده، خیلی سریع‌تر از حلِ معادله‌ست.",
+   check:[{label:"Δx", value:450, unit:"m", tol:0.02}]
+  },
+
+  {n:"۱۸", type:"تحلیلِ نمودار — تشخیصِ نوع حرکت",
+   q:"نمودارِ $x$-$t$ یه جسم یه سهمی به سمتِ بالا (concave up) ـه. این جسم چه نوع حرکتی داره؟",
+   hint:"یه سهمی به سمتِ بالا، شیبش داره زیاد می‌شه. شیبِ x-t چیه؟",
+   steps:[
+     "<b>قاعده‌ی شیب-سرعت:</b> شیبِ $x$-$t$ = $v$.",
+     "<b>برای یک سهمی به بالا:</b> شیب در حالِ افزایشه ⟸ سرعت در حالِ افزایشه ⟸ شتابِ مثبت.",
+     "<b>نتیجه:</b> حرکت با شتابِ ثابتِ مثبت — مثلِ یه ماشین که تازه شروع کرده به شتاب‌گیری."
+   ],
+   final:"<b>درسِ کلیدی:</b> شکلِ منحنیِ $x$-$t$ مستقیماً علامت و طبیعتِ شتاب رو می‌گه. concave up = $a > 0$، concave down = $a < 0$."
+  },
+
+  {n:"۱۹", type:"تحلیلِ نمودار — لحظه‌ی تغییر جهت",
+   q:"اگه نمودارِ $v$-$t$ یه جسم در $t = 5$ s از محورِ زمان عبور کنه (یعنی $v(5) = 0$)، در این لحظه چه اتفاقی برای جسم می‌افته؟",
+   hint:"عبور از صفر یعنی علامتِ $v$ عوض می‌شه. این یعنی چی فیزیکی؟",
+   steps:[
+     "<b>قبل از $t = 5$:</b> اگه $v > 0$، جسم در جهتِ مثبت می‌رفته.",
+     "<b>بعد از $t = 5$:</b> اگه $v < 0$، جسم در جهتِ منفی می‌ره.",
+     "<b>پس $t = 5$:</b> لحظه‌ای ـه که جسم <b>تغییر جهت</b> می‌ده — متوقف می‌شه ولی بلافاصله در جهتِ مخالف شروع می‌کنه."
+   ],
+   final:"<b>درسِ کلیدی:</b> تقاطع نمودارِ $v$-$t$ با محور = نقطه‌ی تغییر جهت، نه توقفِ دائمی. مثال کلاسیک: پرتاب قائم — در اوج $v = 0$ هست، توپ یه لحظه می‌ایسته و بعد می‌آد پایین."
+  },
+
+  // ===== استراتژی حل + ترکیبی =====
+  {n:"۲۰", type:"ترکیبی — دونده‌ی $100$ متر",
+   q:"یه دونده‌ی دوومیدانی در $4$ ثانیه‌ی اول، از سکون به سرعتِ ثابتِ $9$ m/s می‌رسه (شتاب ثابت)، و بعد همون سرعت رو ثابت نگه می‌داره. <b>زمانِ کلِ مسابقه‌ی $100$ متر</b> چقدره؟",
+   hint:"مسئله‌ی دو-مرحله‌ای. مرحله A شتاب‌گیری، مرحله B یکنواخت.",
+   steps:[
+     "<b>مرحله A — مسافتِ طی‌شده در شتاب‌گیری:</b> $\\Delta x_A = \\frac{0 + 9}{2}(4) = 18$ متر",
+     "<b>مرحله B — مسافتِ باقی‌مانده:</b> $100 - 18 = 82$ متر",
+     "<b>مرحله B — زمان:</b> $t_B = 82 / 9 \\approx 9.11$ ثانیه",
+     "<b>زمانِ کل:</b> $t_{\\text{کل}} = 4 + 9.11 \\approx 13.11$ ثانیه"
+   ],
+   final:"<b>جواب:</b> حدود $13.1$ ثانیه. این نزدیک به زمانِ یه دونده‌ی متوسطه. رکوردِ جهانی $9.58$ هست (یوسین بولت) — مرحله‌ی شتاب‌گیریش خیلی کوتاه‌تر و سرعتش بالاتره.",
+   check:[{label:"t", value:13.11, unit:"s", tol:0.04}]
+  },
+
+  {n:"۲۱", type:"محاسباتی — اوج توپ از پشتِ بام",
+   q:"از پشتِ بامی به ارتفاعِ $40$ متر، توپی با سرعتِ $20$ m/s به سمت بالا پرت می‌شه. ($g = 10$) به چه <b>ارتفاعی نسبت به زمین</b> در اوج می‌رسه؟",
+   hint:"ابتدا ارتفاعِ اوج رو نسبت به پشتِ بام پیدا کن، بعد به ارتفاعِ بام اضافه کن.",
+   steps:[
+     "<b>قدم ۱ — افزایش ارتفاع از پشتِ بام تا اوج:</b> $0 = (20)^2 - 2(10)\\Delta y \\;\\Rightarrow\\; \\Delta y = 20$ متر",
+     "<b>قدم ۲ — ارتفاع کل از زمین:</b> $h_{\\text{اوج}} = 40 + 20 = 60$ متر"
+   ],
+   final:"<b>جواب:</b> $60$ متر بالای زمین. ⚠️ همیشه به این فکر کن «نسبت به چی؟» — اوج $20$ متر بالای پشت بامه، یا $60$ متر بالای زمین.",
+   check:[{label:"h_max", value:60, unit:"m", tol:0.02}]
+  },
+
+  {n:"۲۲", type:"ترکیبی — دو دونده، شتاب و یکنواخت",
+   q:"دوی $A$ از $x=0$ از سکون با شتابِ $2$ m/s² می‌دوه. دوی $B$ از $x=0$ ولی $5$ ثانیه دیرتر، با سرعتِ ثابتِ $8$ m/s شروع می‌کنه. <b>کِی $B$ به $A$ می‌رسه؟</b>",
+   hint:"معادله‌های حرکت رو بنویس، حواست به اینکه $B$ بعد از $5$ ثانیه شروع کرده.",
+   steps:[
+     "<b>قدم ۱ — معادله $A$ (از $t = 0$):</b> $x_A = \\tfrac{1}{2}(2)t^2 = t^2$",
+     "<b>قدم ۲ — معادله $B$ (از $t = 5$):</b> $x_B = 8(t - 5)$ برای $t \\geq 5$",
+     "<b>قدم ۳ — $B$ به $A$ می‌رسه ⟸ $x_B = x_A$:</b> $8(t - 5) = t^2 \\;\\Rightarrow\\; t^2 - 8t + 40 = 0$",
+     "<b>قدم ۴ — حل:</b> $\\Delta = 64 - 160 < 0$ — معادله جواب ندارد!"
+   ],
+   final:"<b>جواب:</b> $B$ هیچ‌وقت به $A$ نمی‌رسه! چون $A$ داره شتاب می‌گیره و سرعتش از $8$ m/s ($v_B$) عبور کرده. این یه نکته‌ی مهمه: <b>اگه جواب معادله موجود نباشه، ممکنه فیزیکاً برخورد رخ نده</b>.",
+   check:[{label:"وجود برخورد", value:0, unit:"بله/خیر", tol:0.5}]
+  },
+
+  {n:"۲۳", type:"ترکیبی — سقوط آزاد و معادله‌ی درجه دو",
+   q:"یه گوی از ارتفاعِ $h$ ر‌ها می‌شه. در $1$ ثانیه‌ی آخرِ سقوطش، نصفِ کلِ ارتفاع رو طی می‌کنه. $h$ چقدره؟ ($g = 10$ m/s²)",
+   hint:"اگه $t$ زمانِ کل باشه، در ثانیه‌ی آخر یعنی از $t-1$ تا $t$. مسافتِ کل و مسافت ثانیه‌ی آخر رو بنویس.",
+   steps:[
+     "<b>قدم ۱ — مسافت کل:</b> $h = \\tfrac{1}{2}g t^2 = 5 t^2$",
+     "<b>قدم ۲ — مسافت تا ابتدای ثانیه‌ی آخر ($t - 1$):</b> $h' = 5(t-1)^2$",
+     "<b>قدم ۳ — مسافت ثانیه‌ی آخر:</b> $h - h' = 5 t^2 - 5(t-1)^2 = 5(2t - 1) = 10 t - 5$",
+     "<b>قدم ۴ — شرط مسئله:</b> ثانیه‌ی آخر = نصفِ $h$: $10t - 5 = \\frac{1}{2}(5t^2) \\;\\Rightarrow\\; 5t^2 - 20t + 10 = 0 \\;\\Rightarrow\\; t^2 - 4t + 2 = 0$",
+     "<b>قدم ۵ — حل:</b> $t = (4 \\pm \\sqrt{16 - 8})/2 = 2 \\pm \\sqrt{2}$. فقط $t > 1$ پذیرفته (چون $t-1 \\geq 0$): $t \\approx 3.41$ ثانیه",
+     "<b>قدم ۶ — ارتفاع:</b> $h = 5(3.41)^2 \\approx 58.3$ متر"
+   ],
+   final:"<b>جواب:</b> $h \\approx 58.3$ متر. این یه مسئله‌ی کلاسیکِ کنکوریه که چندین مرحله ترجمه‌ی متن به ریاضی نیاز داره.",
+   check:[{label:"h", value:58.3, unit:"m", tol:0.05}]
+  },
+
+  {n:"۲۴", type:"تحلیلی — تندیِ متوسط vs سرعتِ متوسط",
+   q:"یه نفر روی محورِ $x$، از $x = 0$ به $x = +40$ متر می‌ره، بعد به $x = +10$ متر بر می‌گرده. کلِ این سفر $20$ ثانیه طول می‌کشه. <b>الف)</b> تندیِ متوسط؟ <b>ب)</b> سرعتِ متوسط؟",
+   hint:"مسافت ≠ جابه‌جایی. هر دو رو جدا حساب کن.",
+   steps:[
+     "<b>قدم ۱ — جابه‌جایی:</b> $\\Delta x = 10 - 0 = +10$ متر",
+     "<b>قدم ۲ — مسافت:</b> $d = 40 + 30 = 70$ متر (رفت + برگشت)",
+     "<b>قدم ۳ — تندیِ متوسط:</b> $s_{av} = 70 / 20 = 3.5$ m/s",
+     "<b>قدم ۴ — سرعتِ متوسط:</b> $v_{av} = 10 / 20 = +0.5$ m/s"
+   ],
+   final:"<b>جواب:</b> $s_{av} = 3.5$ m/s، $v_{av} = +0.5$ m/s. توجه: تندیِ متوسط <b>هفت برابر</b> سرعتِ متوسطه — چون مسیر رفت‌و‌برگشت داره. $|v_{av}| \\leq s_{av}$ همیشه برقراره. ✓",
+   check:[{label:"s_av", value:3.5, unit:"m/s", tol:0.02},{label:"v_av", value:0.5, unit:"m/s", tol:0.02}]
+  },
+
+  {n:"۲۵", type:"چالشی — هلیکوپتر و سقوط بسته",
+   q:"هلیکوپتری در حالِ صعودِ یکنواخت با سرعتِ $5$ m/s در ارتفاعِ $100$ m از زمینه. در همین لحظه، بسته‌ای از آن رها می‌شه. ($g = 10$ m/s²) <b>چقدر طول می‌کشه</b> بسته به زمین برسه؟ با <b>چه سرعتی</b>؟",
+   hint:"تله: بسته در لحظه‌ی رهاشدن، سرعتش $+5$ m/s (همراهی با هلیکوپتر) هست، نه صفر!",
+   steps:[
+     "<b>قدم ۱ — شرایطِ اولیه (محورِ بالا مثبت):</b> $y_0 = 100$، $v_0 = +5$ (همراه با هلی)، $a = -10$",
+     "<b>قدم ۲ — معادله ۲:</b> $0 = 100 + 5 t - 5 t^2$",
+     "<b>قدم ۳ — مرتب‌سازی:</b> $5 t^2 - 5 t - 100 = 0 \\;\\Rightarrow\\; t^2 - t - 20 = 0$",
+     "<b>قدم ۴ — حل:</b> $t = (1 \\pm \\sqrt{1 + 80})/2 = (1 \\pm 9)/2$. جوابِ مثبت: $t = 5$ ثانیه",
+     "<b>قدم ۵ — سرعتِ برخورد:</b> $v = 5 - 10(5) = -45$ m/s"
+   ],
+   final:"<b>جواب:</b> $5$ ثانیه، با سرعتِ $-45$ m/s (≈ $162$ km/h). درسِ کلیدی: بسته در لحظه‌ی رهاشدن، <b>سرعتِ اولیه‌ی</b> هلیکوپتر رو دارد. اگه این رو فراموش کنی، جوابت اشتباه میاد.",
+   check:[{label:"t", value:5, unit:"s", tol:0.02},{label:"v", value:-45, unit:"m/s", tol:0.02}]
+  }
+
+];
+
+// ============================================================
+// رندر
+// ============================================================
+var faNum = function(n){
+  return String(n).replace(/[0-9]/g, function(d){ return "۰۱۲۳۴۵۶۷۸۹"[d]; });
+};
+
+function formatExpected(v){
+  // برای اعدادِ علمیِ بزرگ، نمایشِ خواناتر
+  if(Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-2 && v !== 0)){
+    return v.toExponential(2);
+  }
+  return String(v);
+}
+
+function checkAnswer(user, expected, tol){
+  // tol پیش‌فرض ۵٪
+  tol = tol || 0.05;
+  if(isNaN(user)) return {ok:false, msg:"عددِ معتبر وارد کن."};
+  if(expected === 0){
+    return {ok: Math.abs(user) < 1e-9, msg:""};
+  }
+  var diff = Math.abs(user - expected) / Math.abs(expected);
+  return {ok: diff <= tol, diff: diff};
+}
+
+var box     = document.getElementById("problems");
+var navList = document.getElementById("nav-list");
+var prevBtn = document.getElementById("prev-btn");
+var nextBtn = document.getElementById("next-btn");
+var problemDivs = [];   // index → DOM
+var navBtns     = [];   // index → DOM
+
+problems.forEach(function(p, pIdx){
+  var div = document.createElement("div");
+  div.className = "problem";
+  div.style.display = "none";   // hidden by default — only one visible at a time
+  problemDivs.push(div);
+
+  // sidebar entry
+  var li  = document.createElement("li");
+  var btn = document.createElement("button");
+  btn.className = "nav-btn";
+  btn.type = "button";
+  btn.innerHTML = '<span class="nb-num">' + p.n + '</span>'
+                + '<span class="nb-title">مسئله ' + p.n + '</span>';
+  btn.addEventListener("click", (function (capturedIdx) {
+    return function () { showProblem(capturedIdx, true); };
+  })(pIdx));
+  li.appendChild(btn);
+  navList.appendChild(li);
+  navBtns.push(btn);
+
+  var num = document.createElement("div");
+  num.className = "pnum";
+  num.textContent = "مسئله‌ی " + p.n;
+  div.appendChild(num);
+
+  var typ = document.createElement("div");
+  typ.className = "ptype";
+  typ.textContent = "نوع: " + p.type;
+  div.appendChild(typ);
+
+  if(p.relate){
+    var rel = document.createElement("div");
+    rel.className = "relate";
+    rel.innerHTML = "🔗 " + p.relate;
+    div.appendChild(rel);
+  }
+
+  var q = document.createElement("div");
+  q.className = "pq";
+  q.innerHTML = p.q;
+  div.appendChild(q);
+
+  // ----- controls -----
+  var ctrl = document.createElement("div");
+  ctrl.className = "controls";
+
+  var hintBtn = null;
+  if(p.hint){
+    hintBtn = document.createElement("button");
+    hintBtn.className = "btn btn-hint";
+    hintBtn.textContent = "💡 راهنمایی";
+    ctrl.appendChild(hintBtn);
+  }
+
+  var nextBtn = document.createElement("button");
+  nextBtn.className = "btn btn-next";
+  nextBtn.textContent = "▶️ شروع حل / قدم بعدی";
+  ctrl.appendChild(nextBtn);
+
+  var checkBtn = null;
+  if(p.check && p.check.length){
+    checkBtn = document.createElement("button");
+    checkBtn.className = "btn btn-check";
+    checkBtn.textContent = "🔍 بررسی جواب من";
+    ctrl.appendChild(checkBtn);
+  }
+
+  div.appendChild(ctrl);
+
+  // hint handler
+  if(hintBtn){
+    var hintShown = false;
+    hintBtn.addEventListener("click", function(){
+      if(hintShown) return;
+      hintShown = true;
+      var h = document.createElement("div");
+      h.className = "hint-box";
+      h.innerHTML = "<b>راهنمایی:</b> " + p.hint;
+      div.appendChild(h);
+      hintBtn.disabled = true;
+    });
+  }
+
+  // step-by-step
+  var idx = 0;
+  nextBtn.addEventListener("click", function(){
+    if(idx < p.steps.length){
+      var s = document.createElement("div");
+      s.className = "step";
+      s.innerHTML = "<span class='label' style='color:var(--info);'>قدم " + faNum(String(idx+1)) + "</span><br>" + p.steps[idx];
+      div.appendChild(s);
+      idx++;
+      if(idx === p.steps.length){
+        nextBtn.textContent = "✅ نمایش جواب نهایی";
+      }
+    } else if(idx === p.steps.length){
+      var f = document.createElement("div");
+      f.className = "final";
+      f.innerHTML = "<b>✅ جواب نهایی:</b><br>" + p.final;
+      div.appendChild(f);
+      nextBtn.disabled = true;
+      nextBtn.textContent = "تمام";
+      idx++;
+    }
+  });
+
+  // check-answer
+  if(checkBtn){
+    var checkShown = false;
+    checkBtn.addEventListener("click", function(){
+      if(checkShown) return;
+      checkShown = true;
+      checkBtn.disabled = true;
+
+      var cb = document.createElement("div");
+      cb.className = "check-box";
+      cb.innerHTML = "<b>🔍 جوابِ خودتو وارد کن:</b><br><span style='font-size:13px; color:var(--muted);'>تلرانس ۵٪؛ از اعدادِ علمی مثل <code>3e4</code> هم می‌تونی استفاده کنی.</span>";
+
+      var inputs = [];
+      p.check.forEach(function(c){
+        var row = document.createElement("div");
+        row.className = "check-row";
+        var lbl = document.createElement("label"); lbl.textContent = c.label + ":"; row.appendChild(lbl);
+        var inp = document.createElement("input"); inp.type = "text"; inp.placeholder = "عدد..."; row.appendChild(inp);
+        var u = document.createElement("span"); u.className = "unit"; u.textContent = c.unit || ""; row.appendChild(u);
+        cb.appendChild(row);
+        inputs.push({c:c, inp:inp});
+      });
+
+      var goBtn = document.createElement("button");
+      goBtn.className = "btn btn-check";
+      goBtn.textContent = "بررسی";
+      goBtn.style.marginTop = "8px";
+      cb.appendChild(goBtn);
+
+      var resultArea = document.createElement("div");
+      cb.appendChild(resultArea);
+
+      goBtn.addEventListener("click", function(){
+        resultArea.innerHTML = "";
+        var allOk = true;
+        inputs.forEach(function(it){
+          var userVal = parseFloat(it.inp.value);
+          var r = checkAnswer(userVal, it.c.value, it.c.tol);
+          var row = document.createElement("div");
+          row.className = "check-result " + (r.ok ? "ok" : "bad");
+          if(r.ok){
+            row.innerHTML = "✅ <b>" + it.c.label + ":</b> درسته! جوابِ تو نزدیک به " + formatExpected(it.c.value) + " " + (it.c.unit||"") + " ـه.";
+          } else {
+            allOk = false;
+            if(isNaN(userVal)){
+              row.innerHTML = "❌ <b>" + it.c.label + ":</b> عددِ معتبر وارد نکردی.";
+            } else {
+              row.innerHTML = "❌ <b>" + it.c.label + ":</b> جوابت با مقدارِ موردِ انتظار (" + formatExpected(it.c.value) + " " + (it.c.unit||"") + ") اختلافِ زیادی داره. حلِ قدم‌به‌قدم رو ببین.";
+            }
+          }
+          resultArea.appendChild(row);
+        });
+        if(allOk){
+          var hooray = document.createElement("div");
+          hooray.className = "check-result ok";
+          hooray.style.marginTop = "8px";
+          hooray.innerHTML = "🎉 آفرین! همه‌ی جواب‌هات درست بود.";
+          resultArea.appendChild(hooray);
+        }
+      });
+
+      div.appendChild(cb);
+    });
+  }
+
+  box.appendChild(div);
+});
+
+// ─── master-detail navigation ────────────────────────────────
+var currentIdx = 0;
+
+function showProblem(idx, updateHash) {
+  if (idx < 0 || idx >= problemDivs.length) return;
+  problemDivs.forEach(function (d, i) { d.style.display = (i === idx) ? "" : "none"; });
+  navBtns.forEach(function (b, i) { b.classList.toggle("active", i === idx); });
+  prevBtn.disabled = (idx === 0);
+  nextBtn.disabled = (idx === problemDivs.length - 1);
+  // scroll the active sidebar item into view (mobile + when list is long)
+  navBtns[idx].scrollIntoView({block: "nearest"});
+  currentIdx = idx;
+  if (updateHash) {
+    try { history.replaceState(null, "", "#mas-" + (idx + 1)); } catch (e) {}
+  }
+  // notify parent iframe (autosize)
+  try { window.parent.postMessage({pmEvent: "problem-changed", idx: idx}, "*"); } catch (e) {}
+}
+
+prevBtn.addEventListener("click", function () { showProblem(currentIdx - 1, true); });
+nextBtn.addEventListener("click", function () { showProblem(currentIdx + 1, true); });
+
+// keyboard left/right
+document.addEventListener("keydown", function (e) {
+  if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  if (e.key === "ArrowLeft")  showProblem(currentIdx + 1, true);   // RTL: left = next
+  if (e.key === "ArrowRight") showProblem(currentIdx - 1, true);
+});
+
+// initial: read hash or default to first
+(function init() {
+  var m = /^#mas-(\d+)$/.exec(location.hash);
+  var start = m ? Math.max(0, Math.min(problems.length - 1, parseInt(m[1], 10) - 1)) : 0;
+  showProblem(start, false);
+})();
+</script>
+</body>
+</html>

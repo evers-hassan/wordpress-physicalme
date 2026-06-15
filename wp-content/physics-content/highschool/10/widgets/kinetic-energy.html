@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>انرژی جنبشی — جرم و سرعت</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75;
+    --warn:#a87800; --danger:#c0392b;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+           --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.7}
+  h2{margin:0 0 12px;font-size:1.05em;color:var(--info)}
+  canvas{background:var(--surface);border-radius:14px;width:100%;max-width:560px;
+         display:block;margin:0 auto;border:1px solid var(--border)}
+  .row{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .row label{min-width:90px;font-weight:600}
+  input[type=range]{flex:1;min-width:140px}
+  .readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+           gap:10px;margin-top:14px}
+  .card{padding:12px;background:var(--info-bg);border-radius:10px;text-align:center;
+        color:var(--info)}
+  .card b{display:block;color:var(--text);font-size:1.3em;margin-bottom:2px}
+  .formula{margin-top:10px;padding:10px;background:var(--surface);border-radius:10px;
+           font-family:'Courier New',monospace;text-align:center;direction:ltr;
+           color:var(--ok);font-size:1.05em;font-weight:600}
+  .ke-bar-wrap{margin-top:14px;background:var(--surface);border-radius:10px;padding:12px}
+  .ke-bar{height:24px;background:linear-gradient(90deg,#1d9e75,#a87800,#c0392b);
+          border-radius:6px;transition:width 0.25s ease;position:relative}
+  .ke-bar-label{position:absolute;left:8px;top:2px;color:#fff;font-weight:700;font-size:0.9em}
+</style>
+</head>
+<body>
+<h2>⚡ انرژی جنبشی — اثر جرم و سرعت</h2>
+
+<canvas id="cv" width="560" height="220"></canvas>
+
+<div class="row">
+  <label>جرم (m)</label>
+  <input type="range" id="mass" min="0.5" max="2000" value="70" step="0.5">
+  <span id="massBadge">۷۰ kg</span>
+</div>
+<div class="row">
+  <label>سرعت (v)</label>
+  <input type="range" id="vel" min="0" max="50" value="5" step="0.5">
+  <span id="velBadge">۵ m/s</span>
+</div>
+
+<div class="formula">K = ½ m v²</div>
+
+<div class="readout">
+  <div class="card"><b id="ke">— J</b>انرژی جنبشی</div>
+  <div class="card"><b id="cmp">—</b>برابرِ معادل</div>
+</div>
+
+<div class="ke-bar-wrap">
+  <div class="ke-bar" id="bar" style="width:5%">
+    <div class="ke-bar-label" id="barLabel">K</div>
+  </div>
+</div>
+
+<p style="margin-top:14px;font-size:0.92em;color:var(--muted)">
+  💡 سرعتو دو برابر کن، می‌بینی K چهار برابر می‌شه (وابستگیِ مربعی!). ولی جرمو دو برابر کنی فقط دو برابر می‌شه.
+</p>
+
+<script>
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+let mass = 70, vel = 5;
+let x = 50;
+const faDigit = n => String(n).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // ground
+  ctx.fillStyle = 'rgba(120,120,120,0.2)';
+  ctx.fillRect(0, H-30, W, 30);
+  // object — size proportional to mass (log scale)
+  const objR = 12 + Math.log10(Math.max(1, mass)) * 12;
+  ctx.fillStyle = '#185fa5';
+  ctx.beginPath();
+  ctx.arc(x, H-30-objR, objR, 0, Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+  ctx.stroke();
+  // velocity vector
+  if (vel > 0){
+    ctx.strokeStyle = '#1d9e75'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    const arrowLen = Math.min(120, vel * 3);
+    ctx.moveTo(x, H-30-objR);
+    ctx.lineTo(x + arrowLen, H-30-objR);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x+arrowLen-8, H-30-objR-6);
+    ctx.lineTo(x+arrowLen, H-30-objR);
+    ctx.lineTo(x+arrowLen-8, H-30-objR+6);
+    ctx.stroke();
+    ctx.fillStyle = '#1d9e75'; ctx.font = 'bold 13px Vazirmatn';
+    ctx.fillText('v=' + faDigit(vel.toFixed(1)), x + arrowLen/2 - 30, H-30-objR-12);
+  }
+  // animate
+  x += vel * 0.5;
+  if (x > W + objR) x = -objR;
+  requestAnimationFrame(draw);
+}
+
+function compute(){
+  const K = 0.5 * mass * vel * vel;
+  document.getElementById('ke').textContent = faDigit(K.toFixed(1)) + ' J';
+  // compare
+  let cmp;
+  if (K < 10) cmp = 'یه کلیکِ موس';
+  else if (K < 100) cmp = 'پرتاب توپ تنیس';
+  else if (K < 1000) cmp = 'مشتِ بوکسور';
+  else if (K < 10000) cmp = 'تصادفِ آرام ماشین';
+  else if (K < 100000) cmp = 'تصادفِ سختِ ماشین';
+  else if (K < 1e6) cmp = 'انفجارِ نارنجک';
+  else cmp = 'انفجارِ بزرگ 💥';
+  document.getElementById('cmp').textContent = cmp;
+  // bar
+  const w = Math.min(100, Math.log10(Math.max(1, K)) * 14);
+  document.getElementById('bar').style.width = w + '%';
+  document.getElementById('barLabel').textContent = 'K = ' + faDigit(K.toFixed(0)) + ' J';
+}
+
+const massEl = document.getElementById('mass');
+const velEl = document.getElementById('vel');
+massEl.oninput = ()=>{ mass = +massEl.value;
+  document.getElementById('massBadge').textContent = faDigit(mass) + ' kg'; compute(); };
+velEl.oninput = ()=>{ vel = +velEl.value;
+  document.getElementById('velBadge').textContent = faDigit(vel.toFixed(1)) + ' m/s'; compute(); };
+
+compute();
+draw();
+</script>
+</body>
+</html>

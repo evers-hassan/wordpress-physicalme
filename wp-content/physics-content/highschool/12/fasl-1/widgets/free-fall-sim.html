@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سقوط آزاد و پرتاب قائم — شبیه‌سازی</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed; --warn:#a87800; --warn-bg:#fef6e0;
+    --primary:#185fa5; --secondary:#c43838; --sky:#bbd9f5; --ground:#a18768;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e0b860; --warn-bg:#4a3a15;
+      --primary:#85b7eb; --secondary:#f06a60; --sky:#2c4060; --ground:#3a2e1f;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:880px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .layout{display:grid; grid-template-columns:1fr 240px; gap:12px;}
+  @media(max-width:700px){.layout{grid-template-columns:1fr;}}
+  .stage{background:linear-gradient(to bottom, var(--sky), var(--bg)); border:1px solid var(--border); border-radius:14px; overflow:hidden; position:relative;}
+  canvas{display:block; width:100%; height:420px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:13px; margin:8px 0 6px; color:var(--muted); text-transform:uppercase;}
+  .panel h3:first-child{margin-top:0;}
+  .slider-row{display:grid; grid-template-columns:1fr 50px; gap:6px; align-items:center; font-size:13px; margin-bottom:10px;}
+  .val{font-weight:700; color:var(--info); text-align:left;}
+  .btn{background:var(--primary); color:white; border:none; padding:8px 14px; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer; width:100%; margin-top:6px;}
+  .btn:hover{filter:brightness(1.08);}
+  .btn.alt{background:var(--secondary);}
+  .readout{padding:10px 12px; display:grid; grid-template-columns:1fr 1fr; gap:6px; border-top:1px solid var(--border); background:var(--surface); font-size:13px;}
+  .readout .item{padding:5px 8px; background:var(--info-bg); color:var(--info); border-radius:6px; text-align:center;}
+  .readout .item b{display:block; font-size:14px;}
+  select{width:100%; padding:6px; font-family:inherit; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px;}
+</style>
+<script id="mathjax-config">
+  window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']]}, startup:{pageReady:()=>MathJax.startup.defaultPageReady()}};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>سقوط آزاد و پرتاب قائم — شبیه‌سازی 🍎🚀</h2>
+  <p class="sub">یه توپ رو از ارتفاع و سرعت دلخواه پرتاب کن، روی سیاره‌های مختلف! ببین چه‌قدر طول می‌کشه به اوج برسه یا به زمین برخوره.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <canvas id="cv"></canvas>
+      <div class="readout">
+        <div class="item">ارتفاع<b id="rh">0.0 m</b></div>
+        <div class="item">سرعت<b id="rv">0.0 m/s</b></div>
+        <div class="item">زمان<b id="rt">0.0 s</b></div>
+        <div class="item">شتاب<b id="ra">-9.8 m/s²</b></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>پارامترها</h3>
+      <div class="slider-row">
+        <label>ارتفاع اولیه $y_0$</label>
+        <span class="val" id="vy0">20</span>
+      </div>
+      <input type="range" id="y0" min="0" max="50" step="1" value="20" style="width:100%">
+      <div class="slider-row" style="margin-top:8px;">
+        <label>سرعت اولیه $v_0$</label>
+        <span class="val" id="vv0">0</span>
+      </div>
+      <input type="range" id="v0" min="-30" max="30" step="1" value="0" style="width:100%">
+      <h3>سیاره</h3>
+      <select id="planet">
+        <option value="9.8">زمین (g=9.8)</option>
+        <option value="1.62">ماه (g=1.62)</option>
+        <option value="3.71">مریخ (g=3.71)</option>
+        <option value="8.87">زهره (g=8.87)</option>
+        <option value="24.79">مشتری (g=24.79)</option>
+        <option value="0.1">ضعیف فرضی (g=0.1)</option>
+      </select>
+      <button class="btn" id="play">▶ شروع</button>
+      <button class="btn alt" id="reset">⟲ ریست</button>
+      <h3>پیش‌بینی نظری</h3>
+      <div id="theory" style="font-size:12.5px; color:var(--muted); line-height:1.8;"></div>
+    </div>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('cv');
+let y0=20, v0=0, g=9.8, running=false, t=0, lastT=null, anim=null;
+let y=y0, v=v0;
+
+function refreshLabels(){
+  $('vy0').textContent=y0;
+  $('vv0').textContent=v0;
+  $('ra').textContent=(-g).toFixed(2)+' m/s²';
+  const Tpeak = v0>0 ? v0/g : 0;
+  const yPeak = y0 + v0*Tpeak - 0.5*g*Tpeak*Tpeak;
+  // landing time: y0 + v0 t - 0.5 g t^2 = 0
+  // 0.5 g t^2 - v0 t - y0 = 0
+  const disc = v0*v0 + 2*g*y0;
+  const tLand = disc >= 0 ? (v0 + Math.sqrt(disc))/g : 0;
+  const vLand = v0 - g*tLand;
+  let html = '';
+  if(v0 > 0){
+    html += `زمانِ رسیدن به اوج: <b>${Tpeak.toFixed(2)} s</b><br>ارتفاع اوج: <b>${yPeak.toFixed(2)} m</b><br>`;
+  }
+  if(y0 > 0 || v0 > 0){
+    html += `زمانِ برخورد با زمین: <b>${tLand.toFixed(2)} s</b><br>سرعتِ برخورد: <b>${vLand.toFixed(2)} m/s</b>`;
+  }
+  $('theory').innerHTML = html;
+}
+
+function draw(){
+  const ctx=cv.getContext('2d');
+  const W=cv.clientWidth, H=cv.clientHeight;
+  cv.width=W*devicePixelRatio; cv.height=H*devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  // sky already in bg gradient
+  ctx.clearRect(0,0,W,H);
+  // ground
+  const groundH=24;
+  ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--ground');
+  ctx.fillRect(0, H-groundH, W, groundH);
+  // height ruler — pixels per meter
+  const yMax = Math.max(50, y0 + (v0>0 ? v0*v0/(2*g) : 0)) * 1.1;
+  const ppm = (H - groundH - 30) / yMax;
+  ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--border');
+  ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--muted');
+  ctx.font='10px Vazirmatn';
+  for(let i=0; i<=yMax; i+=10){
+    const py = H - groundH - i*ppm;
+    ctx.beginPath(); ctx.moveTo(20,py); ctx.lineTo(28,py); ctx.stroke();
+    ctx.textAlign='right';
+    ctx.fillText(i+'m', 18, py+3);
+  }
+  // ball
+  const px = W*0.5;
+  const py = H - groundH - Math.max(0,y)*ppm;
+  ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--secondary');
+  ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='white';
+  ctx.beginPath(); ctx.arc(px-3, py-3, 3, 0, Math.PI*2); ctx.fill();
+  // velocity arrow
+  if(Math.abs(v) > 0.5){
+    const arrowLen = Math.min(Math.abs(v)*1.8, 80);
+    const dir = v>0 ? -1 : 1;
+    ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--info');
+    ctx.lineWidth=2.5;
+    ctx.beginPath();
+    ctx.moveTo(px+22, py);
+    ctx.lineTo(px+22, py + dir*arrowLen);
+    ctx.stroke();
+    // arrowhead
+    ctx.beginPath();
+    ctx.moveTo(px+22, py + dir*arrowLen);
+    ctx.lineTo(px+18, py + dir*(arrowLen-6));
+    ctx.lineTo(px+26, py + dir*(arrowLen-6));
+    ctx.closePath();
+    ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--info');
+    ctx.fill();
+  }
+  // gravity arrow always (gentle, on side)
+  ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--muted');
+  ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(W-30, 30); ctx.lineTo(W-30, 60); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W-30, 60); ctx.lineTo(W-34, 56); ctx.lineTo(W-26, 56); ctx.closePath();
+  ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--muted');
+  ctx.fill();
+  ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--muted');
+  ctx.textAlign='center'; ctx.font='11px Vazirmatn';
+  ctx.fillText('g', W-30, 22);
+  // readouts
+  $('rh').textContent = y.toFixed(2)+' m';
+  $('rv').textContent = v.toFixed(2)+' m/s';
+  $('rt').textContent = t.toFixed(2)+' s';
+}
+
+function reset(){
+  running=false;
+  if(anim) cancelAnimationFrame(anim);
+  $('play').textContent='▶ شروع';
+  t=0; y=y0; v=v0; lastT=null;
+  draw();
+}
+
+function step(now){
+  if(!running){ return; }
+  if(lastT===null) lastT=now;
+  const dt = Math.min(0.05, (now-lastT)/1000);
+  lastT=now;
+  // simulate
+  v = v - g*dt;
+  y = y + v*dt + 0.5 * (-g) * dt*dt;
+  t += dt;
+  if(y <= 0){ y=0; v=0; running=false; $('play').textContent='▶ شروع'; }
+  draw();
+  if(running) anim=requestAnimationFrame(step);
+}
+
+$('y0').addEventListener('input', e=>{ y0=+e.target.value; refreshLabels(); reset(); });
+$('v0').addEventListener('input', e=>{ v0=+e.target.value; refreshLabels(); reset(); });
+$('planet').addEventListener('change', e=>{ g=+e.target.value; refreshLabels(); reset(); });
+$('play').addEventListener('click', ()=>{
+  if(running){ running=false; $('play').textContent='▶ شروع'; if(anim)cancelAnimationFrame(anim); return; }
+  if(y<=0 && v<=0){ reset(); }
+  running=true; lastT=null; $('play').textContent='⏸ توقف';
+  anim=requestAnimationFrame(step);
+});
+$('reset').addEventListener('click', reset);
+window.addEventListener('resize', draw);
+
+refreshLabels(); reset();
+</script>
+</body>
+</html>

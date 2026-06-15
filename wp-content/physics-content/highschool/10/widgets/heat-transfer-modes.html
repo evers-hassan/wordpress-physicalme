@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سه روشِ انتقالِ گرما — رسانش، همرفت، تابش</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75;
+    --warn:#a87800; --cold:#3a86ff; --hot:#e63946;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+           --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.7}
+  h2{margin:0 0 12px;font-size:1.05em;color:var(--info)}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--surface);border-radius:12px;padding:10px;border:1px solid var(--border)}
+  .panel h3{margin:0 0 6px;text-align:center;font-size:0.95em;color:var(--info)}
+  canvas{background:var(--bg);border-radius:8px;width:100%;height:auto;border:1px solid var(--border);display:block}
+  .desc{margin-top:6px;font-size:0.82em;color:var(--muted);min-height:48px}
+  .tabs{display:flex;gap:6px;justify-content:center;margin-bottom:8px}
+  .tabs button{padding:4px 8px;background:var(--bg);border:1px solid var(--border);
+               border-radius:6px;font-family:inherit;font-size:0.8em;cursor:pointer;color:var(--text)}
+  .tabs button.on{background:var(--info);color:#fff;border-color:var(--info)}
+  .compare{margin-top:14px;padding:12px;background:var(--info-bg);border-radius:10px;font-size:0.9em;color:var(--info)}
+  .compare table{width:100%;border-collapse:collapse;margin-top:6px;color:var(--text)}
+  .compare td,.compare th{padding:5px 8px;text-align:center;border-bottom:1px solid var(--border);font-size:0.85em}
+  .compare th{color:var(--info)}
+</style>
+  <script id="mathjax-config">
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+           displayMath: [['$$','$$'], ['\\[','\\]']],
+           processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<h2>🔥 سه روشِ انتقالِ گرما — کنار هم</h2>
+
+<div class="grid">
+  <div class="panel">
+    <h3>🪙 رسانش (Conduction)</h3>
+    <div class="tabs">
+      <button class="on" data-c="14">فلز</button>
+      <button data-c="3">پلاستیک</button>
+      <button data-c="0.6">آب</button>
+    </div>
+    <canvas id="c1" width="260" height="160"></canvas>
+    <div class="desc" id="d1">گرما از طریقِ ارتعاشِ مولکول‌ها از سرِ داغ به سرِ سرد منتقل می‌شه. فلزات بهترین رساناها هستن.</div>
+  </div>
+
+  <div class="panel">
+    <h3>🌊 همرفت (Convection)</h3>
+    <div class="tabs">
+      <button class="on" data-h="1">گرم</button>
+      <button data-h="0">سرد</button>
+    </div>
+    <canvas id="c2" width="260" height="160"></canvas>
+    <div class="desc" id="d2">سیال (آب یا هوا) گرم سبک می‌شه و بالا می‌ره؛ سردتر پایین میاد. این چرخه گرما رو در مایع/گاز پخش می‌کنه.</div>
+  </div>
+
+  <div class="panel">
+    <h3>☀️ تابش (Radiation)</h3>
+    <div class="tabs">
+      <button class="on" data-r="0">روشن (سفید)</button>
+      <button data-r="1">تیره (مشکی)</button>
+    </div>
+    <canvas id="c3" width="260" height="160"></canvas>
+    <div class="desc" id="d3">گرما از طریقِ امواجِ الکترومغناطیسی پخش می‌شه — به ماده نیاز نداره (همین‌جوری از خورشید به زمین می‌رسه).</div>
+  </div>
+</div>
+
+<div class="compare">
+  📊 <b>مقایسه‌ی سریع</b>
+  <table>
+    <tr><th>روش</th><th>نیاز به ماده؟</th><th>سرعت</th><th>مثالِ زندگی</th></tr>
+    <tr><td>رسانش</td><td>بله (تماس)</td><td>کند تا متوسط</td><td>قاشقِ داغ تو سوپ</td></tr>
+    <tr><td>همرفت</td><td>بله (مایع/گاز)</td><td>متوسط</td><td>بخاری اتاق، خونِ گرم</td></tr>
+    <tr><td>تابش</td><td>خیر</td><td>سریع (نور)</td><td>گرمای خورشید، تنور</td></tr>
+  </table>
+</div>
+
+<script>
+const faDigit = n => String(n).replace(/-?\d/g, d => d==='-'?'−':'۰۱۲۳۴۵۶۷۸۹'[d]);
+function setupTabs(panel, cb){
+  panel.querySelectorAll('.tabs button').forEach(btn => btn.onclick = () => {
+    panel.querySelectorAll('.tabs button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on'); cb(btn);
+  });
+}
+
+// ─────────── Conduction ───────────
+const cv1 = document.getElementById('c1'), ctx1 = cv1.getContext('2d');
+let kCond = 14; // conductivity proxy (higher = faster)
+const N=40; const tempArr = new Array(N).fill(20);
+function conductStep(){
+  // Force boundary: left=100, right=20
+  tempArr[0] = 100; tempArr[N-1] = 20;
+  const alpha = kCond / 200;
+  const newT = tempArr.slice();
+  for (let i=1; i<N-1; i++) newT[i] = tempArr[i] + alpha*(tempArr[i-1] - 2*tempArr[i] + tempArr[i+1]);
+  for (let i=0; i<N; i++) tempArr[i] = newT[i];
+}
+function drawCond(){
+  const W=cv1.width, H=cv1.height;
+  ctx1.clearRect(0,0,W,H);
+  const barY = 50, barH = 60;
+  const cellW = W/N;
+  for (let i=0; i<N; i++){
+    const T = tempArr[i];
+    const t = (T-20)/80;
+    const r = Math.round(120 + t*135), g = Math.round(150 - t*100), b = Math.round(220 - t*200);
+    ctx1.fillStyle = `rgb(${r},${g},${b})`;
+    ctx1.fillRect(i*cellW, barY, cellW+1, barH);
+  }
+  ctx1.strokeStyle='#555'; ctx1.strokeRect(0, barY, W, barH);
+  ctx1.fillStyle='#e63946'; ctx1.font='bold 12px Vazirmatn'; ctx1.textAlign='center';
+  ctx1.fillText('🔥 ۱۰۰°C', 30, 35);
+  ctx1.fillStyle='#3a86ff';
+  ctx1.fillText('۲۰°C ❄', W-30, 35);
+  ctx1.fillStyle='#555';
+  ctx1.fillText('میانگین: ' + faDigit((tempArr.reduce((a,b)=>a+b,0)/N).toFixed(0)) + '°C', W/2, H-15);
+}
+setupTabs(document.querySelector('#c1').parentElement, btn => {
+  kCond = +btn.dataset.c;
+  for (let i=0; i<N; i++) tempArr[i] = 20;
+  const labels = {14:'🪙 فلز: رسانشِ بالا — گرما سریع پخش می‌شه. به همین دلیل قاشقِ فلزی تو سوپ داغ، دستتو می‌سوزونه.',
+                  3:'🥤 پلاستیک: رسانشِ متوسط-پایین. دسته‌ی قاشقِ پلاستیکی برای همینه!',
+                  0.6:'💧 آب: رسانش پایین. ولی همرفت داره (پنل وسط).'};
+  document.getElementById('d1').textContent = labels[btn.dataset.c];
+});
+
+// ─────────── Convection ───────────
+const cv2 = document.getElementById('c2'), ctx2 = cv2.getContext('2d');
+let convMode = 1; // 1=hot, 0=cold
+const particles = [];
+for (let i=0; i<25; i++) particles.push({
+  x: 20 + Math.random()*220, y: 20 + Math.random()*120,
+  vx:(Math.random()-0.5)*0.3, vy:(Math.random()-0.5)*0.3, hot:false
+});
+function convStep(){
+  const W=cv2.width, H=cv2.height;
+  particles.forEach(p => {
+    // Bottom is heat source if convMode=1, else top
+    const heatY = convMode ? H-20 : 20;
+    const dy = Math.abs(p.y - heatY);
+    if (dy < 30) p.hot = true;
+    if (dy > H-50) p.hot = false;
+    // hot particles rise, cold sink (if convMode=1 hot rises which is -y); if convMode=0 hot above so reverses
+    if (convMode){
+      p.vy += p.hot ? -0.02 : 0.02;
+    } else {
+      // cold mode: bottom is cold, so circulation reversed (mostly no convection)
+      p.vy += p.hot ? -0.005 : 0.005;
+    }
+    // damping
+    p.vy *= 0.985; p.vx *= 0.985;
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 10) { p.x = 10; p.vx *= -1; }
+    if (p.x > W-10){ p.x = W-10; p.vx *= -1; }
+    if (p.y < 10){ p.y = 10; p.vy *= -1; }
+    if (p.y > H-10){ p.y = H-10; p.vy *= -1; }
+  });
+}
+function drawConv(){
+  const W=cv2.width, H=cv2.height;
+  ctx2.clearRect(0,0,W,H);
+  // container
+  ctx2.fillStyle='rgba(58,134,255,0.15)';
+  ctx2.fillRect(0, 0, W, H);
+  // heat source
+  if (convMode){
+    const grad = ctx2.createLinearGradient(0,H-30,0,H);
+    grad.addColorStop(0,'rgba(230,57,70,0)'); grad.addColorStop(1,'rgba(230,57,70,0.8)');
+    ctx2.fillStyle = grad; ctx2.fillRect(0, H-30, W, 30);
+    ctx2.fillStyle='#e63946'; ctx2.font='bold 12px Vazirmatn'; ctx2.textAlign='center';
+    ctx2.fillText('🔥 بخاری', W/2, H-8);
+  } else {
+    ctx2.fillStyle='rgba(58,134,255,0.4)'; ctx2.fillRect(0, H-30, W, 30);
+    ctx2.fillStyle='#fff'; ctx2.font='bold 12px Vazirmatn'; ctx2.textAlign='center';
+    ctx2.fillText('❄ سرد', W/2, H-8);
+  }
+  particles.forEach(p => {
+    ctx2.fillStyle = p.hot ? '#e63946' : '#3a86ff';
+    ctx2.beginPath(); ctx2.arc(p.x, p.y, 5, 0, Math.PI*2); ctx2.fill();
+  });
+}
+setupTabs(document.querySelector('#c2').parentElement, btn => {
+  convMode = +btn.dataset.h;
+  const labels = {1:'🔥 بخاری گرم در پایین: مولکول‌های گرمِ پایین سبک می‌شن و بالا می‌رن، سرد بالا میاد پایین — یه چرخه‌ی همرفت!',
+                  0:'❄ منبع سرد در پایین: چرخه‌ی همرفتی شکل نمی‌گیره (سرد سنگین‌تره، ته می‌مونه). برای همین بخاری همیشه پایینه نه سقف!'};
+  document.getElementById('d2').textContent = labels[btn.dataset.h];
+});
+
+// ─────────── Radiation ───────────
+const cv3 = document.getElementById('c3'), ctx3 = cv3.getContext('2d');
+let surfaceDark = 0; // 0 = white/shiny, 1 = dark/matte
+let radT = 0;
+function drawRad(){
+  const W=cv3.width, H=cv3.height;
+  ctx3.clearRect(0,0,W,H);
+  // Sun on left
+  ctx3.fillStyle = '#ffb703';
+  ctx3.beginPath(); ctx3.arc(35, H/2, 22, 0, Math.PI*2); ctx3.fill();
+  ctx3.fillStyle='#fff'; ctx3.font='bold 11px Vazirmatn'; ctx3.textAlign='center';
+  ctx3.fillText('☀', 35, H/2+5);
+  // Photons emitted
+  const speed = 1.5;
+  const absorbed = surfaceDark ? 0.9 : 0.2;
+  for (let i=0; i<8; i++){
+    const phase = (radT + i*30) % 240;
+    const x = 60 + phase;
+    if (x < W-50){
+      ctx3.strokeStyle = `rgba(255,183,3,${1 - phase/240})`;
+      ctx3.lineWidth = 2;
+      ctx3.beginPath();
+      const y0 = H/2 - 8 + (i%3)*8;
+      ctx3.moveTo(x, y0);
+      ctx3.lineTo(x+15, y0);
+      ctx3.stroke();
+    }
+  }
+  // Object on right
+  ctx3.fillStyle = surfaceDark ? '#1a1a18' : '#f0f0f0';
+  ctx3.strokeStyle = '#555'; ctx3.lineWidth = 2;
+  ctx3.fillRect(W-55, H/2-30, 35, 60);
+  ctx3.strokeRect(W-55, H/2-30, 35, 60);
+  // Temp indicator
+  const tempBar = 10 + (surfaceDark ? 80 : 20);
+  ctx3.fillStyle = `rgb(${100+tempBar*1.5}, ${100-tempBar*0.6}, ${50})`;
+  ctx3.fillRect(W-55, H/2-30, 35, 60 * (tempBar/100));
+  ctx3.fillStyle = surfaceDark ? '#fff' : '#000';
+  ctx3.font='bold 12px Vazirmatn'; ctx3.textAlign='center';
+  ctx3.fillText(faDigit(Math.round(20 + tempBar*0.5)) + '°', W-37, H/2 + 4);
+  // labels
+  ctx3.fillStyle='#555'; ctx3.font='10px Vazirmatn';
+  ctx3.fillText(surfaceDark?'تیره':'روشن', W-37, H-8);
+  radT += speed;
+}
+setupTabs(document.querySelector('#c3').parentElement, btn => {
+  surfaceDark = +btn.dataset.r;
+  const labels = {0:'🤍 سطحِ روشن/صیقلی بیشترِ تابش رو بازتاب می‌ده — کم گرم می‌شه. به همین دلیل خونه‌های گرم‌سیر سفید رنگن!',
+                  1:'🖤 سطحِ تیره/مات بیشترِ تابش رو جذب می‌کنه — داغ می‌شه. مخزن‌های خورشیدی همیشه مشکی‌ن.'};
+  document.getElementById('d3').textContent = labels[btn.dataset.r];
+});
+
+// Animation loop
+function tick(){
+  conductStep(); drawCond();
+  convStep(); drawConv();
+  drawRad();
+  requestAnimationFrame(tick);
+}
+tick();
+</script>
+</body>
+</html>

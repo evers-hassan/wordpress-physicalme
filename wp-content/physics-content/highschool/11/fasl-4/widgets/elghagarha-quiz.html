@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودتو بسنج — القاگرها و خودالقاوری</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8;
+  }
+  .wrap{max-width:720px; margin:0 auto;}
+  .q-item{
+    border:1px solid var(--border); border-radius:12px; margin-bottom:10px;
+    overflow:hidden; background:var(--surface);
+  }
+  .q-head{
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+    padding:13px 15px; font-weight:500; font-size:15px; user-select:none;
+  }
+  .q-head:hover{background:var(--info-bg);}
+  .q-head .tog{
+    margin-inline-start:auto; flex:0 0 auto; color:var(--info);
+    transition:transform .2s ease; font-size:18px;
+  }
+  .q-item.open .q-head .tog{transform:rotate(45deg);}
+  .q-num{
+    flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+    background:var(--info); color:#fff; display:flex; align-items:center;
+    justify-content:center; font-size:13px; font-weight:700;
+  }
+  .q-body{
+    max-height:0; overflow:hidden; transition:max-height .25s ease;
+    background:var(--ok-bg);
+  }
+  .q-body .inner{padding:13px 15px; color:var(--text); font-size:14.5px;}
+  .q-body .inner::before{
+    content:"پاسخ: "; color:var(--ok); font-weight:700;
+  }
+  .hint{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  mjx-container{font-size:110%!important;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="hint">روی هر سؤال بزن تا پاسخش باز شود 👇</p>
+  <div id="quiz"></div>
+</div>
+
+<script>
+  var items = [
+  {
+    "q": "خودالقاوری یعنی چی؟",
+    "a": "یعنی وقتی <b>جریانِ خودِ پیچه</b> عوض بشه، میدانش عوض می‌شه، شار خودش عوض می‌شه، و <b>توی خودش EMF القا می‌شه</b>. این EMF بنابر قانون لنز، با تغییر جریانِ خود پیچه مخالفت می‌کنه."
+  },
+  {
+    "q": "ضریبِ القاوریِ یه القاگر به چی بستگی داره؟",
+    "a": "به <b>هندسه و جنسش</b> بستگی داره — نه به جریان. تعداد دور $N$، طول $\\ell$، سطح مقطع $A$، و جنسِ هسته. فرمول برای سیملوله‌ی آرمانیِ بدون هسته: $L = \\mu_0 N^2 A / \\ell$."
+  },
+  {
+    "q": "یکای هانری ($1\\text{ H}$) معادلِ چه ترکیبیه؟",
+    "a": "$1\\text{ H} = 1\\text{ V}\\cdot\\text{s}/\\text{A}$. یعنی اگه جریانِ القاگر با آهنگ ۱ آمپر در ثانیه عوض بشه، ۱ ولت EMF خودالقایی توش به وجود میاد. توی آزمایشگاه معمولاً با میلی‌هانری (mH) سروکار داریم."
+  },
+  {
+    "q": "چرا توی شمعِ خودرو، یه القاگر برای ساختِ جرقه استفاده می‌کنن؟",
+    "a": "چون شمع به ولتاژِ چندین هزار ولتی نیاز داره. باتری فقط ۱۲ ولته. حلِّ مسئله: یه القاگر با جریانِ زیاد رو <b>ناگهان قطع می‌کنن</b>. $\\Delta I/\\Delta t$ خیلی بزرگ می‌شه → EMF القاییِ خیلی بزرگ → جرقه!"
+  },
+  {
+    "q": "انرژیِ ذخیره‌شده در یه القاگر از چه فرمولی محاسبه می‌شه؟",
+    "a": "$U = \\frac{1}{2} L I^2$. شبیهِ انرژیِ خازنه ($U = \\frac{1}{2} C V^2$) — فقط به جای ولتاژ، جریان داره. این انرژی توی <b>میدانِ مغناطیسیِ القاگر</b> ذخیره می‌شه."
+  },
+  {
+    "q": "وقتی جریانِ ثابت (DC پایا) از یه القاگر آرمانی می‌گذره، چه‌قدر انرژی وارد القاگر می‌شه؟",
+    "a": "<b>صفر — یعنی نه وارد می‌شه، نه خارج.</b> چون جریان ثابته، میدانِ مغناطیسی ثابته، شار ثابته، EMF القایی صفر. القاگر مثل یه سیمِ معمولی رفتار می‌کنه. انرژی فقط در <b>لحظه‌ی تغییرِ جریان</b> رد و بدل می‌شه."
+  },
+  {
+    "q": "القای متقابل چه فرقی با خودالقاوری داره؟",
+    "a": "<b>خودالقاوری</b>: تغییر جریانِ خودِ پیچه، EMF توی خودش القا می‌کنه. <b>القای متقابل</b>: تغییر جریانِ پیچهٔ ۱، EMF توی پیچهٔ ۲ که نزدیکشه القا می‌کنه. اساسِ کارِ ترانسفورماتورهاست."
+  },
+  {
+    "q": "چرا توی برخی مدارها القاگرها رو عمود بر هم می‌چینن؟",
+    "a": "تا <b>القای متقابلِ ناخواسته</b> رو کم کنن! اگه القاگرها موازی باشن، تغییرِ یکی می‌تونه توی اون یکی EMF القا کنه — مزاحم. وقتی سطحِ پیچه‌ها عمود بر هم باشه، شارِ متقابل تقریباً صفر می‌شه."
+  },
+  {
+    "q": "چرا با اضافه کردنِ یه القاگرِ بزرگ به خطوطِ انتقالِ برق، می‌شه آسیبِ صاعقه رو کم کرد؟",
+    "a": "چون صاعقه یه شوکِ ولتاژیِ خیلی سریعه. القاگر با هر تغییرِ سریعِ جریان <b>به شدت مخالفت می‌کنه</b> — یعنی موجِ شوک رو میرا می‌کنه و نمی‌ذاره به مدارهای حساسِ بعدی برسه. یه «بالشتکِ مغناطیسی»."
+  }
+];
+
+  var box = document.getElementById('quiz');
+  items.forEach(function(it, i){
+    var item = document.createElement('div'); item.className='q-item';
+    var head = document.createElement('div'); head.className='q-head';
+    head.innerHTML = '<span class="q-num">'+toFa(i+1)+'</span><span>'+it.q+'</span><span class="tog">+</span>';
+    var body = document.createElement('div'); body.className='q-body';
+    var inner = document.createElement('div'); inner.className='inner'; inner.innerHTML=it.a;
+    body.appendChild(inner);
+    head.addEventListener('click', function(){
+      var open = item.classList.toggle('open');
+      body.style.maxHeight = open ? (inner.scrollHeight + 26) + 'px' : '0';
+      if(window.MathJax && window.MathJax.typesetPromise){
+        window.MathJax.typesetPromise([inner]);
+      }
+    });
+    item.appendChild(head); item.appendChild(body); box.appendChild(item);
+  });
+  function toFa(n){return (''+n).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+</script>
+</body>
+</html>

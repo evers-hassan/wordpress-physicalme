@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>کلاسیفایر مواد — فرو/پارا/دیامغناطیس</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --hint-c:#a87800; --hint-bg:#fef6e0;
+    --ferro:#d6453c; --para:#a87800; --dia:#2f6fd0;
+    --N:#d6453c; --S:#2f6fd0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --hint-c:#e0b860; --hint-bg:#4a3a15;
+      --ferro:#f06a60; --para:#e0b860; --dia:#6aa0ee;
+      --N:#f06a60; --S:#6aa0ee;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:360px; touch-action:none; cursor:grab;}
+  canvas.dragging{cursor:grabbing;}
+
+  .palette{margin-top:14px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px;}
+  .palette-title{font-size:13px; color:var(--muted); margin-bottom:10px; text-align:right;}
+  .materials{display:flex; gap:8px; flex-wrap:wrap; justify-content:center;}
+  .mat-chip{
+    background:var(--bg); border:1.5px solid var(--border); border-radius:10px;
+    padding:8px 14px; font-size:13px; cursor:grab; user-select:none; min-width:80px; text-align:center;
+    transition:.12s;
+  }
+  .mat-chip:hover{transform:translateY(-2px); box-shadow:0 4px 10px rgba(0,0,0,.08);}
+  .mat-chip[data-type="ferro"]{border-color:var(--ferro); color:var(--ferro);}
+  .mat-chip[data-type="para"]{border-color:var(--para); color:var(--para);}
+  .mat-chip[data-type="dia"]{border-color:var(--dia); color:var(--dia);}
+
+  .info-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;}
+  .info-card{flex:1 1 200px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:13px;}
+  .info-card b{display:block; margin-bottom:4px; font-size:14px;}
+  .info-card.ferro{border-right:4px solid var(--ferro);} .info-card.ferro b{color:var(--ferro);}
+  .info-card.para{border-right:4px solid var(--para);} .info-card.para b{color:var(--para);}
+  .info-card.dia{border-right:4px solid var(--dia);} .info-card.dia b{color:var(--dia);}
+
+  .hint{margin-top:12px; background:var(--hint-bg); color:var(--hint-c);
+    border-radius:10px; padding:10px 14px; font-size:13.5px;
+    border-right:3px solid var(--hint-c);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🧪 کاوش رفتارِ مواد در میدان مغناطیسی</h2>
+  <p class="sub">مواد مختلف رو بِکِش به طرف آهنربا و ببین چجوری واکنش نشون می‌دن. سه گروه اصلی داریم: <b style="color:var(--ferro)">فرومغناطیس</b> (جذب قوی) / <b style="color:var(--para)">پارامغناطیس</b> (جذب ضعیف) / <b style="color:var(--dia)">دیامغناطیس</b> (دفع ضعیف).</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+  </div>
+
+  <div class="palette">
+    <div class="palette-title">روی هر کدوم کلیک کن (یا بِکِش) تا نزدیک آهنربا بفرستی:</div>
+    <div class="materials" id="palette">
+      <div class="mat-chip" data-type="ferro" data-name="آهن (Fe)">آهن</div>
+      <div class="mat-chip" data-type="ferro" data-name="نیکل (Ni)">نیکل</div>
+      <div class="mat-chip" data-type="ferro" data-name="کبالت (Co)">کبالت</div>
+      <div class="mat-chip" data-type="para" data-name="آلومینیوم (Al)">آلومینیوم</div>
+      <div class="mat-chip" data-type="para" data-name="پلاتین (Pt)">پلاتین</div>
+      <div class="mat-chip" data-type="para" data-name="اکسیژن مایع">اکسیژن</div>
+      <div class="mat-chip" data-type="dia" data-name="مس (Cu)">مس</div>
+      <div class="mat-chip" data-type="dia" data-name="بیسموت (Bi)">بیسموت</div>
+      <div class="mat-chip" data-type="dia" data-name="آب (H₂O)">آب</div>
+      <div class="mat-chip" data-type="dia" data-name="گرافیت">گرافیت</div>
+    </div>
+  </div>
+
+  <div class="info-row">
+    <div class="info-card ferro"><b>فرومغناطیس</b>آهن، نیکل، کبالت. دامنه‌های مغناطیسی قوی — همیشه به آهنربا جذب می‌شن. پایه‌ی آهنرباهای دائمی.</div>
+    <div class="info-card para"><b>پارامغناطیس</b>آلومینیوم، پلاتین، تنگستن. اتم‌هاشون ممان مغناطیسی دائمی دارن، ولی ضعیف. <b>جذب ضعیف</b> به آهنربا.</div>
+    <div class="info-card dia"><b>دیامغناطیس</b>مس، طلا، بیسموت، آب، گرافیت. در میدان، ممان مغناطیسی <b>القایی</b> در جهت مخالف می‌سازن. <b>دفع ضعیف</b>!</div>
+  </div>
+
+  <div class="hint">
+    💡 <b>پایان‌بندیِ زیبا:</b> همه‌ی مواد، حتی آب و طلا، به نوعی با میدان مغناطیسی برهم‌کنش دارن. تفاوت رفتارشون به ساختار اتمی‌شون برمی‌گرده — به‌خصوص اینکه الکترون‌های اتم چجور دور هسته آرایش پیدا کردن. این یکی از زیباترین کاربردهای <b>مکانیک کوانتومی</b> در پیش‌بینی رفتار مواد ـه.
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var W,H;
+  var magnetX, magnetY, magnetW = 110, magnetH = 50;
+
+  // Active sample (the object being dragged or moving)
+  var sample = null;   // {x, y, vx, vy, type, name, color}
+
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  function colorForType(t){
+    if (t === 'ferro') return cssv('--ferro');
+    if (t === 'para') return cssv('--para');
+    if (t === 'dia') return cssv('--dia');
+    return cssv('--muted');
+  }
+
+  function drawMagnet(){
+    ctx.save();
+    var x = magnetX, y = magnetY;
+    // N on right (red), S on left (blue)
+    ctx.fillStyle = cssv('--S'); ctx.fillRect(x, y, magnetW/2, magnetH);
+    ctx.fillStyle = cssv('--N'); ctx.fillRect(x + magnetW/2, y, magnetW/2, magnetH);
+    ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(x, y, magnetW, magnetH);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 18px Vazirmatn';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('S', x + magnetW/4, y + magnetH/2);
+    ctx.fillText('N', x + 3*magnetW/4, y + magnetH/2);
+    ctx.restore();
+  }
+
+  function drawSample(){
+    if (!sample) return;
+    var col = colorForType(sample.type);
+    ctx.save();
+    // Glow
+    var grd = ctx.createRadialGradient(sample.x, sample.y, 1, sample.x, sample.y, 36);
+    grd.addColorStop(0, col);
+    grd.addColorStop(0.6, col + '40');
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.4;
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(sample.x, sample.y, 36, 0, Math.PI*2); ctx.fill();
+    // Core ball
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(sample.x, sample.y, 16, 0, Math.PI*2); ctx.fill();
+    // Label
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Vazirmatn';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(sample.name.slice(0, 10), sample.x, sample.y);
+    // Reaction indicator (arrow showing pull or push)
+    var dx = (magnetX + magnetW/2) - sample.x;
+    var dist = Math.hypot(dx, sample.y - (magnetY + magnetH/2));
+    if (dist < 220){
+      var force;
+      if (sample.type === 'ferro') force = 'strong-pull';
+      else if (sample.type === 'para') force = 'weak-pull';
+      else if (sample.type === 'dia') force = 'weak-push';
+      var arrowLen = (force === 'strong-pull') ? 36 : 18;
+      var sign = (force === 'weak-push') ? -1 : +1;
+      var ay = sample.y;
+      // Always arrow horizontally toward (or away from) magnet
+      var ax1 = sample.x;
+      var ax2 = sample.x + sign * Math.sign(dx) * arrowLen;
+      ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 3; ctx.globalAlpha = 0.85;
+      ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(ax1, ay - 25); ctx.lineTo(ax2, ay - 25); ctx.stroke();
+      // Arrowhead
+      var hx = ax2; var dir = ax2 > ax1 ? 1 : -1;
+      ctx.beginPath();
+      ctx.moveTo(hx, ay - 25);
+      ctx.lineTo(hx - dir*8, ay - 25 - 5);
+      ctx.lineTo(hx - dir*8, ay - 25 + 5);
+      ctx.closePath(); ctx.fill();
+      // Label
+      var labelText = sample.type === 'ferro' ? 'جذب قوی' : sample.type === 'para' ? 'جذب ضعیف' : 'دفع ضعیف';
+      ctx.fillStyle = col; ctx.font = 'bold 11px Vazirmatn';
+      ctx.textAlign='center'; ctx.textBaseline='bottom';
+      ctx.fillText(labelText, (ax1+ax2)/2, ay - 28);
+    }
+    ctx.restore();
+  }
+
+  function step(dt){
+    if (!sample) return;
+    if (sample.dragging) return;  // don't apply forces while user is dragging
+    // Compute distance to magnet center
+    var mx = magnetX + magnetW/2, my = magnetY + magnetH/2;
+    var dx = mx - sample.x, dy = my - sample.y;
+    var dist = Math.max(20, Math.hypot(dx, dy));
+    var nx = dx/dist, ny = dy/dist;
+    // Force magnitude depends on type and distance (~1/r²), tuned for visible movement.
+    var k;
+    if (sample.type === 'ferro') k = 3500;     // strong attraction
+    else if (sample.type === 'para') k = 350;  // weak attraction
+    else if (sample.type === 'dia') k = -250;  // weak repulsion
+    var Fmag = k / (dist*dist) * 100;
+    sample.vx += nx * Fmag * dt;
+    sample.vy += ny * Fmag * dt;
+    // Damping — light, so movement persists
+    sample.vx *= 0.985; sample.vy *= 0.985;
+    sample.x += sample.vx * dt * 60;
+    sample.y += sample.vy * dt * 60;
+    // Stick on contact with magnet (for ferro)
+    if (sample.type === 'ferro'){
+      if (Math.abs(sample.x - mx) < magnetW/2 + 16 && Math.abs(sample.y - my) < magnetH/2 + 16){
+        sample.x += nx * 2; sample.y += ny * 2;
+        sample.vx *= 0.5; sample.vy *= 0.5;
+      }
+    }
+    // Bounce off walls
+    if (sample.x < 16){ sample.x = 16; sample.vx *= -0.4; }
+    if (sample.x > W-16){ sample.x = W-16; sample.vx *= -0.4; }
+    if (sample.y < 16){ sample.y = 16; sample.vy *= -0.4; }
+    if (sample.y > H-16){ sample.y = H-16; sample.vy *= -0.4; }
+  }
+
+  var lastTs = 0;
+  function tick(ts){
+    var dt = Math.min(0.05, (ts - lastTs)/1000); lastTs = ts;
+    step(dt);
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=rect.width; H=rect.height;
+    magnetX = W/2 - magnetW/2; magnetY = H/2 - magnetH/2;
+    ctx.clearRect(0,0,W,H);
+    // Title
+    ctx.fillStyle = cssv('--muted'); ctx.font='12px Vazirmatn';
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.fillText('یه آهنربای ثابت در وسط — مواد مختلف رو از پالت زیر بکش به سمتش', W/2, 8);
+    drawMagnet();
+    drawSample();
+    requestAnimationFrame(tick);
+  }
+
+  // Palette click: place new sample at the top-center of the stage, close enough
+  // to the magnet that the 1/r² force is immediately visible.
+  document.getElementById('palette').addEventListener('click', function(e){
+    var chip = e.target.closest('.mat-chip');
+    if (!chip) return;
+    sample = {
+      x: W ? W * 0.32 : 250,
+      y: 70,
+      vx: 0, vy: 0,
+      type: chip.dataset.type,
+      name: chip.dataset.name,
+      dragging: false
+    };
+  });
+
+  // Drag-to-move existing sample
+  cv.addEventListener('pointerdown', function(e){
+    if (!sample) return;
+    var rect = cv.getBoundingClientRect();
+    var px = e.clientX - rect.left, py = e.clientY - rect.top;
+    if (Math.hypot(px - sample.x, py - sample.y) < 22){
+      sample.dragging = true;
+      sample.dragDX = px - sample.x;
+      sample.dragDY = py - sample.y;
+      cv.classList.add('dragging');
+      cv.setPointerCapture(e.pointerId);
+    }
+  });
+  cv.addEventListener('pointermove', function(e){
+    if (!sample || !sample.dragging) return;
+    var rect = cv.getBoundingClientRect();
+    sample.x = e.clientX - rect.left - sample.dragDX;
+    sample.y = e.clientY - rect.top - sample.dragDY;
+    sample.vx = 0; sample.vy = 0;
+  });
+  cv.addEventListener('pointerup', function(e){
+    if (!sample) return;
+    sample.dragging = false;
+    cv.classList.remove('dragging');
+    try{ cv.releasePointerCapture(e.pointerId); }catch(_){}
+  });
+
+  setTimeout(function(){ requestAnimationFrame(tick); }, 50);
+})();
+</script>
+</body>
+</html>

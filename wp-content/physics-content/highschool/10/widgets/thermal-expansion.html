@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>انبساط گرمایی — تغییرِ طول با دما</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --warn:#a87800; --hot:#e63946;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+           --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.7}
+  h2{margin:0 0 12px;font-size:1.05em;color:var(--info)}
+  canvas{background:var(--surface);border-radius:14px;width:100%;max-width:620px;
+         display:block;margin:0 auto;border:1px solid var(--border)}
+  .row{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .row label{min-width:120px;font-weight:600}
+  input[type=range]{flex:1;min-width:160px}
+  select{padding:4px 8px;border:1px solid var(--border);border-radius:6px;
+         background:var(--bg);color:var(--text);font-family:inherit}
+  .readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+           gap:8px;margin-top:12px}
+  .card{padding:10px;background:var(--info-bg);border-radius:10px;text-align:center;color:var(--info)}
+  .card b{display:block;color:var(--text);font-size:1.15em;margin-bottom:2px}
+  .formula{margin-top:10px;padding:10px;background:var(--surface);border-radius:10px;
+           font-family:'Courier New',monospace;text-align:center;direction:ltr;
+           color:var(--ok);font-size:1.05em;font-weight:600}
+  .tip{margin-top:10px;padding:8px;background:var(--surface);border-radius:8px;
+       font-size:0.9em;color:var(--muted)}
+</style>
+</head>
+<body>
+<h2>🌉 انبساط گرمایی — چرا پل‌ها درز دارن؟</h2>
+
+<canvas id="cv" width="620" height="200"></canvas>
+
+<div class="row">
+  <label>جنسِ ماده</label>
+  <select id="mat">
+    <option value="11">آلومینیم (α = ۲۳ × ۱۰⁻⁶ /K)</option>
+    <option value="12">برنج (α = ۱۹ × ۱۰⁻⁶ /K)</option>
+    <option value="13">مس (α = ۱۷ × ۱۰⁻⁶ /K)</option>
+    <option value="14" selected>فولاد (α = ۱۲ × ۱۰⁻⁶ /K)</option>
+    <option value="15">بتُن (α = ۱۲ × ۱۰⁻⁶ /K)</option>
+    <option value="16">شیشه (α = ۹ × ۱۰⁻⁶ /K)</option>
+    <option value="17">شیشهٔ پایرکس (α = ۳.۲ × ۱۰⁻⁶ /K)</option>
+    <option value="18">دندان — مینا (α = ۱۱.۴ × ۱۰⁻⁶ /K)</option>
+  </select>
+</div>
+<div class="row">
+  <label>طولِ اولیه L₀ (m)</label>
+  <input type="range" id="L0" min="0.5" max="50" value="10" step="0.5">
+  <span id="L0b">۱۰</span>
+</div>
+<div class="row">
+  <label>تغییر دما ΔT (K)</label>
+  <input type="range" id="dT" min="-50" max="200" value="50" step="1">
+  <span id="dTb">۵۰</span>
+</div>
+
+<div class="formula">ΔL = α · L₀ · ΔT</div>
+
+<div class="readout">
+  <div class="card"><b id="alpha">—</b>α (×10⁻⁶ /K)</div>
+  <div class="card"><b id="dL">—</b>ΔL (mm)</div>
+  <div class="card"><b id="Lf">—</b>طولِ نهایی (m)</div>
+  <div class="card"><b id="strain">—</b>کرنش (%)</div>
+</div>
+
+<div class="tip" id="tip">—</div>
+
+<script>
+const faDigit = n => String(n).replace(/-?\d/g, d => d==='-'?'−':'۰۱۲۳۴۵۶۷۸۹'[d]);
+const alphaTable = { 11:23e-6, 12:19e-6, 13:17e-6, 14:12e-6, 15:12e-6, 16:9e-6, 17:3.2e-6, 18:11.4e-6 };
+const nameTable = { 11:'آلومینیم', 12:'برنج', 13:'مس', 14:'فولاد', 15:'بتُن', 16:'شیشه', 17:'پایرکس', 18:'دندان' };
+let mat=14, L0=10, dT=50;
+
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const W=cv.width, H=cv.height;
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const a = alphaTable[mat], dL = a * L0 * dT;
+  const Lf = L0 + dL;
+  // visualize: original bar in gray (centered around y=80), new bar below in colored
+  const scale = 500 / Math.max(L0, Lf);
+  const origLen = L0 * scale;
+  const newLen = Lf * scale;
+  const startX = 60;
+  // original (cool, reference)
+  ctx.fillStyle = '#8aa1c2';
+  ctx.fillRect(startX, 60, origLen, 26);
+  ctx.strokeStyle='#fff'; ctx.strokeRect(startX, 60, origLen, 26);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Vazirmatn';
+  ctx.fillText('L₀ (دمای اولیه)', startX + 5, 78);
+  // new (hot or cool)
+  const hot = dT >= 0;
+  const grad = ctx.createLinearGradient(startX, 0, startX + newLen, 0);
+  if (hot){ grad.addColorStop(0,'#e63946'); grad.addColorStop(1,'#ff8c42'); }
+  else { grad.addColorStop(0,'#3a86ff'); grad.addColorStop(1,'#8ecae6'); }
+  ctx.fillStyle = grad;
+  ctx.fillRect(startX, 130, newLen, 26);
+  ctx.strokeStyle='#fff'; ctx.strokeRect(startX, 130, newLen, 26);
+  ctx.fillStyle = '#fff';
+  ctx.fillText('L = L₀ + ΔL  ' + (hot?'(گرم شده 🔥)':'(سرد شده ❄️)'), startX + 5, 148);
+  // show ΔL marker
+  if (Math.abs(dL) > 1e-6){
+    const dx = dL * scale;
+    ctx.strokeStyle = '#a87800'; ctx.lineWidth = 2;
+    ctx.setLineDash([4,4]);
+    ctx.beginPath();
+    ctx.moveTo(startX + origLen, 86);
+    ctx.lineTo(startX + origLen, 130);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(startX + newLen, 86);
+    ctx.lineTo(startX + newLen, 130);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#a87800'; ctx.font='bold 13px Vazirmatn';
+    const dLmm = (dL*1000).toFixed(2);
+    const mid = startX + (origLen + newLen)/2;
+    ctx.fillText('ΔL = ' + faDigit(dLmm) + ' mm', mid - 50, 110);
+  }
+  ctx.lineWidth = 1;
+}
+
+function compute(){
+  const a = alphaTable[mat], dL = a * L0 * dT, Lf = L0 + dL;
+  document.getElementById('alpha').textContent = faDigit((a*1e6).toFixed(1));
+  document.getElementById('dL').textContent = faDigit((dL*1000).toFixed(2));
+  document.getElementById('Lf').textContent = faDigit(Lf.toFixed(4));
+  document.getElementById('strain').textContent = faDigit((a*dT*100).toFixed(4));
+  // tip
+  let tip='';
+  if (Math.abs(dL*1000) < 0.5) tip = '💡 ΔL خیلی کوچیکه — اما در پل‌های صد متری یا ریل قطار جمع می‌شه و ساختار رو خم می‌کنه!';
+  else if (dT > 0) tip = '🔥 ' + nameTable[mat] + ' با ' + faDigit(dT) + 'K افزایش دما، حدود ' + faDigit((dL*1000).toFixed(1)) + ' mm بلندتر می‌شه. اگه جلوی این انبساط رو بگیرن، تنش‌های مهیب درست می‌شن — برای همین پل‌ها «درز انبساط» دارن.';
+  else tip = '❄️ ' + nameTable[mat] + ' با ' + faDigit(dT) + 'K کاهش دما، حدود ' + faDigit(Math.abs(dL*1000).toFixed(1)) + ' mm کوتاه می‌شه. ترکِ زمستانیِ لوله‌های آب از همینه (آب ولی استثناست — یخ منبسط می‌شه!).';
+  document.getElementById('tip').textContent = tip;
+  draw();
+}
+
+document.getElementById('mat').onchange = e => { mat = +e.target.value; compute(); };
+document.getElementById('L0').oninput = e => { L0 = +e.target.value;
+  document.getElementById('L0b').textContent = faDigit(L0); compute(); };
+document.getElementById('dT').oninput = e => { dT = +e.target.value;
+  document.getElementById('dTb').textContent = faDigit(dT); compute(); };
+
+compute();
+</script>
+</body>
+</html>

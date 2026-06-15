@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودتو بسنج — شار مغناطیسی و قانون فاراده</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8;
+  }
+  .wrap{max-width:720px; margin:0 auto;}
+  .q-item{
+    border:1px solid var(--border); border-radius:12px; margin-bottom:10px;
+    overflow:hidden; background:var(--surface);
+  }
+  .q-head{
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+    padding:13px 15px; font-weight:500; font-size:15px; user-select:none;
+  }
+  .q-head:hover{background:var(--info-bg);}
+  .q-head .tog{
+    margin-inline-start:auto; flex:0 0 auto; color:var(--info);
+    transition:transform .2s ease; font-size:18px;
+  }
+  .q-item.open .q-head .tog{transform:rotate(45deg);}
+  .q-num{
+    flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+    background:var(--info); color:#fff; display:flex; align-items:center;
+    justify-content:center; font-size:13px; font-weight:700;
+  }
+  .q-body{
+    max-height:0; overflow:hidden; transition:max-height .25s ease;
+    background:var(--ok-bg);
+  }
+  .q-body .inner{padding:13px 15px; color:var(--text); font-size:14.5px;}
+  .q-body .inner::before{
+    content:"پاسخ: "; color:var(--ok); font-weight:700;
+  }
+  .hint{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  mjx-container{font-size:110%!important;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="hint">روی هر سؤال بزن تا پاسخش باز شود 👇</p>
+  <div id="quiz"></div>
+</div>
+
+<script>
+  var items = [
+  {
+    "q": "اگه سطحِ یه حلقه دقیقاً موازی با خطوطِ میدان مغناطیسی باشه، شارِ عبوری چقدره؟",
+    "a": "<b>صفر!</b> چون $\\theta$ (زاویه‌ی بین نیم‌خطِ عمود بر سطح و میدان) برابر $90°$ می‌شه و $\\cos 90° = 0$. این یه دامِ کلاسیکه — سطحِ «موازی» با میدان یعنی نیم‌خطِ عمودش <b>عمود</b> بر میدانه."
+  },
+  {
+    "q": "یکای وبر بر ثانیه ($\\text{Wb}/\\text{s}$) معادل چه یکای دیگه‌ایه؟",
+    "a": "<b>ولت (V)</b>. این یه راست از قانون فاراده درمیاد: $|\\varepsilon| = \\Delta\\Phi/\\Delta t$. بنابراین $1\\text{ Wb/s} = 1\\text{ V}$. یعنی هر بار شار به اندازه‌ی ۱ وبر در ثانیه عوض بشه، ۱ ولت ولتاژ القا می‌شه."
+  },
+  {
+    "q": "اگه به یه پیچه با ۱۰۰ دور همون اتفاقی بیفته که برای پیچه‌ای با ۱۰ دور افتاد، EMF چه‌قدر فرق می‌کنه؟",
+    "a": "<b>ده برابر بیشتر می‌شه!</b> چون در فرمول $\\varepsilon = -N\\Delta\\Phi/\\Delta t$، $N$ ضریب مستقیمه. هر دور یه سهم می‌ده. به همین دلیل توی ترانس‌های افزاینده، تعداد دور پیچه‌ی ثانویه خیلی زیاده."
+  },
+  {
+    "q": "چرا توی فرمولِ فاراده یه علامتِ منفی وجود داره؟",
+    "a": "اون منفی، <b>نمایندهٔ قانون لنز</b>ـه. می‌گه جهتِ EMF القایی در خلافِ جهتیه که تغییر شار می‌خواد. توی مسائلِ سطحِ دبیرستان معمولاً با اندازه‌ی EMF کار می‌کنیم و علامت رو از فیزیکِ مسئله تعیین می‌کنیم."
+  },
+  {
+    "q": "اگه میدان از $0.2$ تسلا به $0.5$ تسلا توی $0.1$ ثانیه برسه و سطحِ پیچه $0.01\\text{ m}^2$ باشه (عمود بر میدان، تک‌دور)، EMF چقدره؟",
+    "a": "$\\Delta\\Phi = (0.5-0.2)(0.01) = 3\\times 10^{-3}\\text{ Wb}$. پس $|\\varepsilon| = 3\\times 10^{-3}/0.1 = 0.03\\text{ V} = 30\\text{ mV}$."
+  },
+  {
+    "q": "بین یه میدانِ خیلی قوی ولی ثابت، و یه میدانِ ضعیف ولی متغیر، کدوم EMF بیشتری القا می‌کنه؟",
+    "a": "<b>میدانِ متغیر</b>، حتی اگه خیلی ضعیف باشه! چون فقط <b>تغییرِ شار</b> EMF القا می‌کنه. یه میدانِ خیلی قویِ ثابت، اگه عوض نشه، صفر EMF القا می‌کنه."
+  },
+  {
+    "q": "چه یکای دیگه‌ای برای میدان مغناطیسی به جز تسلا (T) رایجه؟",
+    "a": "<b>گاوس</b> (G). $1\\text{ T} = 10^4\\text{ G}$. یعنی ۱ تسلا = ۱۰ هزار گاوس. توی کتاب گاهی $250$ گاوس می‌بینی که برابرِ $2.5\\times 10^{-2}$ تسلاست. حواست به تبدیل باشه!"
+  },
+  {
+    "q": "چرا برای یه سطح، باید نیم‌خطِ عمود رو فقط در یه جهت انتخاب کنی و عوض نکنی؟",
+    "a": "چون هر سطح دو طرف داره، و انتخابِ جهتِ نیم‌خطِ عمود، علامتِ شار رو تعیین می‌کنه. اگه وسط مسئله عوض کنی، علامتِ $\\Delta\\Phi$ هم عوض می‌شه و جوابِ نهایی خراب می‌شه. <b>سیستمِ مختصاتت رو اول تثبیت کن، وسطِ راه عوض نکن.</b>"
+  }
+];
+
+  var box = document.getElementById('quiz');
+  items.forEach(function(it, i){
+    var item = document.createElement('div'); item.className='q-item';
+    var head = document.createElement('div'); head.className='q-head';
+    head.innerHTML = '<span class="q-num">'+toFa(i+1)+'</span><span>'+it.q+'</span><span class="tog">+</span>';
+    var body = document.createElement('div'); body.className='q-body';
+    var inner = document.createElement('div'); inner.className='inner'; inner.innerHTML=it.a;
+    body.appendChild(inner);
+    head.addEventListener('click', function(){
+      var open = item.classList.toggle('open');
+      body.style.maxHeight = open ? (inner.scrollHeight + 26) + 'px' : '0';
+      if(window.MathJax && window.MathJax.typesetPromise){
+        window.MathJax.typesetPromise([inner]);
+      }
+    });
+    item.appendChild(head); item.appendChild(body); box.appendChild(item);
+  });
+  function toFa(n){return (''+n).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+</script>
+</body>
+</html>

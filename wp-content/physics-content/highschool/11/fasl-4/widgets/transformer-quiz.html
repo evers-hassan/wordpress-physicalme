@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودتو بسنج — ترانسفورماتور</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8;
+  }
+  .wrap{max-width:720px; margin:0 auto;}
+  .q-item{
+    border:1px solid var(--border); border-radius:12px; margin-bottom:10px;
+    overflow:hidden; background:var(--surface);
+  }
+  .q-head{
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+    padding:13px 15px; font-weight:500; font-size:15px; user-select:none;
+  }
+  .q-head:hover{background:var(--info-bg);}
+  .q-head .tog{
+    margin-inline-start:auto; flex:0 0 auto; color:var(--info);
+    transition:transform .2s ease; font-size:18px;
+  }
+  .q-item.open .q-head .tog{transform:rotate(45deg);}
+  .q-num{
+    flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+    background:var(--info); color:#fff; display:flex; align-items:center;
+    justify-content:center; font-size:13px; font-weight:700;
+  }
+  .q-body{
+    max-height:0; overflow:hidden; transition:max-height .25s ease;
+    background:var(--ok-bg);
+  }
+  .q-body .inner{padding:13px 15px; color:var(--text); font-size:14.5px;}
+  .q-body .inner::before{
+    content:"پاسخ: "; color:var(--ok); font-weight:700;
+  }
+  .hint{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  mjx-container{font-size:110%!important;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="hint">روی هر سؤال بزن تا پاسخش باز شود 👇</p>
+  <div id="quiz"></div>
+</div>
+
+<script>
+  var items = [
+  {
+    "q": "چرا ترانسفورماتور فقط با AC کار می‌کنه و با DC نه؟",
+    "a": "چون ترانس به <b>تغییرِ شار</b> نیاز داره تا EMF القا کنه. AC به طور طبیعی شار رو مدام عوض می‌کنه. DC شار ثابت می‌سازه → هیچ EMF القایی توی پیچه‌ی ثانویه نیست. این یه دلیلِ شکستِ DC ادیسون بود!"
+  },
+  {
+    "q": "رابطهٔ کلیدیِ بین ولتاژها و دورهای یه ترانسِ آرمانی چیه؟",
+    "a": "$V_2/V_1 = N_2/N_1$. یعنی نسبتِ ولتاژها = نسبتِ تعداد دورها. <b>اگه پیچهٔ ثانویه دو برابرِ اولیه دور داشته باشه، ولتاژش دو برابر می‌شه.</b>"
+  },
+  {
+    "q": "اگه ولتاژ توی ترانس ده برابر بشه، جریان چه می‌شه؟",
+    "a": "<b>یک‌دهم می‌شه!</b> چون توی ترانسِ آرمانی توان حفظ می‌شه: $V_1 I_1 = V_2 I_2$. ترانس مجانی چیزی نمی‌ده — ولتاژ بالا، جریان پایین — و برعکس."
+  },
+  {
+    "q": "چرا برای انتقالِ برقِ دور، ولتاژ رو خیلی بالا می‌برن؟",
+    "a": "چون اتلاف توی سیم $P_{\\text{loss}} = I^2 R$ ـه — به <b>مجذورِ جریان</b> بستگی داره. اگه ولتاژ رو ۱۰ برابر کنی (و جریان رو ۱/۱۰)، اتلاف ۱/۱۰۰ می‌شه! این هدیه‌ی AC + ترانس به تمدنه."
+  },
+  {
+    "q": "نقشِ هسته‌ی آهنیِ ترانس چیه؟",
+    "a": "<b>هدایتِ میدانِ مغناطیسی</b>. آهنِ نرم تراواییِ مغناطیسیِ خیلی بالایی داره — یعنی خطوطِ میدان رو از پیچهٔ اولیه به ثانویه «راهنمایی» می‌کنه و کمتر هدر می‌ره. بدون هسته، خیلی از میدان توی هوا پخش می‌شه."
+  },
+  {
+    "q": "یه ترانسِ کاهنده با $V_1 = 220\\text{ V}$، $N_1 = 8000$، $N_2 = 436$. ولتاژ خروجی چقدره؟",
+    "a": "$V_2 = V_1 \\cdot N_2/N_1 = 220 \\cdot 436/8000 \\approx 12\\text{ V}$. این تقریباً یه ترانس آداپتورِ شارژره."
+  },
+  {
+    "q": "چرا ترانس‌های شهری «وزوز» می‌کنن؟",
+    "a": "به خاطر <b>مَگنِتواِستریکشِن</b>: آهن در حضورِ میدانِ مغناطیسی یه ذره منبسط می‌شه. با AC ۵۰ هرتزی، این انبساط/انقباض ۱۰۰ بار در ثانیه اتفاق می‌افته. وزوز در فرکانسِ ۱۰۰ هرتز — یه «سلامِ صوتیِ فاراده». 🎵"
+  },
+  {
+    "q": "چرا گفته می‌شه «شبکهٔ برقِ مدرن، بدون ترانس غیرممکنه»؟",
+    "a": "چون ولتاژی که نیروگاه تولید می‌کنه (~۱۲ کیلوولت) خیلی پایینه برای انتقالِ دور، و خیلی بالاست برای مصرفِ خانگی. ترانس <b>تنها</b> راهیه که می‌تونه این فاصله رو پر کنه — راحت و کارا. ادیسون بدون ترانس می‌خواست! ❌"
+  },
+  {
+    "q": "یه دستگاهِ حشره‌کشِ برقی با $V_1 = 220$، $N_1 = 54$، $N_2 = 9000$. ولتاژِ خروجی چقدر می‌شه؟",
+    "a": "$V_2 = 220 \\cdot 9000/54 \\approx 36{,}700\\text{ V} \\approx 37\\text{ kV}$! این ولتاژِ کشنده‌ست — هیچ‌وقت دستِ خشک یا تر روی این ترانس نزنی! 🚫⚠️"
+  }
+];
+
+  var box = document.getElementById('quiz');
+  items.forEach(function(it, i){
+    var item = document.createElement('div'); item.className='q-item';
+    var head = document.createElement('div'); head.className='q-head';
+    head.innerHTML = '<span class="q-num">'+toFa(i+1)+'</span><span>'+it.q+'</span><span class="tog">+</span>';
+    var body = document.createElement('div'); body.className='q-body';
+    var inner = document.createElement('div'); inner.className='inner'; inner.innerHTML=it.a;
+    body.appendChild(inner);
+    head.addEventListener('click', function(){
+      var open = item.classList.toggle('open');
+      body.style.maxHeight = open ? (inner.scrollHeight + 26) + 'px' : '0';
+      if(window.MathJax && window.MathJax.typesetPromise){
+        window.MathJax.typesetPromise([inner]);
+      }
+    });
+    item.appendChild(head); item.appendChild(body); box.appendChild(item);
+  });
+  function toFa(n){return (''+n).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+</script>
+</body>
+</html>

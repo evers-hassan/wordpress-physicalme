@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شکست موج — قانون اسنل و زاویه‌ی بحرانی</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed; --warn:#a87800; --warn-bg:#fef6e0;
+    --m1:#cfe5ff; --m2:#0a6cc4;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e0b860; --warn-bg:#4a3a15;
+      --m1:#2c3a4d; --m2:#0a6cc4;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:980px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .layout{display:grid; grid-template-columns:1fr 250px; gap:12px;}
+  @media(max-width:760px){.layout{grid-template-columns:1fr;}}
+  .stage{background:linear-gradient(to bottom, #f7f9fc, var(--bg)); border:1px solid var(--border); border-radius:14px; padding:8px;}
+  canvas{display:block; width:100%; height:360px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:13px; margin:8px 0 6px; color:var(--muted); text-transform:uppercase;}
+  .panel h3:first-child{margin-top:0;}
+  .slider-row{display:grid; grid-template-columns:1fr 60px; gap:6px; align-items:center; font-size:13px; margin-bottom:4px;}
+  .val{font-weight:700; color:var(--info); text-align:left; font-variant-numeric:tabular-nums;}
+  input[type=range]{width:100%; accent-color:var(--info);}
+  .readout{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px;}
+  .read{padding:6px 8px; background:var(--info-bg); color:var(--info); border-radius:6px; text-align:center; font-size:12px;}
+  .read b{display:block; font-size:13px; margin-top:2px;}
+  .read.full{grid-column:1/-1; background:var(--ok-bg); color:var(--ok);}
+  .read.tir{background:#fef6e0; color:#a87800;}
+  .note{font-size:12px; padding:8px; background:var(--ok-bg); color:var(--ok); border-radius:8px; margin-top:8px; line-height:1.6;}
+  .note.warn{background:var(--warn-bg); color:var(--warn);}
+  select{width:100%; padding:6px; font-family:inherit; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px;}
+</style>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']], processEscapes: true },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>شکست موج 🌈 — قانون اسنل با زاویه‌ی بحرانی</h2>
+  <p class="sub">پرتویی از محیط ۱ (بالا) به محیط ۲ (پایین) برخورد می‌کنه. زاویه‌ی فرود و ضریب شکست رو تنظیم کن. اگه از غلیظ به رقیق بری، می‌تونی <b>بازتابِ کلیِ داخلی</b> رو ببینی.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <canvas id="cv"></canvas>
+    </div>
+
+    <div class="panel">
+      <h3>زاویه‌ی فرود (درجه)</h3>
+      <div class="slider-row"><label>$\theta_1$</label><span class="val" id="vT">۳۰°</span></div>
+      <input type="range" id="T" min="0" max="89" step="1" value="30">
+
+      <h3>محیطِ بالا (n₁)</h3>
+      <select id="m1">
+        <option value="1.0">هوا (n=۱)</option>
+        <option value="1.33">آب (n=۱٫۳۳)</option>
+        <option value="1.52">شیشه (n=۱٫۵۲)</option>
+        <option value="2.42">الماس (n=۲٫۴۲)</option>
+      </select>
+
+      <h3>محیطِ پایین (n₂)</h3>
+      <select id="m2">
+        <option value="1.0">هوا (n=۱)</option>
+        <option value="1.33" selected>آب (n=۱٫۳۳)</option>
+        <option value="1.52">شیشه (n=۱٫۵۲)</option>
+        <option value="2.42">الماس (n=۲٫۴۲)</option>
+      </select>
+
+      <h3>خروجی</h3>
+      <div class="readout">
+        <div class="read full" id="rEq">$n_1 \sin\theta_1 = n_2 \sin\theta_2$</div>
+        <div class="read">$\theta_2$<b id="rT2">—</b></div>
+        <div class="read" id="rTC"><span>$\theta_\text{بحرانی}$</span><b id="rTCv">—</b></div>
+      </div>
+      <div class="note" id="note">
+        💡 پرتوی فرود (آبی) از محیط ۱ به ۲ می‌ره. پرتوی بازتاب (سبز پنبه‌ای) هم‌زمان داریم.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fa=n=>n.toLocaleString('fa-IR');
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const cv=$('cv'), ctx=cv.getContext('2d');
+let DPR=window.devicePixelRatio||1;
+function fit(){const r=cv.getBoundingClientRect(); cv.width=r.width*DPR; cv.height=r.height*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); return {w:r.width, h:r.height};}
+
+let T=30, n1=1.0, n2=1.33;
+
+function draw(){
+  const {w,h}=fit();
+  ctx.clearRect(0,0,w,h);
+  const cx=w/2, my=h/2;
+  // top medium (light)
+  ctx.fillStyle=css('--m1'); ctx.fillRect(0,0,w,my);
+  // bottom medium (deep)
+  ctx.fillStyle=css('--m2'); ctx.fillRect(0,my,w,my);
+  ctx.globalAlpha=0.18; ctx.fillStyle='#ffffff'; ctx.fillRect(0,my,w,my); ctx.globalAlpha=1;
+  // interface line
+  ctx.strokeStyle=css('--border'); ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,my); ctx.lineTo(w,my); ctx.stroke();
+  // normal (vertical) at cx
+  ctx.strokeStyle=css('--muted'); ctx.setLineDash([5,4]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(cx, 10); ctx.lineTo(cx, h-10); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // incoming ray (from top-left or right based on RTL aesthetics)
+  const Rin = Math.min(my, cx)*0.85;
+  const t1 = T*Math.PI/180;
+  const ix = cx - Math.sin(t1)*Rin;
+  const iy = my - Math.cos(t1)*Rin;
+  ctx.strokeStyle='#0a6cc4'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(ix, iy); ctx.lineTo(cx, my); ctx.stroke();
+  // arrow on incoming
+  drawArrow(cx-Math.sin(t1)*Rin*0.4, my-Math.cos(t1)*Rin*0.4, t1+Math.PI, '#0a6cc4');
+
+  // reflected ray (mirror image about normal — same angle, other side)
+  const Rrefl = Math.min(my, w-cx)*0.85;
+  const rx = cx + Math.sin(t1)*Rrefl;
+  const ry = my - Math.cos(t1)*Rrefl;
+  ctx.strokeStyle='#5dcaa5'; ctx.lineWidth=2; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(cx,my); ctx.lineTo(rx, ry); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // refracted ray — Snell
+  const s = (n1/n2)*Math.sin(t1);
+  let t2=null, TIR=false;
+  if(Math.abs(s)<=1){
+    t2 = Math.asin(s);
+    const Rrf = Math.min(h-my, cx)*0.85;
+    const fx = cx + Math.sin(t2)*Rrf;
+    const fy = my + Math.cos(t2)*Rrf;
+    ctx.strokeStyle='#c43838'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(cx,my); ctx.lineTo(fx, fy); ctx.stroke();
+    drawArrow(cx+Math.sin(t2)*Rrf*0.6, my+Math.cos(t2)*Rrf*0.6, Math.PI/2+t2, '#c43838');
+  } else {
+    TIR=true;
+    // intensify the reflected ray
+    ctx.strokeStyle='#a87800'; ctx.lineWidth=3.5;
+    ctx.beginPath(); ctx.moveTo(cx,my); ctx.lineTo(rx, ry); ctx.stroke();
+  }
+
+  // arcs and angle labels
+  ctx.strokeStyle=css('--muted'); ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(cx, my, 36, -Math.PI/2 - t1, -Math.PI/2, false); ctx.stroke();
+  ctx.fillStyle='#0a6cc4'; ctx.font='12px Vazirmatn'; ctx.textAlign='center';
+  ctx.fillText('θ₁='+fa(T.toFixed(0))+'°', cx - Math.sin(t1/2)*52, my - Math.cos(t1/2)*52);
+  if(!TIR && t2!==null){
+    ctx.strokeStyle=css('--muted');
+    ctx.beginPath(); ctx.arc(cx, my, 36, Math.PI/2, Math.PI/2 + t2, false); ctx.stroke();
+    ctx.fillStyle='#c43838';
+    ctx.fillText('θ₂='+fa((t2*180/Math.PI).toFixed(1))+'°', cx + Math.sin(t2/2)*52, my + Math.cos(t2/2)*52);
+  }
+
+  // labels
+  ctx.fillStyle=css('--text'); ctx.textAlign='right'; ctx.font='12px Vazirmatn';
+  ctx.fillText('محیط ۱ (n='+fa(n1.toFixed(2))+')', w-8, 16);
+  ctx.fillText('محیط ۲ (n='+fa(n2.toFixed(2))+')', w-8, my+18);
+  // legend
+  ctx.textAlign='left';
+  ctx.fillStyle='#0a6cc4'; ctx.fillText('— پرتوی فرود', 8, h-26);
+  ctx.fillStyle='#5dcaa5'; ctx.fillText('— پرتوی بازتاب', 8, h-12);
+  if(TIR){
+    ctx.fillStyle='#a87800'; ctx.fillText('— بازتابِ کلیِ داخلی!', cx-30, h-12);
+  } else {
+    ctx.fillStyle='#c43838'; ctx.fillText('— پرتوی شکست', cx-30, h-12);
+  }
+
+  // update text panels
+  if(TIR){
+    $('rT2').textContent='—';
+    $('note').className='note warn';
+    $('note').innerHTML='⚠️ <b>بازتابِ کلیِ داخلی!</b> چون زاویه از $\\theta_c$ بیشتر شده، هیچ پرتویی به محیط ۲ نمی‌ره. کاربرد: فیبر نوری 🌐';
+  } else {
+    $('rT2').textContent=fa((t2*180/Math.PI).toFixed(1))+'°';
+    $('note').className='note';
+    $('note').innerHTML='💡 رابطه: $n_1 \\sin\\theta_1 = n_2 \\sin\\theta_2$. اگه از محیط رقیق به غلیظ بری، پرتو به خط عمود نزدیک می‌شه.';
+  }
+  // critical angle (only if n1 > n2)
+  if(n1>n2){
+    const tc = Math.asin(n2/n1)*180/Math.PI;
+    $('rTCv').textContent=fa(tc.toFixed(1))+'°';
+    $('rTC').classList.add('tir');
+  } else {
+    $('rTCv').textContent='—';
+    $('rTC').classList.remove('tir');
+  }
+  if(window.MathJax && window.MathJax.typesetPromise){ window.MathJax.typesetPromise([$('note')]); }
+}
+
+function drawArrow(x, y, ang, color){
+  ctx.save();
+  ctx.translate(x,y); ctx.rotate(ang);
+  ctx.fillStyle=color;
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-8,-4); ctx.lineTo(-8,4); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+['T'].forEach(id=>{
+  $(id).addEventListener('input', e=>{ T=parseFloat(e.target.value); $('vT').textContent=fa(T.toFixed(0))+'°'; draw(); });
+});
+$('m1').addEventListener('change', e=>{ n1=parseFloat(e.target.value); draw(); });
+$('m2').addEventListener('change', e=>{ n2=parseFloat(e.target.value); draw(); });
+window.addEventListener('resize', draw);
+draw();
+</script>
+</body>
+</html>

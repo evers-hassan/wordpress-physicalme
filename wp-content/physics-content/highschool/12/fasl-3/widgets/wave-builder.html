@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سازنده‌ی موج — دامنه، طول موج، بسامد</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed; --warn:#a87800; --warn-bg:#fef6e0;
+    --wave:#185fa5; --particle:#c43838;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e0b860; --warn-bg:#4a3a15;
+      --wave:#85b7eb; --particle:#f06a60;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:980px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .layout{display:grid; grid-template-columns:1fr 230px; gap:12px;}
+  @media(max-width:760px){.layout{grid-template-columns:1fr;}}
+  .stage{background:linear-gradient(to bottom, #f7f9fc, var(--bg)); border:1px solid var(--border); border-radius:14px; padding:8px;}
+  @media(prefers-color-scheme:dark){.stage{background:linear-gradient(to bottom, #2a3040, var(--bg));}}
+  canvas{display:block; width:100%;}
+  #cvT{height:180px;}
+  #cvL{height:140px;}
+  .row-lbl{font-size:11px; color:var(--muted); padding:4px 8px; text-align:center;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:13px; margin:8px 0 6px; color:var(--muted); text-transform:uppercase;}
+  .panel h3:first-child{margin-top:0;}
+  .slider-row{display:grid; grid-template-columns:1fr 60px; gap:6px; align-items:center; font-size:13px; margin-bottom:4px;}
+  .val{font-weight:700; color:var(--info); text-align:left; font-variant-numeric:tabular-nums;}
+  input[type=range]{width:100%; accent-color:var(--info);}
+  .btn{background:var(--info); color:white; border:none; padding:8px 14px; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer; width:100%; margin-top:6px;}
+  .btn.alt{background:#c43838;}
+  .readout{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px;}
+  .read{padding:6px 8px; background:var(--info-bg); color:var(--info); border-radius:6px; text-align:center; font-size:12px;}
+  .read b{display:block; font-size:13px; margin-top:2px;}
+  .read.full{grid-column:1/-1; background:var(--ok-bg); color:var(--ok);}
+  select{width:100%; padding:6px; font-family:inherit; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px;}
+  .note{font-size:12px; padding:8px; background:var(--ok-bg); color:var(--ok); border-radius:8px; margin-top:8px; line-height:1.6;}
+</style>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']], processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>سازنده‌ی موج — همه‌چی توی یه قاب 🌊🎚️</h2>
+  <p class="sub">یک موج پیش‌رونده روی طناب. $A$، $\lambda$، $f$ رو تنظیم کن، رابطه‌ی $v = \lambda f$ رو زنده ببین. یه ذره‌ی رنگی پایین‌بالا می‌ره، نه افقی!</p>
+
+  <div class="layout">
+    <div class="stage">
+      <div class="row-lbl">↓ موج پیش‌رونده (نگاه افقی)</div>
+      <canvas id="cvT"></canvas>
+      <div class="row-lbl">↓ تغییرات یک ذره با زمان (در نقطه‌ی قرمز)</div>
+      <canvas id="cvL"></canvas>
+    </div>
+
+    <div class="panel">
+      <h3>پارامترها</h3>
+      <div class="slider-row"><label>دامنه $A$ (cm)</label><span class="val" id="vA">۵</span></div>
+      <input type="range" id="A" min="1" max="15" step="1" value="5">
+      <div class="slider-row"><label>طول موج $\lambda$ (m)</label><span class="val" id="vL">۱٫۰</span></div>
+      <input type="range" id="L" min="0.2" max="3" step="0.05" value="1.0">
+      <div class="slider-row"><label>بسامد $f$ (Hz)</label><span class="val" id="vf">۲٫۰</span></div>
+      <input type="range" id="f" min="0.2" max="6" step="0.1" value="2.0">
+
+      <h3>محیط</h3>
+      <select id="medium">
+        <option value="custom">دستی (با اسلایدر بالا)</option>
+        <option value="rope">طناب نازک (v=۵ m/s)</option>
+        <option value="rope_thick">طناب کلفت (v=۲ m/s)</option>
+        <option value="string">سیم گیتار (v=۲۰ m/s)</option>
+      </select>
+
+      <h3>خروجی</h3>
+      <div class="readout">
+        <div class="read full">$v = \lambda f$<b id="rv">۲٫۰ m/s</b></div>
+        <div class="read">دوره $T$<b id="rT">۰٫۵ s</b></div>
+        <div class="read">عدد موج $k$<b id="rk">۲π/۱</b></div>
+      </div>
+
+      <button class="btn" id="play">⏸ توقف</button>
+      <button class="btn alt" id="reset">⟲ ریست</button>
+
+      <div class="note">
+        🎯 $\lambda$ رو کوچیک کن، $f$ رو ثابت بذار → سرعت کم می‌شه. این رابطه‌ی $v=\lambda f$ کلیدِ مشخصه‌های موجه.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fa=n=>n.toLocaleString('fa-IR');
+const cvT=$('cvT'), cvL=$('cvL');
+const cT=cvT.getContext('2d'), cL=cvL.getContext('2d');
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+let DPR=window.devicePixelRatio||1;
+function fit(cv,c){const r=cv.getBoundingClientRect(); cv.width=r.width*DPR; cv.height=r.height*DPR; c.setTransform(DPR,0,0,DPR,0,0);}
+
+let A=5, L=1.0, f=2.0;
+let t=0, last=null, running=true;
+const SCALE=80;  // px per meter (visualisation)
+const probe_x = 0.7; // meters from left
+const hist=[]; const HMAX=240;
+
+function drawTraveling(){
+  fit(cvT, cT);
+  const W=cvT.clientWidth, H=cvT.clientHeight;
+  const cy=H/2;
+  cT.fillStyle=css('--surface'); cT.fillRect(0,0,W,H);
+  // x-axis
+  cT.strokeStyle=css('--border'); cT.lineWidth=1;
+  cT.beginPath(); cT.moveTo(0, cy); cT.lineTo(W, cy); cT.stroke();
+  // wave: y = A*sin(2π/λ * x - 2π f * t)
+  const w = 2*Math.PI*f;
+  const k = 2*Math.PI/L;
+  cT.strokeStyle=css('--wave'); cT.lineWidth=2.5;
+  cT.beginPath();
+  for(let px=0; px<=W; px+=2){
+    const x_m = px/SCALE;  // meters
+    const y = A*Math.sin(k*x_m - w*t);
+    if(px===0) cT.moveTo(px, cy - y*2.5);
+    else cT.lineTo(px, cy - y*2.5);
+  }
+  cT.stroke();
+  // probe particle
+  const probe_px = probe_x*SCALE;
+  const probe_y = A*Math.sin(k*probe_x - w*t);
+  cT.fillStyle=css('--particle');
+  cT.beginPath(); cT.arc(probe_px, cy - probe_y*2.5, 8, 0, 2*Math.PI); cT.fill();
+  cT.strokeStyle=css('--text'); cT.lineWidth=1.2; cT.stroke();
+  // vertical line at probe
+  cT.strokeStyle=css('--particle'); cT.setLineDash([3,3]);
+  cT.beginPath(); cT.moveTo(probe_px, 4); cT.lineTo(probe_px, H-16); cT.stroke();
+  cT.setLineDash([]);
+  // wavelength bracket
+  const xa=20, xb=20+L*SCALE;
+  if(xb<W-10){
+    cT.strokeStyle=css('--ok'); cT.lineWidth=1.5;
+    cT.beginPath(); cT.moveTo(xa, H-12); cT.lineTo(xb, H-12); cT.stroke();
+    cT.beginPath(); cT.moveTo(xa, H-16); cT.lineTo(xa, H-8); cT.stroke();
+    cT.beginPath(); cT.moveTo(xb, H-16); cT.lineTo(xb, H-8); cT.stroke();
+    cT.fillStyle=css('--ok'); cT.font='11px Vazirmatn'; cT.textAlign='center';
+    cT.fillText('λ = '+fa(L.toFixed(2))+' m', (xa+xb)/2, H-2);
+  }
+  // record probe history
+  hist.push({t, y: probe_y});
+  while(hist.length>HMAX) hist.shift();
+}
+
+function drawProbeVsTime(){
+  fit(cvL, cL);
+  const W=cvL.clientWidth, H=cvL.clientHeight;
+  const cy=H/2;
+  cL.fillStyle=css('--surface'); cL.fillRect(0,0,W,H);
+  cL.strokeStyle=css('--border');
+  cL.beginPath(); cL.moveTo(30, cy); cL.lineTo(W, cy); cL.stroke();
+  cL.beginPath(); cL.moveTo(30, 8); cL.lineTo(30, H-8); cL.stroke();
+  if(hist.length<2) return;
+  const t0=hist[0].t, t1=hist[hist.length-1].t;
+  const dt=Math.max(t1-t0, 0.01);
+  cL.strokeStyle=css('--particle'); cL.lineWidth=2;
+  cL.beginPath();
+  hist.forEach((p,i)=>{
+    const x=30 + ((p.t-t0)/dt)*(W-36);
+    const y=cy - p.y*2.5;
+    if(i===0) cL.moveTo(x,y); else cL.lineTo(x,y);
+  });
+  cL.stroke();
+  // period bracket
+  const T=1/f;
+  const tShown=dt;
+  cL.fillStyle=css('--muted'); cL.font='11px Vazirmatn'; cL.textAlign='right';
+  cL.fillText('T = '+fa(T.toFixed(2))+' s', W-4, H-4);
+}
+
+function step(now){
+  if(!last) last=now;
+  const dt=Math.min((now-last)/1000, 0.05);
+  last=now;
+  if(running) t+=dt;
+  $('vA').textContent=fa(A.toFixed(0));
+  $('vL').textContent=fa(L.toFixed(2));
+  $('vf').textContent=fa(f.toFixed(1));
+  $('rv').textContent=fa((L*f).toFixed(2))+' m/s';
+  $('rT').textContent=fa((1/f).toFixed(2))+' s';
+  $('rk').textContent='2π/'+fa(L.toFixed(2));
+  drawTraveling();
+  drawProbeVsTime();
+  requestAnimationFrame(step);
+}
+
+['A','L','f'].forEach(id=>{
+  $(id).addEventListener('input', e=>{
+    if(id==='A') A=parseFloat(e.target.value);
+    if(id==='L') L=parseFloat(e.target.value);
+    if(id==='f') f=parseFloat(e.target.value);
+    if($('medium').value!=='custom') $('medium').value='custom';
+  });
+});
+$('medium').addEventListener('change', e=>{
+  const m=e.target.value;
+  if(m==='rope'){ f=2.5; L=2.0; }   // v=5
+  else if(m==='rope_thick'){ f=2; L=1.0; } // v=2
+  else if(m==='string'){ f=5; L=4.0; }  // v=20
+  $('A').value=A; $('L').value=L; $('f').value=f;
+});
+$('play').addEventListener('click', ()=>{ running=!running; last=null; $('play').textContent=running?'⏸ توقف':'▶ شروع'; });
+$('reset').addEventListener('click', ()=>{ t=0; hist.length=0; });
+
+requestAnimationFrame(step);
+</script>
+</body>
+</html>

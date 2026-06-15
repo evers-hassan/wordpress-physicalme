@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>حرکت دایره‌ای ذرّهٔ باردار در میدان مغناطیسی</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --hint-c:#a87800; --hint-bg:#fef6e0;
+    --v:#185fa5; --B:#7a4dbd; --F:#c43838;
+    --pos:#d6453c; --neg:#2f6fd0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --hint-c:#e0b860; --hint-bg:#4a3a15;
+      --v:#85b7eb; --B:#b08be8; --F:#f0807d;
+      --pos:#f06a60; --neg:#6aa0ee;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;
+  }
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:360px; touch-action:none;}
+  .readout{padding:12px; border-top:1px solid var(--border); display:flex; gap:10px; flex-wrap:wrap;}
+  .chip{flex:1 1 130px; background:var(--info-bg); color:var(--info); border-radius:10px; padding:8px 12px; text-align:center; font-size:14px;}
+  .chip b{display:block; font-size:17px; font-weight:700; margin-top:2px;}
+  .chip.ok{background:var(--ok-bg); color:var(--ok);}
+  .chip.accent{background:#efe6f9; color:#7a4dbd;}
+  @media (prefers-color-scheme: dark){ .chip.accent{background:#3a2858; color:#b08be8;} }
+
+  .controls{margin-top:14px; display:grid; gap:12px;}
+  .slider-row{display:grid; grid-template-columns:90px 1fr 60px; gap:10px; align-items:center; font-size:14px;}
+  .slider-row span:first-child{color:var(--muted);}
+  .slider-row .val{font-weight:700; color:var(--text); text-align:left;}
+  input[type=range]{accent-color:var(--info); height:6px;}
+
+  .btn-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .btn{
+    font-family:inherit; font-size:14px; padding:8px 14px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text); cursor:pointer;
+    transition:.12s; flex:1 1 110px;
+  }
+  .btn:hover{background:var(--info-bg); border-color:var(--info); color:var(--info);}
+  .btn.qpos.on{background:var(--pos); color:#fff; border-color:var(--pos);}
+  .btn.qneg.on{background:var(--neg); color:#fff; border-color:var(--neg);}
+  .btn.on{background:var(--info); color:#fff; border-color:var(--info);}
+
+  .hint{
+    margin-top:12px; background:var(--hint-bg); color:var(--hint-c);
+    border-radius:10px; padding:10px 14px; font-size:13.5px;
+    border-right:3px solid var(--hint-c);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🔄 حرکت دایره‌ای ذرّهٔ باردار در میدان مغناطیسی</h2>
+  <p class="sub">یه ذرّه‌ی باردار وارد میدان یکنواخت می‌شه. ببین چرا مسیرش <b>دایره‌ای</b> می‌شه — و چرا تغییر سرعت، شعاع رو عوض می‌کنه ولی <b>دورهٔ تناوب</b> ثابت می‌مونه.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">شعاع r <b id="rVal">—</b></div>
+      <div class="chip accent">دورهٔ تناوب T <b id="TVal">—</b></div>
+      <div class="chip ok">نیروی F = qvB <b id="FVal">—</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="btn-row">
+      <button class="btn qpos on" id="qP">+ بار مثبت</button>
+      <button class="btn qneg" id="qN">− بار منفی</button>
+      <button class="btn on" id="bOut">⊙ B از صفحه بیرون</button>
+      <button class="btn" id="bIn">⊗ B داخل صفحه</button>
+    </div>
+
+    <div class="slider-row">
+      <span>سرعت v</span>
+      <input type="range" id="vSlider" min="40" max="180" step="5" value="100">
+      <span class="val" id="vSliderVal">۱۰۰</span>
+    </div>
+    <div class="slider-row">
+      <span>میدان B</span>
+      <input type="range" id="bSlider" min="0.5" max="2.5" step="0.1" value="1">
+      <span class="val" id="bSliderVal">۱٫۰</span>
+    </div>
+    <div class="slider-row">
+      <span>جرم m</span>
+      <input type="range" id="mSlider" min="0.5" max="3" step="0.1" value="1">
+      <span class="val" id="mSliderVal">۱٫۰</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="pause">⏸ مکث</button>
+      <button class="btn" id="trail">🧹 پاک‌کردن ردّ</button>
+    </div>
+  </div>
+
+  <div class="hint">
+    💡 <b>کلیدِ زیبا:</b> همون‌طور که v رو تغییر می‌دی، شعاع تغییر می‌کنه — ولی <b>دورهٔ تناوب ثابته!</b> این یعنی هر ذرّه‌ای با همون قطب و جرم، چه آروم چه تند بره، در زمانِ یکسان یه دور می‌زنه. این پایه‌ی <b>سیکلوترون</b> ـه (شتاب‌دهنده‌ی ذرّات).
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var W,H,cx,cy;
+
+  // State (display units, not real SI — meant to convey shape & ratios)
+  var qSign = +1;
+  var bSign = +1;        // +1 = out of page, -1 = into page
+  var v = 100;           // pixels/sec along tangent
+  var B = 1;
+  var m = 1;
+  // Display radius — scaled so changes in v/B/m are visually obvious across the slider range.
+  // Physics formula r = mv/(qB) holds; we just exaggerate the visible variation.
+  function radius(){ return m * v / B * 1.1; }
+  function period(){ return 2 * Math.PI * m / B; }
+
+  // Particle state — orbital parameters
+  var entryY;       // initial y position when entering field at left edge
+  var centerX, centerY;     // circle center
+  var theta = 0;
+  var lastTs = 0;
+  var paused = false;
+  var trail = [];
+
+  function toFa(n){
+    return (''+n).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];}).replace('.','٫');
+  }
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  function resetOrbit(){
+    var r = radius();
+    // Place orbit centered in the canvas if possible
+    centerX = cx;
+    centerY = cy;
+    // Cap radius for display
+    var maxR = Math.min(W, H)*0.42;
+    if (r > maxR){
+      // Scale v down implicitly — keep effective radius drawn
+    }
+    theta = -Math.PI/2;
+    trail = [];
+  }
+
+  function drawBackground(){
+    var step=46, sym = (bSign>0) ? '⊙' : '⊗';
+    ctx.save();
+    ctx.fillStyle = cssv('--B');
+    ctx.globalAlpha = 0.32;
+    ctx.font = '22px Vazirmatn, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    for (var x=step/2; x<W; x+=step){
+      for (var y=step/2; y<H; y+=step){
+        ctx.fillText(sym, x, y);
+      }
+    }
+    ctx.restore();
+    // Label
+    ctx.fillStyle = cssv('--B');
+    ctx.font='bold 12.5px Vazirmatn';
+    ctx.textAlign='right'; ctx.textBaseline='top';
+    ctx.fillText('میدان B '+(bSign>0?'⊙ خارج صفحه':'⊗ داخل صفحه'), W-12, 8);
+    ctx.textAlign='left'; ctx.textBaseline='top';
+  }
+
+  function arrow(x1,y1, x2,y2, color, width){
+    width=width||3;
+    var dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy);
+    if(len<2) return;
+    var ux=dx/len, uy=dy/len, hs=9;
+    ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=width; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2-ux*hs*0.5, y2-uy*hs*0.5); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-ux*hs - uy*hs*0.5, y2-uy*hs + ux*hs*0.5);
+    ctx.lineTo(x2-ux*hs + uy*hs*0.5, y2-uy*hs - ux*hs*0.5);
+    ctx.closePath(); ctx.fill();
+  }
+
+  function draw(){
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=rect.width; H=rect.height; cx=W/2; cy=H/2;
+    ctx.clearRect(0,0,W,H);
+    drawBackground();
+
+    // Effective radius for display — clamped to visible range with bigger spread
+    var r = radius();
+    var maxR = Math.min(W,H)*0.45;
+    var minR = 14;
+    var rDraw = Math.max(minR, Math.min(r, maxR));
+
+    // Direction of rotation:
+    //   v in +x at entry, B in +z (out) → F = qv×B = q(v_x x̂ × B_z ẑ) = -q v_x B ŷ
+    //   With q=+1, B_z>0, v_x>0 → F in -y direction (downward in physics)
+    //   In canvas (y inverted) — -y physics = +y canvas (downward on screen)
+    //   So positive charge with B out: rotation is clockwise on screen (when starting moving right)
+    //   But this is getting complicated — let me just use sign logic:
+    var rotSign = qSign * bSign;  // +1 → clockwise on screen, -1 → counter-clockwise
+
+    // Particle position
+    var px = centerX + rDraw * Math.cos(theta);
+    var py = centerY + rDraw * Math.sin(theta);
+
+    // Velocity = derivative of position wrt time.
+    //   pos(θ) = (cos θ, sin θ); dpos/dθ = (-sin θ, cos θ)
+    //   dθ/dt = rotSign · ω
+    //   So v_direction = rotSign · (-sin θ, cos θ)
+    // (Canvas y is inverted; for positive q with B out of page → rotSign=+1 → motion is CW visually,
+    //  with velocity at right-of-center pointing DOWN on canvas — which matches qv×B physics.)
+    var vx, vy;
+    if (rotSign>0){ vx = -Math.sin(theta); vy =  Math.cos(theta); }
+    else          { vx =  Math.sin(theta); vy = -Math.cos(theta); }
+
+    // Force direction = centripetal = toward center
+    var fx = (centerX - px) / rDraw;
+    var fy = (centerY - py) / rDraw;
+
+    // Draw trail
+    if (trail.length > 1){
+      ctx.save();
+      ctx.strokeStyle = qSign>0 ? cssv('--pos') : cssv('--neg');
+      ctx.lineWidth = 2; ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(trail[0].x, trail[0].y);
+      for (var i=1;i<trail.length;i++) ctx.lineTo(trail[i].x, trail[i].y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Draw the orbit circle (faint)
+    ctx.save();
+    ctx.strokeStyle = cssv('--muted'); ctx.globalAlpha=0.35;
+    ctx.lineWidth = 1.2; ctx.setLineDash([3,4]);
+    ctx.beginPath(); ctx.arc(centerX, centerY, rDraw, 0, Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // Mark center
+    ctx.fillStyle = cssv('--muted');
+    ctx.beginPath(); ctx.arc(centerX, centerY, 3, 0, Math.PI*2); ctx.fill();
+
+    // Force arrow (toward center)
+    arrow(px, py, px+fx*46, py+fy*46, cssv('--F'), 3);
+    ctx.fillStyle = cssv('--F'); ctx.font='bold 13px Vazirmatn';
+    ctx.textAlign='center';
+    ctx.fillText('F', px+fx*55, py+fy*55);
+
+    // Velocity arrow (tangent)
+    arrow(px, py, px+vx*48, py+vy*48, cssv('--v'), 3);
+    ctx.fillStyle = cssv('--v');
+    ctx.fillText('v', px+vx*60, py+vy*60);
+
+    // Particle
+    ctx.beginPath(); ctx.arc(px, py, 11, 0, Math.PI*2);
+    ctx.fillStyle = qSign>0 ? cssv('--pos') : cssv('--neg');
+    ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='bold 15px Vazirmatn';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(qSign>0 ? '+' : '−', px, py+1);
+
+    // Readouts — show in "relative" units so user can compare ratios
+    document.getElementById('rVal').textContent = toFa((m * v / B / 100).toFixed(2)) + ' (نسبی)';
+    document.getElementById('TVal').textContent = toFa(period().toFixed(2)) + ' (نسبی)';
+    var Fmag = (v/100) * B;
+    document.getElementById('FVal').textContent = toFa(Fmag.toFixed(2)) + ' (نسبی)';
+  }
+
+  function tick(ts){
+    if (!lastTs) lastTs=ts;
+    var dt = (ts - lastTs) / 1000;
+    lastTs = ts;
+    if (!paused){
+      var r = radius();
+      var maxR = Math.min(W||600, H||360)*0.40;
+      var rDraw = Math.min(r, maxR);
+      // Angular speed ω = v / r (so we go around at correct angular rate)
+      var omega = (v) / rDraw;
+      var rotSign = qSign * bSign;
+      theta += rotSign * omega * dt;
+      // Save trail point
+      var px = centerX + rDraw * Math.cos(theta);
+      var py = centerY + rDraw * Math.sin(theta);
+      trail.push({x:px, y:py});
+      if (trail.length > 600) trail.shift();
+    }
+    draw();
+    requestAnimationFrame(tick);
+  }
+
+  // Bindings
+  document.getElementById('qP').addEventListener('click', function(){
+    qSign=+1;
+    document.getElementById('qP').classList.add('on');
+    document.getElementById('qN').classList.remove('on');
+    trail = [];
+  });
+  document.getElementById('qN').addEventListener('click', function(){
+    qSign=-1;
+    document.getElementById('qN').classList.add('on');
+    document.getElementById('qP').classList.remove('on');
+    trail = [];
+  });
+  document.getElementById('bOut').addEventListener('click', function(){
+    bSign=+1;
+    document.getElementById('bOut').classList.add('on');
+    document.getElementById('bIn').classList.remove('on');
+    trail = [];
+  });
+  document.getElementById('bIn').addEventListener('click', function(){
+    bSign=-1;
+    document.getElementById('bIn').classList.add('on');
+    document.getElementById('bOut').classList.remove('on');
+    trail = [];
+  });
+  document.getElementById('vSlider').addEventListener('input', function(e){
+    v=+e.target.value;
+    document.getElementById('vSliderVal').textContent = toFa(v);
+    trail = [];
+  });
+  document.getElementById('bSlider').addEventListener('input', function(e){
+    B=+e.target.value;
+    document.getElementById('bSliderVal').textContent = toFa(B.toFixed(1));
+    trail = [];
+  });
+  document.getElementById('mSlider').addEventListener('input', function(e){
+    m=+e.target.value;
+    document.getElementById('mSliderVal').textContent = toFa(m.toFixed(1));
+    trail = [];
+  });
+  document.getElementById('pause').addEventListener('click', function(){
+    paused = !paused;
+    this.textContent = paused ? '▶ ادامه' : '⏸ مکث';
+  });
+  document.getElementById('trail').addEventListener('click', function(){ trail=[]; });
+  window.addEventListener('resize', function(){
+    var rect=cv.getBoundingClientRect();
+    W=rect.width; H=rect.height; cx=W/2; cy=H/2;
+    resetOrbit();
+  });
+
+  // Init
+  setTimeout(function(){
+    var rect=cv.getBoundingClientRect();
+    W=rect.width; H=rect.height; cx=W/2; cy=H/2;
+    resetOrbit();
+    requestAnimationFrame(tick);
+  }, 50);
+})();
+</script>
+</body>
+</html>

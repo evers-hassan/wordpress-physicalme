@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌سازی ترکیب مقاومت‌ها</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --wire:#8a8676; --cur:#d6453c; --r1:#185fa5; --r2:#1d9e75;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --wire:#9a9482; --cur:#f06a60; --r1:#85b7eb; --r2:#5dcaa5;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8; animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:220px;}
+  .readout{display:flex; gap:8px; flex-wrap:wrap; padding:12px; border-top:1px solid var(--border);}
+  .chip{flex:1 1 90px; background:var(--info-bg); color:var(--info); border-radius:10px; padding:8px 10px; text-align:center; font-weight:500; font-size:13px;}
+  .chip b{display:block; font-size:15px; font-weight:700; margin-top:2px; direction:ltr;}
+  .note{padding:0 12px 12px; font-size:12.5px; color:var(--muted); text-align:center; direction:ltr;}
+  .controls{margin-top:14px; display:grid; gap:11px;}
+  .row{display:flex; justify-content:space-between; align-items:center; font-size:14px;}
+  .val{font-weight:700;}
+  input[type=range]{width:100%; accent-color:var(--info); height:6px;}
+  .btns{display:flex; gap:10px;}
+  .btn{appearance:none;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;
+       background:var(--surface);color:var(--text);border:1.5px solid var(--border);padding:9px 14px;border-radius:10px;flex:1 1 auto;}
+  .btn.active{background:var(--info);color:#fff;border-color:var(--info);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🔗 شبیه‌سازی: ترکیب مقاومت‌ها (سری و موازی)</h2>
+  <p class="sub">دو مقاومت را سری یا موازی ببند و ببین مقاومتِ معادل و جریان‌ها چطور عوض می‌شوند. (سری: مقاومت بزرگ‌تر؛ موازی: کوچک‌تر از هر دو!)</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">مقاومتِ معادل <b id="reqVal">—</b></div>
+      <div class="chip">جریانِ کل I <b id="iVal">—</b></div>
+      <div class="chip">نیروی محرکه ε <b id="eShow">—</b></div>
+    </div>
+    <div class="note" id="note"></div>
+  </div>
+
+  <div class="controls">
+    <div class="btns">
+      <button class="btn active" id="mSer" type="button">متوالی (سری)</button>
+      <button class="btn" id="mPar" type="button">موازی</button>
+    </div>
+    <div class="row"><span>نیروی محرکه ε</span><span class="val"><span id="eSet"></span> V</span></div>
+    <input type="range" id="E" min="1.5" max="24" step="0.5" value="12">
+    <div class="row"><span>مقاومتِ R₁</span><span class="val"><span id="r1Set"></span> Ω</span></div>
+    <input type="range" id="R1" min="1" max="20" step="1" value="4">
+    <div class="row"><span>مقاومتِ R₂</span><span class="val"><span id="r2Set"></span> Ω</span></div>
+    <input type="range" id="R2" min="1" max="20" step="1" value="6">
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var EEl=document.getElementById('E'), R1El=document.getElementById('R1'), R2El=document.getElementById('R2');
+  var eSet=document.getElementById('eSet'), r1Set=document.getElementById('r1Set'), r2Set=document.getElementById('r2Set');
+  var reqVal=document.getElementById('reqVal'), iVal=document.getElementById('iVal'), eShow=document.getElementById('eShow');
+  var note=document.getElementById('note');
+  var mSer=document.getElementById('mSer'), mPar=document.getElementById('mPar');
+  var mode='ser', phase=0;
+  function toFa(s){return (''+s).replace(/[0-9.]/g,function(d){return d==='.'?'٫':'۰۱۲۳۴۵۶۷۸۹'[+d];});}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  function resistorH(x1,x2,y,color,label){ // زیگزاگ افقی
+    ctx.strokeStyle=color; ctx.lineWidth=3; ctx.beginPath();
+    var n=6, seg=(x2-x1)/n; ctx.moveTo(x1,y);
+    for(var i=0;i<n;i++){ ctx.lineTo(x1+seg*(i+0.5), y+(i%2?8:-8)); }
+    ctx.lineTo(x2,y); ctx.stroke();
+    ctx.fillStyle=color; ctx.font='12px Vazirmatn, sans-serif'; ctx.textAlign='center';
+    ctx.fillText(label, (x1+x2)/2, y-14);
+  }
+  function battery(x,y,E){
+    ctx.strokeStyle=cssv('--text'); ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(x-13,y-14); ctx.lineTo(x+13,y-14); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x-6,y+6); ctx.lineTo(x+6,y+6); ctx.stroke();
+    ctx.fillStyle=cssv('--muted'); ctx.font='12px Vazirmatn, sans-serif'; ctx.textAlign='center';
+    ctx.fillText('ε='+toFa(E)+'V', x, y+24);
+  }
+  function dotsOn(pts, cur){ // نقطه‌های جریان روی یک چندخطی
+    var segs=[], total=0;
+    for(var i=0;i<pts.length-1;i++){ var dx=pts[i+1][0]-pts[i][0], dy=pts[i+1][1]-pts[i][1]; var len=Math.hypot(dx,dy); segs.push({a:pts[i],d:[dx/len,dy/len],len:len,off:total}); total+=len; }
+    if(total<1) return;
+    var n=Math.max(2, Math.round(total/26));
+    for(var k=0;k<n;k++){
+      var dist=((phase*cur + k*total/n)%total+total)%total;
+      for(var s=0;s<segs.length;s++){ if(dist<=segs[s].len){ var px=segs[s].a[0]+segs[s].d[0]*dist, py=segs[s].a[1]+segs[s].d[1]*dist; ctx.beginPath(); ctx.arc(px,py,3.3,0,Math.PI*2); ctx.fill(); break; } dist-=segs[s].len; }
+    }
+  }
+
+  function draw(){
+    var E=+EEl.value, R1=+R1El.value, R2=+R2El.value;
+    eSet.textContent=toFa(E); r1Set.textContent=toFa(R1); r2Set.textContent=toFa(R2);
+    var Req, I, I1, I2;
+    if(mode==='ser'){ Req=R1+R2; I=E/Req; I1=I2=I; }
+    else { Req=(R1*R2)/(R1+R2); I1=E/R1; I2=E/R2; I=I1+I2; }
+    reqVal.textContent=toFa(Req.toFixed(2))+' Ω';
+    iVal.textContent=toFa(I.toFixed(2))+' A';
+    eShow.textContent=toFa(E)+' V';
+    if(mode==='ser'){ note.textContent='سری: جریان در هر دو یکسان است (I='+toFa(I.toFixed(2))+'A). ولتاژ: V₁='+toFa((I*R1).toFixed(1))+'V، V₂='+toFa((I*R2).toFixed(1))+'V'; }
+    else { note.textContent='موازی: ولتاژ روی هر دو یکسان است؛ جریان‌ها I₁='+toFa(I1.toFixed(2))+'A، I₂='+toFa(I2.toFixed(2))+'A. هرچه مقاومت کوچک‌تر، جریان بیشتر — اگر یکی ۱۰ برابرِ دیگری شود تقریباً همه‌ی جریان از مقاومتِ کوچک‌تر می‌گذرد.'; }
+
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    var W=rect.width, H=rect.height; ctx.clearRect(0,0,W,H);
+    phase += 0.9;
+    ctx.fillStyle=cssv('--cur');
+    var L=44, Rt=W-44, Tp=46, B=H-44, my=(Tp+B)/2;
+
+    if(mode==='ser'){
+      // حلقه‌ی واحد؛ R1 و R2 روی ضلعِ بالا
+      ctx.strokeStyle=cssv('--wire'); ctx.lineWidth=4; ctx.lineJoin='round';
+      // اضلاع به‌جز محلِ مقاومت‌ها
+      ctx.beginPath();
+      ctx.moveTo(L,Tp); ctx.lineTo(W*0.28,Tp); ctx.moveTo(W*0.46,Tp); ctx.lineTo(W*0.54,Tp); ctx.moveTo(W*0.72,Tp); ctx.lineTo(Rt,Tp);
+      ctx.lineTo(Rt,B); ctx.lineTo(L,B); ctx.lineTo(L,my+10); ctx.moveTo(L,my-10); ctx.lineTo(L,Tp);
+      ctx.stroke();
+      battery(L,my,E);
+      resistorH(W*0.28,W*0.46,Tp,cssv('--r1'),'R₁');
+      resistorH(W*0.54,W*0.72,Tp,cssv('--r2'),'R₂');
+      // جریانِ واحد دورِ حلقه
+      dotsOn([[L,my-10],[L,Tp],[Rt,Tp],[Rt,B],[L,B],[L,my+10]], I);
+    } else {
+      // موازیِ درست: R1 و R2 دو بازو بینِ همان دو گره (شینِ چپ A و راست B)؛ باتری روی ریلِ پایین، موازی با هر دو
+      var xA=W*0.30, xB=W*0.72, yR1=Tp, yR2=my, yBat=B, cx2=(xA+xB)/2, gx=0.42*W, gx2=0.60*W;
+      ctx.strokeStyle=cssv('--wire'); ctx.lineWidth=4; ctx.lineJoin='round';
+      ctx.beginPath();
+      ctx.moveTo(xA,yR1); ctx.lineTo(xA,yBat);              // شینِ چپ (گرهِ A)
+      ctx.moveTo(xB,yR1); ctx.lineTo(xB,yBat);              // شینِ راست (گرهِ B)
+      ctx.moveTo(xA,yR1); ctx.lineTo(gx,yR1); ctx.moveTo(gx2,yR1); ctx.lineTo(xB,yR1);  // بازوی R1
+      ctx.moveTo(xA,yR2); ctx.lineTo(gx,yR2); ctx.moveTo(gx2,yR2); ctx.lineTo(xB,yR2);  // بازوی R2
+      ctx.moveTo(xA,yBat); ctx.lineTo(cx2-16,yBat); ctx.moveTo(cx2+16,yBat); ctx.lineTo(xB,yBat); // ریلِ باتری
+      ctx.stroke();
+      resistorH(gx,gx2,yR1,cssv('--r1'),'R₁');
+      resistorH(gx,gx2,yR2,cssv('--r2'),'R₂');
+      // باتریِ افقی (تیغه‌های عمودی) روی ریلِ پایین — موازی با هر دو مقاومت
+      ctx.strokeStyle=cssv('--text'); ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(cx2-5,yBat-13); ctx.lineTo(cx2-5,yBat+13); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx2+5,yBat-7); ctx.lineTo(cx2+5,yBat+7); ctx.stroke();
+      ctx.fillStyle=cssv('--muted'); ctx.font='12px Vazirmatn, sans-serif'; ctx.textAlign='center';
+      ctx.fillText('ε='+toFa(E)+'V', cx2, yBat+22);
+      // گره‌های مشترکِ A و B
+      ctx.fillStyle=cssv('--wire');
+      [[xA,yR1],[xA,yR2],[xB,yR1],[xB,yR2]].forEach(function(p){ ctx.beginPath(); ctx.arc(p[0],p[1],4,0,Math.PI*2); ctx.fill(); });
+      ctx.fillStyle=cssv('--muted'); ctx.fillText('A', xA-13, (yR1+yR2)/2); ctx.fillText('B', xB+13, (yR1+yR2)/2);
+      // جریان‌ها: تنه/ریل I کل؛ هر بازو جریانِ خودش (مقاومتِ کوچک‌تر ⟵ تندتر)
+      ctx.fillStyle=cssv('--cur');
+      dotsOn([[cx2-16,yBat],[xA,yBat],[xA,yR2]], I);   // ریلِ چپ + شینِ چپِ پایین (کل)
+      dotsOn([[xA,yR2],[xA,yR1]], I1);                  // شینِ چپِ بالا (فقط I1)
+      dotsOn([[xA,yR1],[xB,yR1]], I1);                  // بازوی R1
+      dotsOn([[xA,yR2],[xB,yR2]], I2);                  // بازوی R2
+      dotsOn([[xB,yR1],[xB,yR2]], I1);                  // شینِ راستِ بالا
+      dotsOn([[xB,yR2],[xB,yBat],[cx2+16,yBat]], I);    // شینِ راستِ پایین + ریلِ راست (کل)
+    }
+    requestAnimationFrame(draw);
+  }
+  function setMode(m){ mode=m; mSer.classList.toggle('active',m==='ser'); mPar.classList.toggle('active',m==='par'); }
+  mSer.addEventListener('click',function(){setMode('ser');});
+  mPar.addEventListener('click',function(){setMode('par');});
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

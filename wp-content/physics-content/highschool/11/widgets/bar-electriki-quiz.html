@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودتو بسنج — بار الکتریکی</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8;
+  }
+  .wrap{max-width:720px; margin:0 auto;}
+  .q-item{
+    border:1px solid var(--border); border-radius:12px; margin-bottom:10px;
+    overflow:hidden; background:var(--surface);
+  }
+  .q-head{
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+    padding:13px 15px; font-weight:500; font-size:15px; user-select:none;
+  }
+  .q-head:hover{background:var(--info-bg);}
+  .q-head .tog{
+    margin-inline-start:auto; flex:0 0 auto; color:var(--info);
+    transition:transform .2s ease; font-size:18px;
+  }
+  .q-item.open .q-head .tog{transform:rotate(45deg);}
+  .q-num{
+    flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+    background:var(--info); color:#fff; display:flex; align-items:center;
+    justify-content:center; font-size:13px; font-weight:700;
+  }
+  .q-body{
+    max-height:0; overflow:hidden; transition:max-height .25s ease;
+    background:var(--ok-bg);
+  }
+  .q-body .inner{padding:13px 15px; color:var(--text); font-size:14.5px;}
+  .q-body .inner::before{
+    content:"پاسخ: "; color:var(--ok); font-weight:700;
+  }
+  .hint{font-size:13px; color:var(--muted); margin:0 0 14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="hint">روی هر سؤال بزن تا پاسخش باز شود 👇</p>
+  <div id="quiz"></div>
+</div>
+
+<script>
+  var items = [
+    { q: "کلمه‌ی «الکترون» از کجا آمده؟",
+      a: "از واژه‌ی یونانیِ <b>ēlektron</b> به معنیِ «کهربا». یونانی‌های باستان دیدند کهربای مالیده‌شده اجسامِ سبک را جذب می‌کند، و نامِ این پدیده از همان‌جا ماند." },
+    { q: "دو نوع بار الکتریکی کدام‌اند و چه کسی نام‌گذاری‌شان کرد؟",
+      a: "بارِ <b>مثبت</b> و <b>منفی</b>. این نام‌ها را <b>بنجامین فرانکلین</b> انتخاب کرد." },
+    { q: "وقتی می‌گوییم جسمی «خنثی» است، یعنی هیچ باری ندارد؟",
+      a: "نه! یعنی بارِ مثبت و منفیِ آن <b>برابر</b> است و جمعِ جبری‌شان صفر می‌شود. جسم پر از بار است، ولی متعادل." },
+    { q: "بارهای هم‌نام و ناهم‌نام چه رفتاری با هم دارند؟",
+      a: "هم‌نام‌ها همدیگر را <b>می‌رانند</b> (دفع) و ناهم‌نام‌ها همدیگر را <b>می‌کشند</b> (جذب)." },
+    { q: "یکای بار در SI چیست و چرا معمولاً از µC و nC استفاده می‌کنیم؟",
+      a: "یکای بار <b>کولن (C)</b> است. چون کولن مقدارِ خیلی بزرگی است (مثلاً در آذرخش از مرتبه‌ی ۱۰ کولن بار جابه‌جا می‌شود)، در زندگیِ روزمره با مرتبه‌های کوچک‌ترِ میکروکولن (µC) و نانوکولن (nC) سر و کار داریم." },
+    { q: "چرا روکشِ پلاستیکی روی ظرفِ غذا می‌چسبد و سرِ جایش می‌ماند؟ (پرسش ۱-۱)",
+      a: "هنگامِ کشیدنِ روکش، مالش آن را باردار می‌کند. این بار روی لبه‌ی ظرف بارِ ناهم‌نامِ القایی ایجاد می‌کند، و جاذبه‌ی بینِ این بارهای ناهم‌نام روکش را به ظرف می‌چسباند و ثابت نگه می‌دارد." }
+  ];
+
+  var box = document.getElementById('quiz');
+  items.forEach(function(it, i){
+    var item = document.createElement('div'); item.className='q-item';
+    var head = document.createElement('div'); head.className='q-head';
+    head.innerHTML = '<span class="q-num">'+toFa(i+1)+'</span><span>'+it.q+'</span><span class="tog">+</span>';
+    var body = document.createElement('div'); body.className='q-body';
+    var inner = document.createElement('div'); inner.className='inner'; inner.innerHTML=it.a;
+    body.appendChild(inner);
+    head.addEventListener('click', function(){
+      var open = item.classList.toggle('open');
+      body.style.maxHeight = open ? (inner.scrollHeight + 26) + 'px' : '0';
+    });
+    item.appendChild(head); item.appendChild(body); box.appendChild(item);
+  });
+  function toFa(n){return (''+n).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+</script>
+</body>
+</html>

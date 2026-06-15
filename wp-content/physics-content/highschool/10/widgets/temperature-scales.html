@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مقیاس‌های دما — سلسیوس، کلوین، فارنهایت</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75;
+    --warn:#a87800; --cold:#3a86ff; --hot:#e63946;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+           --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.7}
+  h2{margin:0 0 12px;font-size:1.05em;color:var(--info)}
+  .panel{display:grid;grid-template-columns:160px 1fr;gap:16px;align-items:stretch;
+         background:var(--surface);border-radius:14px;padding:14px;border:1px solid var(--border)}
+  @media(max-width:560px){.panel{grid-template-columns:120px 1fr}}
+  .thermo{position:relative;background:linear-gradient(to top,var(--cold) 0%,#fff7c2 50%,var(--hot) 100%);
+          border-radius:30px;height:340px;margin:0 auto;width:60px;border:2px solid var(--border)}
+  .thermo .marker{position:absolute;left:-30px;right:-30px;height:2px;background:var(--text);
+                  border-radius:2px;transition:bottom 0.3s ease}
+  .thermo .label{position:absolute;left:-110px;width:100px;text-align:center;font-size:0.85em;
+                 color:var(--muted);transform:translateY(-50%);white-space:nowrap}
+  .thermo .bulb{position:absolute;bottom:-22px;left:-10px;width:80px;height:80px;
+                background:var(--hot);border-radius:50%;border:2px solid var(--border)}
+  .right{display:flex;flex-direction:column;gap:10px}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .row label{min-width:90px;font-weight:600}
+  input[type=range]{flex:1;min-width:140px}
+  input[type=number]{width:90px;padding:4px 6px;border:1px solid var(--border);
+                     border-radius:6px;background:var(--bg);color:var(--text);
+                     font-family:inherit;font-size:1em;text-align:center}
+  .readout{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+  .card{padding:10px;background:var(--info-bg);border-radius:10px;text-align:center;color:var(--info)}
+  .card b{display:block;color:var(--text);font-size:1.2em;margin-bottom:2px}
+  .preset{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .preset button{padding:5px 10px;border:1px solid var(--border);border-radius:18px;
+                 background:var(--bg);color:var(--text);font-family:inherit;cursor:pointer;font-size:0.85em}
+  .preset button:hover{background:var(--info-bg);color:var(--info)}
+  .formula{margin-top:8px;padding:8px;background:var(--bg);border-radius:8px;
+           font-family:'Courier New',monospace;text-align:center;direction:ltr;
+           color:var(--ok);font-size:0.95em}
+</style>
+</head>
+<body>
+<h2>🌡️ مقیاس‌های دما — تبدیلِ زنده</h2>
+
+<div class="panel">
+  <div style="position:relative;padding-top:10px">
+    <div class="thermo" id="thermo">
+      <div class="marker" id="m_abszero" style="bottom:0%"><span class="label">صفر مطلق (۰ K)</span></div>
+      <div class="marker" id="m_ice" style="bottom:50.5%"><span class="label">یخ (۰°C)</span></div>
+      <div class="marker" id="m_body" style="bottom:57%"><span class="label">بدن (۳۷°C)</span></div>
+      <div class="marker" id="m_boil" style="bottom:69%"><span class="label">جوش آب (۱۰۰°C)</span></div>
+      <div class="marker" id="cursor" style="bottom:50.5%;background:var(--info);height:4px;left:-10px;right:-10px"></div>
+      <div class="bulb"></div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="row">
+      <label>سلسیوس °C</label>
+      <input type="number" id="c" value="0" step="1">
+    </div>
+    <div class="row">
+      <label>کلوین K</label>
+      <input type="number" id="k" value="273" step="1">
+    </div>
+    <div class="row">
+      <label>فارنهایت °F</label>
+      <input type="number" id="f" value="32" step="1">
+    </div>
+    <input type="range" id="slider" min="-273" max="1000" value="0" step="1">
+
+    <div class="readout">
+      <div class="card"><b id="c2">۰</b>°C</div>
+      <div class="card"><b id="k2">۲۷۳</b>K</div>
+      <div class="card"><b id="f2">۳۲</b>°F</div>
+    </div>
+
+    <div class="formula">K = °C + 273 &nbsp;|&nbsp; °F = (9/5)·°C + 32</div>
+
+    <div class="preset">
+      <button data-c="-273">صفر مطلق</button>
+      <button data-c="-78">یخ خشک</button>
+      <button data-c="0">یخ آب</button>
+      <button data-c="25">اتاق</button>
+      <button data-c="37">بدنِ سالم</button>
+      <button data-c="40">تب بالا</button>
+      <button data-c="100">جوش آب</button>
+      <button data-c="232">قلع مذاب</button>
+      <button data-c="500">آتش</button>
+      <button data-c="5500">سطحِ خورشید</button>
+    </div>
+
+    <div id="context" style="margin-top:6px;padding:8px;background:var(--info-bg);
+                              border-radius:8px;font-size:0.9em;color:var(--info)">—</div>
+  </div>
+</div>
+
+<script>
+const faDigit = n => String(n).replace(/-?\d/g, d => d==='-'?'−':'۰۱۲۳۴۵۶۷۸۹'[d]);
+const cIn = document.getElementById('c'), kIn = document.getElementById('k'), fIn = document.getElementById('f');
+const slider = document.getElementById('slider'), cursor = document.getElementById('cursor');
+
+function setFromC(c){
+  c = Math.max(-273.15, c);
+  const k = c + 273;
+  const f = (9/5)*c + 32;
+  cIn.value = Math.round(c*10)/10;
+  kIn.value = Math.round(k*10)/10;
+  fIn.value = Math.round(f*10)/10;
+  document.getElementById('c2').textContent = faDigit(cIn.value);
+  document.getElementById('k2').textContent = faDigit(kIn.value);
+  document.getElementById('f2').textContent = faDigit(fIn.value);
+  slider.value = Math.max(-273, Math.min(1000, c));
+  // cursor position: -273 → bottom 0%, 100°C → bottom 69%, 1000 → top
+  let pct;
+  if (c <= 100) pct = 50.5 + (c/100)*18.5;
+  else pct = 69 + ((c-100)/900)*28;
+  pct = Math.max(0, Math.min(98, pct));
+  cursor.style.bottom = pct + '%';
+  // context line
+  let ctx = '';
+  if (c < -270) ctx = '🥶 صفر مطلق — جنبشِ ذره‌ها به کم‌ترین حدش رسیده.';
+  else if (c < -100) ctx = '🧊 سرماهای کاربردِ صنعتی (مثلِ نگه‌داریِ نمونه‌های زیستی با نیتروژنِ مایع ‎−۱۹۶°C).';
+  else if (c < -10) ctx = '❄️ زیر صفرِ سلسیوس — یخچال خانگی و فریزر.';
+  else if (c < 10) ctx = '💧 آب در حالِ یخ‌زدن یا ذوب‌شدنه.';
+  else if (c < 30) ctx = '🏠 دمای محیطِ راحت — اتاق، بدنِ خونگرم در محیط.';
+  else if (c < 40) ctx = '🩺 محدوده‌ی دمای طبیعیِ بدنِ انسان (۳۶.۵–۳۷.۵°C).';
+  else if (c < 45) ctx = '🤒 تبِ بالا — بالای ۴۲°C برای انسان کشنده است.';
+  else if (c < 100) ctx = '♨️ آبِ داغ، استریل کردن، پختن.';
+  else if (c < 500) ctx = '🍳 پختن، تنور، اجاق.';
+  else if (c < 1500) ctx = '🔥 آتش، ذوبِ فلزات.';
+  else if (c < 6000) ctx = '☀️ مقیاسِ ستاره‌ای — سطحِ خورشید ~۵۵۰۰°C.';
+  else ctx = '🌟 درونِ ستاره‌ها — هسته‌ی خورشید ~۱۵ میلیون درجه.';
+  document.getElementById('context').textContent = ctx;
+}
+cIn.oninput = ()=> setFromC(+cIn.value);
+kIn.oninput = ()=> setFromC(+kIn.value - 273);
+fIn.oninput = ()=> setFromC(((+fIn.value)-32)*5/9);
+slider.oninput = ()=> setFromC(+slider.value);
+document.querySelectorAll('.preset button').forEach(b => b.onclick = () => setFromC(+b.dataset.c));
+
+setFromC(0);
+</script>
+</body>
+</html>

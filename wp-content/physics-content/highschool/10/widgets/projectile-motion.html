@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌ساز پرتابه</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#6b6a64;
+    --hint:#9b9a93; --border:#e0ded7; --border-strong:#cbc9c0;
+    --info:#185fa5; --info-line:#378add; --ball:#d85a30;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --hint:#76746d; --border:#3a3835; --border-strong:#4a4844;
+      --info:#85b7eb; --info-line:#378add; --ball:#f0997b;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.7;}
+  .row{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:10px 18px; margin-bottom:14px;}
+  label{font-size:13px; color:var(--muted); white-space:nowrap; min-width:64px;}
+  input[type=range]{flex:1; accent-color:var(--info);}
+  .val{font-family:monospace; font-size:13px; min-width:48px; color:var(--info);}
+  button{font-size:13px; font-family:inherit; background:transparent; color:var(--text);
+    border:1px solid var(--border-strong); border-radius:8px; padding:7px 12px; cursor:pointer;
+    transition:.15s;}
+  button:hover{background:var(--surface);}
+  button:active{transform:scale(.98);}
+  .stats{display:flex; gap:16px; font-size:13px; color:var(--muted); flex-wrap:wrap;}
+  .stats b{color:var(--text); font-weight:600;}
+  canvas{width:100%; height:auto; background:var(--surface); border-radius:12px; display:block;}
+  .cap{font-size:13px; color:var(--hint); margin:10px 0 0;}
+  .bar{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:10px;}
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="row">
+      <label>سرعت</label>
+      <input type="range" min="5" max="40" value="22" step="1" id="v" aria-label="سرعت اولیه">
+      <span class="val" id="vout">۲۲</span>
+    </div>
+    <div class="row">
+      <label>زاویه</label>
+      <input type="range" min="10" max="80" value="45" step="1" id="a" aria-label="زاویه پرتاب">
+      <span class="val" id="aout">۴۵°</span>
+    </div>
+  </div>
+
+  <div class="bar">
+    <button id="air">🌬️ مقاومت هوا: خاموش</button>
+    <div class="stats">
+      <span>بُرد: <b id="range">۰</b> m</span>
+      <span>اوج: <b id="height">۰</b> m</span>
+    </div>
+  </div>
+
+  <canvas id="cv" width="660" height="300"></canvas>
+  <p class="cap">خطِ پُررنگ = مسیرِ واقعی، خطِ نقطه‌چین = مدلِ ساده‌شده (بدون هوا). مقاومتِ هوا رو روشن کن و فرقشونو ببین.</p>
+
+<script>
+  var faNum=function(n){return String(n).replace(/[0-9]/g,function(d){return "۰۱۲۳۴۵۶۷۸۹"[d];});};
+  var cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+  var vEl=document.getElementById("v"),aEl=document.getElementById("a"),airEl=document.getElementById("air");
+  var vout=document.getElementById("vout"),aout=document.getElementById("aout");
+  var rangeEl=document.getElementById("range"),heightEl=document.getElementById("height");
+  var airOn=false,g=9.8,scale=6,ground=270,x0=30;
+  function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||"#888";}
+  function trajectory(v,angRad,drag){
+    var pts=[],dt=0.02,x=0,y=0,vx=v*Math.cos(angRad),vy=v*Math.sin(angRad),k=drag?0.045:0;
+    for(var i=0;i<2000;i++){pts.push([x,y]);
+      var sp=Math.sqrt(vx*vx+vy*vy),ax=-k*sp*vx,ay=-g-k*sp*vy;
+      vx+=ax*dt;vy+=ay*dt;x+=vx*dt;y+=vy*dt;if(y<0)break;}
+    return pts;
+  }
+  function draw(){
+    var v=+vEl.value,ang=+aEl.value*Math.PI/180;
+    vout.textContent=faNum(v);aout.textContent=faNum(aEl.value)+"°";
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.strokeStyle=css("--border-strong");ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,ground);ctx.lineTo(cv.width,ground);ctx.stroke();
+    var ideal=trajectory(v,ang,false);
+    ctx.strokeStyle=css("--hint");ctx.lineWidth=1.5;ctx.setLineDash([5,5]);
+    ctx.beginPath();ideal.forEach(function(p,i){var X=x0+p[0]*scale,Y=ground-p[1]*scale;i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});
+    ctx.stroke();ctx.setLineDash([]);
+    var shown=airOn?trajectory(v,ang,true):ideal;
+    ctx.strokeStyle=css("--info-line");ctx.lineWidth=3;
+    ctx.beginPath();shown.forEach(function(p,i){var X=x0+p[0]*scale,Y=ground-p[1]*scale;i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});
+    ctx.stroke();
+    var last=shown[shown.length-1],peak=0;shown.forEach(function(p){if(p[1]>peak)peak=p[1];});
+    ctx.fillStyle=css("--ball");ctx.beginPath();ctx.arc(x0+last[0]*scale,ground-last[1]*scale,6,0,7);ctx.fill();
+    rangeEl.textContent=faNum(Math.round(last[0]));heightEl.textContent=faNum(Math.round(peak));
+  }
+  vEl.addEventListener("input",draw);aEl.addEventListener("input",draw);
+  airEl.addEventListener("click",function(){airOn=!airOn;
+    airEl.textContent="🌬️ مقاومت هوا: "+(airOn?"روشن":"خاموش");
+    airEl.style.borderColor=airOn?"var(--info)":"";airEl.style.color=airOn?"var(--info)":"";draw();});
+  draw();
+</script>
+</body>
+</html>

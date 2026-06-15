@@ -1,0 +1,58 @@
+/* Container */
+.custom-container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 15px;
+}
+
+/* Row */
+.custom-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #ddd;
+}
+
+/* Columns */
+.custom-col {
+    flex: 1;
+    padding: 0 10px;
+    text-align: right; /* This aligns text to the right for RTL languages */
+}
+
+/* Header Row Styling */
+.header-row {
+    font-weight: bold;
+    border-bottom: 2px solid #000;
+}
+
+/* Links Styling */
+.custom-row a {
+    color: #0073aa;
+    text-decoration: none;
+}
+
+.custom-row a:hover {
+    text-decoration: underline;
+}
+
+/* Icon Styles */
+.fa {
+    margin-right: 5px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .custom-row {
+        flex-direction: column;
+    }
+    
+    .custom-col {
+        text-align: left; /* Align text left for better readability */
+        padding-bottom: 10px;
+    }
+    
+    .custom-col:last-child {
+        padding-bottom: 0;
+    }
+}

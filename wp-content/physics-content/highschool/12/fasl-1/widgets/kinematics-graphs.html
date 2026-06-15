@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نمودارهای حرکت — x-t, v-t, a-t هم‌زمان</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed; --warn:#a87800; --warn-bg:#fef6e0;
+    --primary:#185fa5; --secondary:#c43838; --accent:#7d3aa3;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e0b860; --warn-bg:#4a3a15;
+      --primary:#85b7eb; --secondary:#f06a60; --accent:#c489e3;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:920px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:10px;}
+  .controls{display:grid; grid-template-columns:repeat(auto-fit, minmax(170px,1fr)); gap:10px;}
+  .ctrl{font-size:13px;}
+  .ctrl label{display:block; margin-bottom:4px; color:var(--muted);}
+  .ctrl input[type=range]{width:100%;}
+  .ctrl .v{font-weight:700; color:var(--info);}
+  .scenarios{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;}
+  .scenarios button{background:var(--info-bg); color:var(--info); border:none; padding:6px 10px; border-radius:8px; font-family:inherit; font-size:12.5px; cursor:pointer;}
+  .scenarios button:hover{filter:brightness(1.05);}
+  .scenarios button.active{background:var(--info); color:white;}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;}
+  @media(max-width:680px){.grid3{grid-template-columns:1fr;}}
+  canvas{display:block; width:100%; background:var(--bg); border:1px solid var(--border); border-radius:10px; height:200px;}
+  .ginfo{font-size:11.5px; color:var(--muted); margin-top:3px; text-align:center;}
+  .runrow{display:flex; gap:8px; align-items:center; margin-top:8px;}
+  .runrow button{background:var(--primary); color:white; border:none; padding:8px 14px; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer;}
+  .runrow input[type=range]{flex:1;}
+  .chip{display:inline-block; padding:3px 9px; background:var(--info-bg); color:var(--info); border-radius:8px; font-size:12px;}
+</style>
+<script id="mathjax-config">
+  window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']]}, startup:{pageReady:()=>MathJax.startup.defaultPageReady()}};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>نمودارهای حرکت — $x$-$t$، $v$-$t$، $a$-$t$ هم‌زمان</h2>
+  <p class="sub">پارامترها رو تغییر بده و ببین چطور سه نمودار با هم تغییر می‌کنن. این‌جا حرکت روی محور $x$ با شتابِ ثابت.</p>
+
+  <div class="panel">
+    <div class="scenarios">
+      <button data-s="uniform" class="active">۱) سرعت ثابت</button>
+      <button data-s="accel">۲) شتاب ثابت مثبت</button>
+      <button data-s="brake">۳) ترمز (شتاب منفی)</button>
+      <button data-s="bounce">۴) سقوط آزاد (بالا، اوج، پایین)</button>
+    </div>
+    <div class="controls">
+      <div class="ctrl">
+        <label>$x_0$ (m) — <span id="vx0" class="v">0</span></label>
+        <input type="range" id="x0" min="-5" max="10" step="0.5" value="0">
+      </div>
+      <div class="ctrl">
+        <label>$v_0$ (m/s) — <span id="vv0" class="v">2</span></label>
+        <input type="range" id="v0" min="-10" max="10" step="0.5" value="2">
+      </div>
+      <div class="ctrl">
+        <label>$a$ (m/s²) — <span id="va" class="v">0</span></label>
+        <input type="range" id="a" min="-5" max="5" step="0.25" value="0">
+      </div>
+      <div class="ctrl">
+        <label>محدوده‌ی زمان (s) — <span id="vT" class="v">10</span></label>
+        <input type="range" id="T" min="2" max="20" step="1" value="10">
+      </div>
+    </div>
+    <div class="runrow">
+      <button id="play">▶ پخش</button>
+      <input type="range" id="cursor" min="0" max="100" value="0" step="0.5">
+      <span class="chip">t = <span id="tval">0.0</span> s</span>
+    </div>
+  </div>
+
+  <div class="grid3">
+    <div>
+      <canvas id="xt"></canvas>
+      <div class="ginfo">نمودار $x$-$t$ — شیب = سرعت</div>
+    </div>
+    <div>
+      <canvas id="vt"></canvas>
+      <div class="ginfo">نمودار $v$-$t$ — شیب = شتاب، مساحت = $\Delta x$</div>
+    </div>
+    <div>
+      <canvas id="at"></canvas>
+      <div class="ginfo">نمودار $a$-$t$ — برای شتاب ثابت، خطِ افقی</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:10px;">
+    <strong style="color:var(--primary);">معادله‌ی فعلی:</strong>
+    <div id="eqn" style="margin-top:6px; font-size:14px; line-height:2;"></div>
+  </div>
+</div>
+<script>
+const sc = {
+  uniform:{x0:0,v0:3,a:0,T:10},
+  accel:{x0:0,v0:0,a:2,T:8},
+  brake:{x0:0,v0:8,a:-2,T:6},
+  bounce:{x0:0,v0:15,a:-9.8,T:4}
+};
+const $=id=>document.getElementById(id);
+const x0=$('x0'),v0=$('v0'),a=$('a'),T=$('T'),cursor=$('cursor');
+const xt=$('xt'),vt=$('vt'),at=$('at');
+let playing=false, anim=null;
+
+function setScenario(name){
+  const s=sc[name];
+  x0.value=s.x0; v0.value=s.v0; a.value=s.a; T.value=s.T;
+  document.querySelectorAll('.scenarios button').forEach(b=>b.classList.toggle('active', b.dataset.s===name));
+  render();
+}
+
+function readout(){
+  $('vx0').textContent=(+x0.value).toFixed(1);
+  $('vv0').textContent=(+v0.value).toFixed(1);
+  $('va').textContent=(+a.value).toFixed(2);
+  $('vT').textContent=T.value;
+  const t=(+cursor.value)/100*(+T.value);
+  $('tval').textContent=t.toFixed(2);
+  const xx0=+x0.value, vv0=+v0.value, aa=+a.value;
+  const eqStr = `$x_0=${xx0}~\\text{m},\\quad v_0=${vv0}~\\text{m/s},\\quad a=${aa}~\\text{m/s}^2$<br>` +
+                `$x(t)=${xx0}+${vv0}t+\\tfrac{1}{2}(${aa})t^2 \\quad\\Rightarrow\\quad x(${t.toFixed(1)})=${(xx0+vv0*t+0.5*aa*t*t).toFixed(2)}~\\text{m}$<br>` +
+                `$v(t)=${vv0}+${aa}t \\quad\\Rightarrow\\quad v(${t.toFixed(1)})=${(vv0+aa*t).toFixed(2)}~\\text{m/s}$`;
+  $('eqn').innerHTML = eqStr;
+  if(window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([$('eqn')]);
+}
+
+function drawGraph(c, ts, ys, color, label, t_cursor){
+  const ctx=c.getContext('2d');
+  const w=c.clientWidth, h=c.clientHeight;
+  c.width=w*devicePixelRatio; c.height=h*devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const pad={l:32,r:8,t:8,b:22};
+  ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--bg');
+  ctx.fillRect(0,0,w,h);
+  const Tmax=ts[ts.length-1];
+  let yMin=Math.min(...ys, 0), yMax=Math.max(...ys, 0);
+  if(yMax-yMin<0.5){ yMax+=0.5; yMin-=0.5; }
+  const py = v => h-pad.b - (v-yMin)/(yMax-yMin)*(h-pad.t-pad.b);
+  const px = t => pad.l + t/Tmax*(w-pad.l-pad.r);
+  ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--border'); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, h-pad.b); ctx.lineTo(w-pad.r, h-pad.b); ctx.stroke();
+  // zero-line
+  if(yMin<0 && yMax>0){
+    ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--muted');
+    ctx.setLineDash([2,3]); ctx.beginPath();
+    ctx.moveTo(pad.l, py(0)); ctx.lineTo(w-pad.r, py(0)); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // curve
+  ctx.strokeStyle=color; ctx.lineWidth=2.2;
+  ctx.beginPath();
+  for(let i=0;i<ts.length;i++){
+    const xx=px(ts[i]), yy=py(ys[i]);
+    if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
+  }
+  ctx.stroke();
+  // cursor
+  ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--secondary');
+  ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(px(t_cursor), pad.t); ctx.lineTo(px(t_cursor), h-pad.b); ctx.stroke();
+  // current dot
+  const idx=Math.min(ts.length-1, Math.round(t_cursor/Tmax*(ts.length-1)));
+  ctx.fillStyle=color;
+  ctx.beginPath(); ctx.arc(px(ts[idx]), py(ys[idx]), 4, 0, Math.PI*2); ctx.fill();
+  // axis labels
+  ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--muted');
+  ctx.font='11px Vazirmatn';
+  ctx.textAlign='right';
+  ctx.fillText(yMax.toFixed(1), pad.l-3, pad.t+8);
+  ctx.fillText(yMin.toFixed(1), pad.l-3, h-pad.b);
+  ctx.textAlign='center';
+  ctx.fillText('t', w-pad.r-2, h-pad.b+14);
+  ctx.fillStyle=color;
+  ctx.font='12px Vazirmatn';
+  ctx.textAlign='left';
+  ctx.fillText(label, pad.l+4, pad.t+12);
+}
+
+function render(){
+  readout();
+  const xx0=+x0.value, vv0=+v0.value, aa=+a.value, Tmax=+T.value;
+  const N=160;
+  const ts=[], xs=[], vs=[], as=[];
+  for(let i=0;i<=N;i++){
+    const t=i/N*Tmax;
+    ts.push(t);
+    xs.push(xx0 + vv0*t + 0.5*aa*t*t);
+    vs.push(vv0 + aa*t);
+    as.push(aa);
+  }
+  const tc=(+cursor.value)/100*Tmax;
+  drawGraph(xt, ts, xs, getComputedStyle(document.body).getPropertyValue('--info'), 'x (m)', tc);
+  drawGraph(vt, ts, vs, getComputedStyle(document.body).getPropertyValue('--ok'), 'v (m/s)', tc);
+  drawGraph(at, ts, as, getComputedStyle(document.body).getPropertyValue('--accent'), 'a (m/s²)', tc);
+}
+
+[x0,v0,a,T,cursor].forEach(el=>el.addEventListener('input', render));
+document.querySelectorAll('.scenarios button').forEach(b=>b.addEventListener('click',()=>setScenario(b.dataset.s)));
+$('play').addEventListener('click', ()=>{
+  if(playing){ playing=false; cancelAnimationFrame(anim); $('play').textContent='▶ پخش'; return; }
+  playing=true; $('play').textContent='⏸ توقف';
+  let last=performance.now();
+  const tick=(now)=>{
+    if(!playing) return;
+    const dt=(now-last)/1000; last=now;
+    let v=+cursor.value + dt*100/(+T.value*1.0);
+    if(v>=100){ v=0; }
+    cursor.value=v; render();
+    anim=requestAnimationFrame(tick);
+  };
+  anim=requestAnimationFrame(tick);
+});
+window.addEventListener('resize', render);
+setScenario('uniform');
+</script>
+</body>
+</html>

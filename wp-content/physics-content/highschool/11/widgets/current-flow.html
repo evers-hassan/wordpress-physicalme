@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌سازی جریان الکتریکی</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --elec:#2f6fd0; --wire:#d9d2c4; --cur:#d6453c;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --elec:#6aa0ee; --wire:#4a463d; --cur:#f06a60;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8; animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:230px;}
+  .readout{display:flex; gap:8px; flex-wrap:wrap; padding:12px; border-top:1px solid var(--border);}
+  .chip{flex:1 1 100px; background:var(--info-bg); color:var(--info); border-radius:10px; padding:8px 10px; text-align:center; font-weight:500; font-size:13px;}
+  .chip b{display:block; font-size:16px; font-weight:700; margin-top:2px; direction:ltr;}
+  .controls{margin-top:14px; display:grid; gap:12px;}
+  .row{display:flex; justify-content:space-between; align-items:center; font-size:14px;}
+  .val{font-weight:700;}
+  input[type=range]{width:100%; accent-color:var(--info); height:6px;}
+  .btns{display:flex; gap:10px;}
+  .btn{appearance:none;border:0;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;color:#fff;
+       background:var(--ok);padding:10px 16px;border-radius:10px;flex:1 1 auto;}
+  .btn.off{background:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>⚡ شبیه‌سازی: جریان الکتریکی</h2>
+  <p class="sub">باتری را روشن کن تا الکترون‌ها سوق پیدا کنند و جریان برقرار شود. شدتِ جریان را هم تغییر بده.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">شدتِ جریان I <b id="iVal">۰</b></div>
+      <div class="chip">بارِ عبوری Q <b id="qVal">۰</b></div>
+      <div class="chip">زمان t <b id="tVal">۰</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="btns">
+      <button class="btn off" id="batt" type="button">🔋 روشن کردنِ باتری</button>
+    </div>
+    <div class="row"><span>شدتِ جریان</span><span class="val"><span id="iSet"></span> A</span></div>
+    <input type="range" id="I" min="0.5" max="5" step="0.5" value="2">
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var IEl=document.getElementById('I'), iSet=document.getElementById('iSet');
+  var iVal=document.getElementById('iVal'), qVal=document.getElementById('qVal'), tVal=document.getElementById('tVal');
+  var batt=document.getElementById('batt'), on=false;
+  var Q=0, T=0, last=0, particles=[];
+  function toFa(s){return (''+s).replace(/[0-9.]/g,function(d){return d==='.'?'٫':'۰۱۲۳۴۵۶۷۸۹'[+d];});}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  var W,H, wireY, wireH=70;
+  function layout(){
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=rect.width; H=rect.height; wireY=H/2-wireH/2;
+    if(particles.length===0){
+      for(var i=0;i<46;i++){
+        particles.push({x:Math.random()*W, y:wireY+8+Math.random()*(wireH-16)});
+      }
+    }
+  }
+  function frame(ts){
+    if(!last) last=ts;
+    var dt=Math.min(0.05,(ts-last)/1000); last=ts;
+    var I=+IEl.value; iSet.textContent=toFa(I);
+    var drift = on ? I*0.9 : 0;          // px/frame متناسب با I
+    if(on){ Q += I*dt; T += dt; }
+
+    ctx.clearRect(0,0,W,H);
+
+    // سیم
+    ctx.fillStyle=cssv('--wire');
+    ctx.fillRect(0, wireY, W, wireH);
+    ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fillRect(0,wireY,W,10);
+
+    // مقطعِ A
+    ctx.strokeStyle=cssv('--muted'); ctx.setLineDash([5,4]); ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(W/2, wireY-6); ctx.lineTo(W/2, wireY+wireH+6); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=cssv('--muted'); ctx.font='12px Vazirmatn, sans-serif'; ctx.textAlign='center';
+    ctx.fillText('مقطعِ A', W/2, wireY-12);
+
+    // الکترون‌ها
+    ctx.font='bold 11px Vazirmatn, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    for(var i=0;i<particles.length;i++){
+      var p=particles[i];
+      // جیترِ گرمایی + سوق به چپ
+      p.x += (Math.random()-0.5)*2.4 - drift;
+      p.y += (Math.random()-0.5)*2.0;
+      if(p.y<wireY+7) p.y=wireY+7; if(p.y>wireY+wireH-7) p.y=wireY+wireH-7;
+      if(p.x<6){ p.x=W-6; } if(p.x>W-6){ p.x=6; }
+      ctx.fillStyle=cssv('--elec');
+      ctx.beginPath(); ctx.arc(p.x,p.y,7,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#fff'; ctx.fillText('−', p.x, p.y+0.5);
+    }
+    ctx.textBaseline='alphabetic';
+
+    // فلشِ جهتِ حرکتِ الکترون‌ها (چپ) و جریانِ قراردادی (راست)
+    if(on){
+      arrow(W/2-40, wireY-26, W/2-90, wireY-26, cssv('--elec'));
+      ctx.fillStyle=cssv('--elec'); ctx.font='11px Vazirmatn, sans-serif'; ctx.textAlign='center';
+      ctx.fillText('حرکتِ الکترون', W/2-70, wireY-32);
+      arrow(W/2+40, wireY-26, W/2+90, wireY-26, cssv('--cur'));
+      ctx.fillStyle=cssv('--cur'); ctx.fillText('جریانِ I', W/2+70, wireY-32);
+    }
+
+    iVal.textContent = on ? toFa(I)+' A' : '۰';
+    qVal.textContent = toFa(Q.toFixed(1))+' C';
+    tVal.textContent = toFa(T.toFixed(1))+' s';
+    requestAnimationFrame(frame);
+  }
+  function arrow(x1,y,x2,yy,color){
+    ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(x2,yy); ctx.stroke();
+    var dir = x2>x1?1:-1;
+    ctx.beginPath(); ctx.moveTo(x2,yy); ctx.lineTo(x2-7*dir,yy-4); ctx.lineTo(x2-7*dir,yy+4); ctx.closePath(); ctx.fill();
+  }
+  batt.addEventListener('click', function(){
+    on=!on;
+    batt.textContent = on ? '⏻ خاموش کردنِ باتری' : '🔋 روشن کردنِ باتری';
+    batt.classList.toggle('off', on);
+    if(!on){ Q=0; T=0; }   // با خاموش‌شدن، شمارش صفر می‌شود
+  });
+  window.addEventListener('resize', layout);
+  layout();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

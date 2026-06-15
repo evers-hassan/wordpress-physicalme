@@ -1,0 +1,233 @@
+# Translation template for Parental Control Plugin
+# Copyright (C) 2026 Hassan Bagheri Valoujerdi
+# This file is distributed under the same license as the Parental Control Plugin package.
+msgid ""
+msgstr ""
+"Project-Id-Version: Parental Control Plugin 1.0.7\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-11 10:00:00+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: en\n"
+
+#: inc/Base/SettingsController.php:46
+msgid "Parental Control Settings"
+msgstr ""
+
+#: inc/Base/SettingsController.php:47
+msgid "Parental Control"
+msgstr ""
+
+#: inc/Base/SettingsController.php:56
+msgid "General Settings"
+msgstr ""
+
+#: inc/Base/SettingsController.php:65
+msgid "Maximum Children per Parent"
+msgstr ""
+
+#: inc/Base/SettingsController.php:72
+msgid "Parent Login Redirect URL"
+msgstr ""
+
+#: inc/Base/SettingsController.php:79
+msgid "Child Login Redirect URL"
+msgstr ""
+
+#: inc/Base/SettingsController.php:87
+msgid "Plugin Pages"
+msgstr ""
+
+#: inc/Base/SettingsController.php:96
+msgid "Child Registration Page"
+msgstr ""
+
+#: inc/Base/SettingsController.php:103
+msgid "Child Profile Page"
+msgstr ""
+
+#: inc/Base/SettingsController.php:110
+msgid "Child Change Password Page"
+msgstr ""
+
+#: inc/Base/SettingsController.php:119
+msgid "URLs to plugin pages (auto-detected from plugin pages)"
+msgstr ""
+
+#: inc/Base/SettingsController.php:123
+msgid "Configure plugin behavior and limits"
+msgstr ""
+
+#: inc/Base/SettingsController.php:130
+msgid "Maximum number of children each parent account can create"
+msgstr ""
+
+#: inc/Base/SettingsController.php:140
+msgid "URL where parents are redirected after login"
+msgstr ""
+
+#: inc/Base/SettingsController.php:159
+msgid "URL where children are redirected after login"
+msgstr ""
+
+#: inc/Base/SettingsController.php:175
+msgid "URL to the child registration page"
+msgstr ""
+
+#: inc/Base/SettingsController.php:195
+msgid "URL to the child profile page"
+msgstr ""
+
+#: inc/Base/SettingsController.php:215
+msgid "URL to the child change password page"
+msgstr ""
+
+#: inc/Base/SettingsController.php:235
+msgid "You do not have permission to access this page"
+msgstr ""
+
+#: inc/Base/SettingsController.php:243
+#: inc/Base/SettingsController.php:244
+msgid "Plugin Pages"
+msgstr ""
+
+#: inc/Base/SettingsController.php:245
+msgid "The following pages have been automatically created for the plugin:"
+msgstr ""
+
+#: inc/Base/SettingsController.php:250
+msgid "Page Name"
+msgstr ""
+
+#: inc/Base/SettingsController.php:251
+msgid "Shortcode"
+msgstr ""
+
+#: inc/Base/SettingsController.php:252
+msgid "Link"
+msgstr ""
+
+#: inc/Base/SettingsController.php:274
+msgid "No plugin pages found"
+msgstr ""
+
+#: inc/Base/SettingsController.php:286
+msgid "View"
+msgstr ""
+
+#: inc/Base/SettingsController.php:140, 159, 175, 195, 215
+msgid "Quick links:"
+msgstr ""
+
+#: inc/Base/SettingsController.php:188, 208, 228
+msgid "✓ Auto-fill from plugin page"
+msgstr ""
+
+#: parental-customers-plugin.php
+msgid "Parental Customer"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Username"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Email"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Password"
+msgstr ""
+
+#: inc/I18n.php
+msgid "First Name"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Last Name"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Mobile"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Children"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Permissions"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Access"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Save Changes"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Delete"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Edit"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Add"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Change Password"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Status"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Active"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Inactive"
+msgstr ""
+
+#: inc/I18n.php
+msgid "User created successfully"
+msgstr ""
+
+#: inc/I18n.php
+msgid "User updated successfully"
+msgstr ""
+
+#: inc/I18n.php
+msgid "User deleted successfully"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Error saving user"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Error loading data"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Invalid request"
+msgstr ""
+
+#: inc/I18n.php
+msgid "You are not authorized to perform this action"
+msgstr ""
+
+#: inc/I18n.php
+msgid "Are you sure you want to delete this item? This cannot be undone."
+msgstr ""
+
+#: inc/I18n.php
+msgid "Are you sure you want to change the status?"
+msgstr ""

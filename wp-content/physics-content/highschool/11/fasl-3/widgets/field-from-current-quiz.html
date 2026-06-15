@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودتو بسنج — میدان از جریان</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8;}
+  .wrap{max-width:720px; margin:0 auto;}
+  .q-item{border:1px solid var(--border); border-radius:12px; margin-bottom:10px;
+    overflow:hidden; background:var(--surface);}
+  .q-head{display:flex; align-items:center; gap:10px; cursor:pointer;
+    padding:13px 15px; font-weight:500; font-size:15px; user-select:none;}
+  .q-head:hover{background:var(--info-bg);}
+  .q-head .tog{margin-inline-start:auto; flex:0 0 auto; color:var(--info);
+    transition:transform .2s ease; font-size:18px;}
+  .q-item.open .q-head .tog{transform:rotate(45deg);}
+  .q-num{flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+    background:var(--info); color:#fff; display:flex; align-items:center;
+    justify-content:center; font-size:13px; font-weight:700;}
+  .q-body{max-height:0; overflow:hidden; transition:max-height .25s ease;
+    background:var(--ok-bg);}
+  .q-body .inner{padding:13px 15px; color:var(--text); font-size:14.5px;}
+  .q-body .inner::before{content:"پاسخ: "; color:var(--ok); font-weight:700;}
+  .hint{font-size:13px; color:var(--muted); margin:0 0 14px;}
+</style>
+<script id="mathjax-config">
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <p class="hint">روی هر سؤال بزن تا پاسخش باز شود 👇</p>
+  <div id="quiz"></div>
+</div>
+
+<script>
+  var items = [
+    { q: "اورستد چطور و چه سالی کشف کرد که جریان الکتریکی میدان مغناطیسی می‌سازه؟",
+      a: "سال <b>۱۸۲۰</b>، <b>هانس کریستین اورستد</b> در حال تدریس کلاسِ فیزیک در دانمارک بود. به‌طور <b>تصادفی</b> یه قطب‌نما رو نزدیکِ سیمی که جریان داشت گذاشت و دید سوزن قطب‌نما <b>منحرف می‌شه!</b> 🤯 این کشفِ ساده، الکتریسیته و مغناطیس رو که تا اون موقع دو پدیدهٔ جدا تصور می‌شدن، به‌طور قطعی به هم وصل کرد و انقلابِ الکترومغناطیس رو راه انداخت." },
+    { q: "میدان مغناطیسی اطرافِ یه سیمِ راست چه شکلیه؟",
+      a: "خطوطِ میدان به‌صورت <b>دایره‌های هم‌مرکز</b> دور سیم می‌چرخن. اندازهٔ B در فاصلهٔ r از سیم:<br>$$B = \\dfrac{\\mu_0 I}{2\\pi r}$$<br>یعنی هرچه به سیم نزدیک‌تر، میدان قوی‌تر. اگه از سیم دور بشی، میدان به‌سرعت ضعیف می‌شه. $\\mu_0 = 4\\pi \\times 10^{-7}$ T·m/A ثابتِ نفوذپذیریِ خلأ ـه." },
+    { q: "جهتِ میدان دور سیم راست رو با چه قاعده‌ای پیدا می‌کنیم؟",
+      a: "<b>قاعدهٔ دستِ راست (نوع کف‌گیر/grip):</b> اگه سیم رو با دستِ راست بگیری طوری که شَست در جهت <b>جریان</b> باشه، انگشت‌های دیگه‌ت دور سیم می‌پیچن و جهتِ <b>میدان مغناطیسی</b> رو نشون می‌دن. اگه جریان معکوس بشه، میدان هم معکوس می‌چرخه." },
+    { q: "محاسبه: یه سیمِ راست با جریان $5$ A. در فاصلهٔ $2$ cm میدانش چقدره؟ ($\\mu_0 = 4\\pi\\times 10^{-7}$ T·m/A)",
+      a: "$$B = \\dfrac{\\mu_0 I}{2\\pi r} = \\dfrac{(4\\pi\\times 10^{-7})(5)}{2\\pi \\times 0.02} = \\dfrac{2 \\times 10^{-6} \\times 5}{0.02} = 5\\times 10^{-5}\\text{ T}$$<br>یعنی $50$ μT — حدوداً برابرِ میدانِ مغناطیسی زمین! این یه حسّ بصری می‌ده: حتی یه سیمِ آشپزخونه با چند آمپر جریان، می‌تونه قطب‌نما رو منحرف کنه." },
+    { q: "میدانِ مرکزِ یه حلقه‌ی دایره‌ایِ سیم چطور محاسبه می‌شه؟",
+      a: "برای حلقه‌ای به شعاع R با جریان I، در مرکز:<br>$$B = \\dfrac{\\mu_0 I}{2R}$$<br>جهتش: انگشت‌های دستِ راست رو در جهت جریان حلقه ببند، شَست جهتِ <b>میدان در مرکز</b> رو نشون می‌ده. یه حلقه عملاً مثلِ یه آهنربای دیپلیِ کوچیک رفتار می‌کنه — یک طرفِ حلقه نقشِ N، طرفِ دیگه نقشِ S رو بازی می‌کنه." },
+    { q: "سیملوله چیه و چرا میدانش داخلش یکنواخته؟",
+      a: "<b>سیملوله (Solenoid)</b> یعنی یه سیمِ بلندِ مارپیچی که از N دور تشکیل شده. وقتی جریان داره، هر دور یه میدان حلقه‌ای می‌سازه؛ این میدان‌ها داخلِ سیملوله <b>هم‌جهت</b> می‌شن (در راستای محور)، و خارجش <b>عکس‌ به‌هم</b> می‌شن (و خنثی می‌کنن). نتیجه: داخل، میدانِ یکنواختِ قوی؛ خارج، میدانی ضعیف (مثلِ آهنربای میله‌ای). فرمول:<br>$$B = \\mu_0 n I$$<br>که $n=N/L$ تعدادِ دور در واحدِ طول ـه." },
+    { q: "محاسبه: سیملوله‌ای با $400$ دور به طولِ $20$ cm، جریانِ $3$ A. میدان داخلش چقدره؟",
+      a: "$n = N/L = 400/0.2 = 2000$ دور بر متر.<br>$B = \\mu_0 n I = (4\\pi\\times 10^{-7})(2000)(3) \\approx 7.5\\times 10^{-3}$ T = $7.5$ mT.<br>این حدودِ ۱۵۰ برابرِ میدانِ زمینه — قابلِ توجه. به‌همین خاطر سیملوله‌ها برای ساختِ <b>آهنربای الکتریکی قوی</b> استفاده می‌شن." },
+    { q: "تفاوتِ سیملوله با آهنربای دائمی چیه؟",
+      a: "<b>آهنربای دائمی</b>: همیشه قطبیه، نمی‌تونی خاموشش کنی، شدّتش ثابته.<br><b>سیملوله (آهنربای الکتریکی)</b>:<br>• قابلِ <b>روشن/خاموش</b> با قطعِ جریانه<br>• شدّتش رو می‌تونی با جریان <b>تنظیم</b> کنی<br>• با معکوس‌کردنِ جریان، قطب‌ها <b>عوض می‌شن</b><br>این انعطاف‌پذیری، سیملوله رو در صنعت و پزشکی (مثلِ MRI) ضروری کرده. ولی نکته: تا وقتی جریان وصله، انرژی مصرف می‌کنه (برخلافِ آهنربای دائمی)." },
+    { q: "چند کاربردِ مهمِ سیملوله رو نام ببر.",
+      a: "<ul style='margin:6px 0;padding-inline-start:20px;'><li><b>رله‌ها (relay)</b>: کلیدهای خودکار در ماشین‌ها، تجهیزات صنعتی</li><li><b>زنگِ خانگی</b>: شیر برقی که با جریان فعّال می‌شه</li><li><b>قفل‌های الکترومغناطیسی</b>: درب‌های هتل و دفاتر</li><li><b>گویچهٔ MRI</b>: قوی‌ترین سیملوله‌های ساخته‌شده (با ابررسانا)</li><li><b>کلیدِ مغناطیسی</b>: استارترِ خودرو</li><li><b>سیلوئنوئیدِ شکستِ آب</b>: سیستم‌های آبیاری خودکار</li><li><b>هدفون و بلندگو</b>: سیمیپچ‌های کوچیک متحرک</li></ul>" }
+  ];
+
+  var box = document.getElementById('quiz');
+  items.forEach(function(it, i){
+    var item = document.createElement('div'); item.className='q-item';
+    var head = document.createElement('div'); head.className='q-head';
+    head.innerHTML = '<span class="q-num">'+toFa(i+1)+'</span><span>'+it.q+'</span><span class="tog">+</span>';
+    var body = document.createElement('div'); body.className='q-body';
+    var inner = document.createElement('div'); inner.className='inner'; inner.innerHTML=it.a;
+    body.appendChild(inner);
+    head.addEventListener('click', function(){
+      var open = item.classList.toggle('open');
+      body.style.maxHeight = open ? (inner.scrollHeight + 26) + 'px' : '0';
+    });
+    item.appendChild(head); item.appendChild(body); box.appendChild(item);
+  });
+  function toFa(n){return (''+n).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+</script>
+</body>
+</html>

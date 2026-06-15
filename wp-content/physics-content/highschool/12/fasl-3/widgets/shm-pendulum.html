@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>جرم-فنر و آونگ ساده — شبیه‌سازی هم‌زمان</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed; --warn:#a87800; --warn-bg:#fef6e0;
+    --spring:#185fa5; --pendulum:#c97a1a; --mass:#3a3835;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e0b860; --warn-bg:#4a3a15;
+      --spring:#85b7eb; --pendulum:#e0a05a; --mass:#dcd9d0;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:980px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .layout{display:grid; grid-template-columns:1fr 240px; gap:12px;}
+  @media(max-width:760px){.layout{grid-template-columns:1fr;}}
+  .stage{background:linear-gradient(to bottom, #f7f9fc, var(--bg)); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  @media(prefers-color-scheme:dark){.stage{background:linear-gradient(to bottom, #2a3040, var(--bg));}}
+  .sims{display:grid; grid-template-columns:1fr 1fr; gap:0;}
+  @media(max-width:540px){.sims{grid-template-columns:1fr;}}
+  .sim-box{position:relative; border-left:1px solid var(--border);}
+  .sim-box:first-child{border-left:none;}
+  .sim-label{position:absolute; top:6px; right:8px; left:8px; text-align:center;
+              font-size:12px; font-weight:700; color:var(--info); z-index:2;
+              background:rgba(255,255,255,.7); padding:2px 6px; border-radius:6px;}
+  @media(prefers-color-scheme:dark){.sim-label{background:rgba(0,0,0,.4); color:var(--info);}}
+  canvas{display:block; width:100%; height:280px;}
+  .graph-box{border-top:1px solid var(--border); padding:8px; background:var(--surface);}
+  .graph-label{font-size:11px; color:var(--muted); margin-bottom:4px; text-align:center;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:13px; margin:8px 0 6px; color:var(--muted); text-transform:uppercase;}
+  .panel h3:first-child{margin-top:0;}
+  .slider-row{display:grid; grid-template-columns:1fr 56px; gap:6px; align-items:center; font-size:13px; margin-bottom:4px;}
+  .val{font-weight:700; color:var(--info); text-align:left; font-variant-numeric:tabular-nums;}
+  input[type=range]{width:100%; accent-color:var(--info);}
+  .btn{background:var(--info); color:white; border:none; padding:8px 14px;
+       border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer;
+       width:100%; margin-top:6px;}
+  .btn:hover{filter:brightness(1.08);}
+  .btn.alt{background:#c43838;}
+  .readouts{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px;}
+  .read{padding:6px 8px; background:var(--info-bg); color:var(--info); border-radius:6px; text-align:center; font-size:12px;}
+  .read b{display:block; font-size:14px; margin-top:2px;}
+  .note{font-size:12px; color:var(--muted); padding:8px; background:var(--ok-bg); color:var(--ok); border-radius:8px; margin-top:8px; line-height:1.6;}
+</style>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']], processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>دو نوسانگرِ کلاسیک، یکجا 🎯⏱️</h2>
+  <p class="sub">جرم-فنر در سمت راست، آونگ ساده در سمت چپ. پارامترها رو تنظیم کن و دوره‌ی هر دو رو همزمان ببین.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <div class="sims">
+        <div class="sim-box">
+          <div class="sim-label">جرم-فنر (افقی)</div>
+          <canvas id="cvSpring"></canvas>
+        </div>
+        <div class="sim-box">
+          <div class="sim-label">آونگ ساده</div>
+          <canvas id="cvPend"></canvas>
+        </div>
+      </div>
+      <div class="graph-box">
+        <div class="graph-label">جابه‌جایی برحسب زمان — آبی: جرم-فنر / نارنجی: آونگ</div>
+        <canvas id="cvGraph" style="height:120px;"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>جرم-فنر</h3>
+      <div class="slider-row"><label>جرم $m$ (kg)</label><span class="val" id="vm">۰٫۵</span></div>
+      <input type="range" id="m" min="0.1" max="3" step="0.1" value="0.5">
+      <div class="slider-row"><label>ثابت فنر $k$ (N/m)</label><span class="val" id="vk">۱۰</span></div>
+      <input type="range" id="k" min="2" max="80" step="1" value="10">
+      <div class="readouts">
+        <div class="read">دوره $T_1$<b id="rTs">۱٫۴ s</b></div>
+        <div class="read">بسامد $f_1$<b id="rFs">۰٫۷۱ Hz</b></div>
+      </div>
+
+      <h3>آونگ ساده</h3>
+      <div class="slider-row"><label>طول $L$ (m)</label><span class="val" id="vL">۱٫۰</span></div>
+      <input type="range" id="L" min="0.2" max="3" step="0.1" value="1.0">
+      <div class="slider-row"><label>دامنه‌ی زاویه‌ای (°)</label><span class="val" id="vA">۱۵</span></div>
+      <input type="range" id="A" min="2" max="30" step="1" value="15">
+      <div class="readouts">
+        <div class="read">دوره $T_2$<b id="rTp">۲٫۰ s</b></div>
+        <div class="read">بسامد $f_2$<b id="rFp">۰٫۵ Hz</b></div>
+      </div>
+
+      <button class="btn" id="play">▶ شروع / توقف</button>
+      <button class="btn alt" id="reset">⟲ ریست</button>
+
+      <div class="note">
+        💡 <b>درس کلیدی:</b> دوره‌ی جرم-فنر فقط به $m$ و $k$ بستگی داره؛ دوره‌ی آونگ فقط به $L$ و $g$ — جرم تو هیچ‌کدوم اثر نداره!
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fa = n => n.toLocaleString('fa-IR');
+const cvS=$('cvSpring'), cvP=$('cvPend'), cvG=$('cvGraph');
+const cS=cvS.getContext('2d'), cP=cvP.getContext('2d'), cG=cvG.getContext('2d');
+let DPR=window.devicePixelRatio||1;
+
+function fit(cv,c){
+  const r=cv.getBoundingClientRect();
+  cv.width=r.width*DPR; cv.height=r.height*DPR;
+  c.setTransform(DPR,0,0,DPR,0,0);
+}
+
+let m=0.5, k=10, L=1.0, A0=15*Math.PI/180;
+let g=9.8;
+let t=0, running=false, last=null;
+const history=[]; const HMAX=320;
+
+function periods(){
+  const Ts = 2*Math.PI*Math.sqrt(m/k);
+  const Tp = 2*Math.PI*Math.sqrt(L/g);
+  return {Ts, Tp};
+}
+
+function drawSpring(){
+  fit(cvS, cS);
+  const W=cvS.clientWidth, H=cvS.clientHeight;
+  const cy=H*0.55;
+  // wall on right (RTL: imagine fixed wall on right side)
+  cS.fillStyle=getCSS('--mass');
+  cS.fillRect(W-12, cy-50, 8, 100);
+  // hatching
+  cS.strokeStyle=getCSS('--border'); cS.lineWidth=1;
+  for(let i=0;i<10;i++){
+    cS.beginPath(); cS.moveTo(W-4, cy-50+i*10); cS.lineTo(W+6, cy-58+i*10); cS.stroke();
+  }
+  // spring extends from wall (right) to mass (left)
+  const eq = W*0.55;          // equilibrium x of mass
+  const omegaS = Math.sqrt(k/m);
+  const ampSpring = 70;        // pixels
+  const x = eq - ampSpring*Math.cos(omegaS*t);  // moves LEFT and RIGHT
+  drawCoil(cS, W-16, cy, x+22, cy, 12, 10);
+  // mass
+  cS.fillStyle=getCSS('--info');
+  cS.fillRect(x-20, cy-22, 40, 44);
+  cS.strokeStyle=getCSS('--text'); cS.lineWidth=1.5;
+  cS.strokeRect(x-20, cy-22, 40, 44);
+  // equilibrium line
+  cS.strokeStyle=getCSS('--muted'); cS.setLineDash([3,3]);
+  cS.beginPath(); cS.moveTo(eq, cy-50); cS.lineTo(eq, cy+50); cS.stroke();
+  cS.setLineDash([]);
+  // floor
+  cS.strokeStyle=getCSS('--border'); cS.lineWidth=1;
+  cS.beginPath(); cS.moveTo(0, cy+44); cS.lineTo(W, cy+44); cS.stroke();
+  // amp indicator
+  cS.fillStyle=getCSS('--muted'); cS.font='11px Vazirmatn';
+  cS.textAlign='center';
+  cS.fillText('A = '+fa(70)+'px', eq, cy+62);
+  return (eq - x)/ampSpring;   // normalized -1..+1
+}
+
+function drawCoil(c, x1, y1, x2, y2, amp, coils){
+  c.strokeStyle=getCSS('--spring'); c.lineWidth=2;
+  c.beginPath();
+  const dx=(x2-x1)/(coils*2);
+  let xx=x1, yy=y1;
+  c.moveTo(xx,yy);
+  for(let i=0;i<coils*2;i++){
+    xx+=dx;
+    yy = y1 + ((i%2)?-amp:amp);
+    c.lineTo(xx,yy);
+  }
+  c.lineTo(x2,y2);
+  c.stroke();
+}
+
+function drawPendulum(){
+  fit(cvP, cP);
+  const W=cvP.clientWidth, H=cvP.clientHeight;
+  const pivX=W/2, pivY=20;
+  const omegaP = Math.sqrt(g/L);
+  // small-angle linear motion of theta
+  const theta = A0*Math.cos(omegaP*t);
+  // length in pixels (cap by canvas)
+  const pxL = Math.min(H-60, 50 + L*70);
+  // pivot
+  cP.fillStyle=getCSS('--border');
+  cP.fillRect(pivX-30, pivY-12, 60, 12);
+  cP.fillStyle=getCSS('--mass');
+  cP.beginPath(); cP.arc(pivX, pivY, 4, 0, 2*Math.PI); cP.fill();
+  // rest line
+  cP.strokeStyle=getCSS('--muted'); cP.setLineDash([3,3]);
+  cP.beginPath(); cP.moveTo(pivX, pivY); cP.lineTo(pivX, pivY+pxL+20); cP.stroke();
+  cP.setLineDash([]);
+  // arc of amplitude
+  cP.strokeStyle=getCSS('--info-bg'); cP.lineWidth=2;
+  cP.beginPath(); cP.arc(pivX, pivY, pxL, Math.PI/2-A0, Math.PI/2+A0); cP.stroke();
+  // rope
+  const bx = pivX + pxL*Math.sin(theta);
+  const by = pivY + pxL*Math.cos(theta);
+  cP.strokeStyle=getCSS('--text'); cP.lineWidth=1.5;
+  cP.beginPath(); cP.moveTo(pivX, pivY); cP.lineTo(bx, by); cP.stroke();
+  // bob
+  cP.fillStyle=getCSS('--pendulum');
+  cP.beginPath(); cP.arc(bx, by, 16, 0, 2*Math.PI); cP.fill();
+  cP.strokeStyle=getCSS('--text'); cP.lineWidth=1.5;
+  cP.stroke();
+  // angle label
+  cP.fillStyle=getCSS('--muted'); cP.font='11px Vazirmatn';
+  cP.textAlign='center';
+  cP.fillText('θ = '+fa((theta*180/Math.PI).toFixed(1))+'°', pivX, H-8);
+  return theta/A0;   // normalized -1..+1
+}
+
+function getCSS(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+
+function pushHistory(s,p){
+  history.push({t,s,p});
+  while(history.length>HMAX) history.shift();
+}
+
+function drawGraph(){
+  fit(cvG, cG);
+  const W=cvG.clientWidth, H=cvG.clientHeight;
+  cG.fillStyle=getCSS('--surface'); cG.fillRect(0,0,W,H);
+  // zero line
+  cG.strokeStyle=getCSS('--border'); cG.lineWidth=1;
+  cG.beginPath(); cG.moveTo(0,H/2); cG.lineTo(W,H/2); cG.stroke();
+  if(history.length<2) return;
+  const t0=history[0].t, t1=history[history.length-1].t;
+  const dt=Math.max(t1-t0, 0.01);
+  function plot(field, color){
+    cG.strokeStyle=color; cG.lineWidth=2;
+    cG.beginPath();
+    history.forEach((p,i)=>{
+      const x=((p.t-t0)/dt)*W;
+      const y=H/2 - p[field]*(H/2-8);
+      if(i===0) cG.moveTo(x,y); else cG.lineTo(x,y);
+    });
+    cG.stroke();
+  }
+  plot('s', getCSS('--spring'));
+  plot('p', getCSS('--pendulum'));
+}
+
+function step(now){
+  if(!last) last=now;
+  const dt=Math.min((now-last)/1000, 0.05);
+  last=now;
+  if(running){ t+=dt; }
+  const s=drawSpring();
+  const p=drawPendulum();
+  pushHistory(s,p);
+  drawGraph();
+  // labels
+  $('vm').textContent = fa(m.toFixed(1));
+  $('vk').textContent = fa(k.toFixed(0));
+  $('vL').textContent = fa(L.toFixed(1));
+  $('vA').textContent = fa((A0*180/Math.PI).toFixed(0));
+  const P=periods();
+  $('rTs').textContent = fa(P.Ts.toFixed(2))+' s';
+  $('rFs').textContent = fa((1/P.Ts).toFixed(2))+' Hz';
+  $('rTp').textContent = fa(P.Tp.toFixed(2))+' s';
+  $('rFp').textContent = fa((1/P.Tp).toFixed(2))+' Hz';
+  requestAnimationFrame(step);
+}
+
+function reset(){ t=0; history.length=0; }
+
+['m','k','L','A'].forEach(id=>{
+  $(id).addEventListener('input', e=>{
+    if(id==='m') m=parseFloat(e.target.value);
+    if(id==='k') k=parseFloat(e.target.value);
+    if(id==='L') L=parseFloat(e.target.value);
+    if(id==='A') A0=parseFloat(e.target.value)*Math.PI/180;
+    reset();
+  });
+});
+
+$('play').addEventListener('click', ()=>{ running=!running; last=null; $('play').textContent = running?'⏸ توقف':'▶ شروع'; });
+$('reset').addEventListener('click', reset);
+
+window.addEventListener('resize', ()=>{ DPR=window.devicePixelRatio||1; });
+
+running=true;
+$('play').textContent = '⏸ توقف';
+requestAnimationFrame(step);
+</script>
+</body>
+</html>

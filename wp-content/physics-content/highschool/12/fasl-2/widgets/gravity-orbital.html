@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>گرانش و مدار ماهواره — شبیه‌سازی</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --primary:#185fa5; --secondary:#c43838;
+    --space:#0d1735; --planet:#3070d8;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --primary:#85b7eb; --secondary:#f06a60;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:880px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .layout{display:grid; grid-template-columns:1fr 240px; gap:12px;}
+  @media(max-width:700px){.layout{grid-template-columns:1fr;}}
+  .stage{background:var(--space); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:420px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:13px; margin:8px 0 6px; color:var(--muted); text-transform:uppercase;}
+  .panel h3:first-child{margin-top:0;}
+  .slider-row{display:grid; grid-template-columns:1fr 60px; gap:6px; align-items:center; font-size:13px; margin-bottom:6px;}
+  .val{font-weight:700; color:var(--info); text-align:left;}
+  input[type=range]{width:100%;}
+  .readout{padding:10px 12px; display:grid; grid-template-columns:repeat(2,1fr); gap:6px; border-top:1px solid var(--border); background:#0d1735; color:#cfe0ff; font-size:13px;}
+  .readout .item{padding:5px 8px; background:#1a2848; color:#cfe0ff; border-radius:6px; text-align:center;}
+  .readout .item b{display:block; font-size:14px; color:#85b7eb;}
+  .btn{background:var(--primary); color:white; border:none; padding:8px 14px; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer; width:100%; margin-top:6px;}
+  .preset-row{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px;}
+  .preset-row button{background:var(--bg); color:var(--text); border:1px solid var(--border); padding:6px 8px; border-radius:6px; cursor:pointer; font-family:inherit; font-size:11.5px;}
+  .preset-row button:hover{background:var(--info-bg); color:var(--info); border-color:var(--info);}
+  .note{font-size:11.5px; color:var(--muted); padding:6px 8px; background:var(--info-bg); border-radius:6px; margin-top:8px;}
+</style>
+<script id="mathjax-config">
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$']], processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script"></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>گرانش و مدار ماهواره 🛰️🌍</h2>
+  <p class="sub">سرعتِ اولیه‌ی ماهواره رو تغییر بده — مدار دایره‌ای، بیضوی، یا فرار رو ببین.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <canvas id="cv"></canvas>
+      <div class="readout">
+        <div class="item">v کنونی<b id="rv">0 km/s</b></div>
+        <div class="item">ارتفاع<b id="rh">0 km</b></div>
+        <div class="item">v دایره<b id="rvc">0 km/s</b></div>
+        <div class="item">v فرار<b id="rve">0 km/s</b></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>ارتفاع اولیه (km)</h3>
+      <div class="slider-row"><label>h</label><span class="val" id="vh">400</span></div>
+      <input type="range" id="h" min="200" max="36000" step="100" value="400">
+      <h3>سرعت اولیه (km/s)</h3>
+      <div class="slider-row"><label>v</label><span class="val" id="vv">7.7</span></div>
+      <input type="range" id="v" min="3" max="15" step="0.05" value="7.7">
+
+      <h3>پیش‌فرض‌ها</h3>
+      <div class="preset-row">
+        <button data-h="400" data-v="7.7">ISS</button>
+        <button data-h="20200" data-v="3.87">GPS</button>
+        <button data-h="36000" data-v="3.07">ژئواستیشنری</button>
+        <button data-h="400" data-v="11.2">سرعت فرار</button>
+      </div>
+
+      <button class="btn" id="reset">شروع دوباره</button>
+      <div class="note">$v_{دایره} = \sqrt{GM/r}$، $v_{فرار} = \sqrt{2GM/r}$</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+function resize(){
+  const r = cv.getBoundingClientRect();
+  cv.width = r.width * devicePixelRatio;
+  cv.height = r.height * devicePixelRatio;
+  cv.style.height = '420px';
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+resize(); window.addEventListener('resize', resize);
+
+const G = 6.674e-11;
+const M = 5.972e24;
+const R_earth = 6.371e6;
+const GM = G*M;
+
+let sat = {x:0,y:0,vx:0,vy:0};
+let trail = [];
+let escaped = false;
+let crashed = false;
+let scale = 1e-5; // pixels per meter
+
+function reset(){
+  const h = +document.getElementById('h').value * 1000;
+  const v0 = +document.getElementById('v').value * 1000;
+  const r0 = R_earth + h;
+  sat.x = r0; sat.y = 0;
+  sat.vx = 0; sat.vy = v0;
+  trail = [];
+  escaped = false; crashed = false;
+  // adjust scale so max plotted distance fits
+  scale = 0.4 * Math.min(cv.clientWidth, 420) / (r0 * 1.8);
+}
+
+function step(){
+  if (!escaped && !crashed) {
+    const dt = 20; // simulate dt seconds per frame
+    const N = 50; // sub-steps for accuracy
+    for (let i=0;i<N;i++) {
+      const r2 = sat.x*sat.x + sat.y*sat.y;
+      const r = Math.sqrt(r2);
+      const a = -GM/r2;
+      sat.vx += a * sat.x/r * (dt/N);
+      sat.vy += a * sat.y/r * (dt/N);
+      sat.x += sat.vx * (dt/N);
+      sat.y += sat.vy * (dt/N);
+      if (Math.sqrt(sat.x*sat.x+sat.y*sat.y) < R_earth) { crashed = true; break; }
+      if (Math.sqrt(sat.x*sat.x+sat.y*sat.y) > 1e9) { escaped = true; break; }
+    }
+    trail.push({x:sat.x,y:sat.y});
+    if (trail.length > 1500) trail.shift();
+  }
+
+  const W = cv.clientWidth, H = 420;
+  ctx.clearRect(0,0,W,H);
+  // stars background
+  ctx.fillStyle = 'white';
+  for (let i=0;i<40;i++){
+    const sx = (i*47.3) % W;
+    const sy = (i*89.7) % H;
+    ctx.fillRect(sx,sy,1.2,1.2);
+  }
+  const cx = W/2, cy = H/2;
+  // earth
+  ctx.fillStyle = '#3070d8';
+  ctx.beginPath(); ctx.arc(cx,cy,R_earth*scale,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#cfe0ff'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = '#cfe0ff'; ctx.font = '12px Vazirmatn';
+  ctx.fillText('زمین', cx-10, cy+4);
+  // trail
+  ctx.strokeStyle = 'rgba(133,183,235,0.6)'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  trail.forEach((p,i)=>{
+    const px = cx + p.x*scale;
+    const py = cy + p.y*scale;
+    if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  });
+  ctx.stroke();
+  // satellite
+  const px = cx + sat.x*scale;
+  const py = cy + sat.y*scale;
+  ctx.fillStyle = '#ffaa3a';
+  ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2); ctx.fill();
+  // velocity vec
+  const vmag = Math.sqrt(sat.vx*sat.vx+sat.vy*sat.vy);
+  if (vmag > 0) {
+    ctx.strokeStyle = '#1d9e75'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(px,py);
+    ctx.lineTo(px+sat.vx*scale*30, py+sat.vy*scale*30);
+    ctx.stroke();
+  }
+  // gravity vec (to center)
+  const r = Math.sqrt(sat.x*sat.x+sat.y*sat.y);
+  if (r > 0 && !crashed) {
+    ctx.strokeStyle = '#c43838'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(px,py);
+    ctx.lineTo(px - sat.x/r * 30, py - sat.y/r * 30);
+    ctx.stroke();
+  }
+  // status
+  if (crashed) {
+    ctx.fillStyle = '#ff5555'; ctx.font = 'bold 16px Vazirmatn';
+    ctx.fillText('💥 سقوط روی زمین!', W/2-70, 40);
+  }
+  if (escaped) {
+    ctx.fillStyle = '#1d9e75'; ctx.font = 'bold 16px Vazirmatn';
+    ctx.fillText('🚀 از مدار خارج شد!', W/2-70, 40);
+  }
+
+  // readouts
+  const altitude = (r - R_earth) / 1000;
+  const vCircular = Math.sqrt(GM/r) / 1000;
+  const vEscape = Math.sqrt(2*GM/r) / 1000;
+  document.getElementById('rv').textContent = (vmag/1000).toFixed(2) + ' km/s';
+  document.getElementById('rh').textContent = (altitude>0?altitude.toFixed(0):0) + ' km';
+  document.getElementById('rvc').textContent = vCircular.toFixed(2) + ' km/s';
+  document.getElementById('rve').textContent = vEscape.toFixed(2) + ' km/s';
+
+  requestAnimationFrame(step);
+}
+
+['h','v'].forEach(id => {
+  document.getElementById(id).addEventListener('input', e => {
+    document.getElementById('v'+id).textContent = (+e.target.value).toFixed(id==='v'?2:0);
+  });
+  document.getElementById(id).addEventListener('change', reset);
+});
+document.getElementById('reset').addEventListener('click', reset);
+document.querySelectorAll('.preset-row button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.getElementById('h').value = b.dataset.h;
+    document.getElementById('v').value = b.dataset.v;
+    document.getElementById('vh').textContent = b.dataset.h;
+    document.getElementById('vv').textContent = (+b.dataset.v).toFixed(2);
+    reset();
+  });
+});
+
+reset();
+requestAnimationFrame(step);
+</script>
+</body>
+</html>

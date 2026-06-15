@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>اثر فوتوالکتریک — شبیه‌ساز</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+<style>
+:root {
+  --bg: #ffffff; --surface: #f4f3ef; --text: #1a1a18; --muted: #5f5e5a;
+  --border: #e0ded7; --info: #185fa5; --info-bg: #e6f1fb;
+  --ok: #1d9e75; --ok-bg: #e3f5ed; --warn: #c9302c; --warn-bg: #f9e7e6;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+          --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+          --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e58b88; --warn-bg:#4a1f1d; }
+}
+body { margin: 0; padding: 16px; font-family: Vazirmatn, Tahoma, system-ui, sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.7; }
+h2 { color: var(--info); margin: 0 0 14px; font-size: 1.2em; }
+.app { max-width: 760px; margin: 0 auto; }
+.controls { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; background: var(--surface);
+  border-radius: 12px; padding: 14px; border: 1px solid var(--border); margin-bottom: 14px; }
+.ctrl { display: flex; flex-direction: column; gap: 6px; }
+.ctrl label { font-size: 13px; color: var(--muted); }
+.ctrl input[type=range] { width: 100%; }
+.ctrl select { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); font-family: inherit; }
+.canvas-wrap { background: #000; border-radius: 12px; padding: 14px; }
+canvas { display: block; width: 100%; height: 280px; border-radius: 8px; }
+.readout { display: grid; gap: 8px; grid-template-columns: 1fr 1fr 1fr; margin-top: 12px; }
+.box { background: var(--info-bg); color: var(--info); padding: 10px; border-radius: 8px;
+  text-align: center; font-size: 13px; }
+.box.ok { background: var(--ok-bg); color: var(--ok); }
+.box.warn { background: var(--warn-bg); color: var(--warn); }
+.box b { display: block; font-size: 17px; margin-top: 2px; }
+.status { text-align: center; margin: 10px 0; padding: 10px; border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--border); font-weight: 500; }
+.status.ok { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+.status.no { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+.formula { background: var(--surface); padding: 10px 14px; border-radius: 8px;
+  margin-top: 12px; font-size: 14px; text-align: center; border: 1px solid var(--border); }
+@media (max-width: 620px) { .controls, .readout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <h2>⚡ شبیه‌ساز اثر فوتوالکتریک</h2>
+
+  <div class="controls">
+    <div class="ctrl">
+      <label>فلز کاتد</label>
+      <select id="metal">
+        <option value="2.1">سزیم (W = 2.1 eV)</option>
+        <option value="2.3">پتاسیم (W = 2.3 eV)</option>
+        <option value="2.4" selected>سدیم (W = 2.4 eV)</option>
+        <option value="4.3">روی (W = 4.3 eV)</option>
+        <option value="4.7">مس (W = 4.7 eV)</option>
+        <option value="6.35">پلاتین (W = 6.35 eV)</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label>طول موج <span id="lamLabel">450 nm</span></label>
+      <input type="range" id="lam" min="200" max="800" value="450" step="5">
+    </div>
+    <div class="ctrl">
+      <label>شدت نور <span id="intLabel">50%</span></label>
+      <input type="range" id="intensity" min="0" max="100" value="50">
+    </div>
+    <div class="ctrl">
+      <label>ولتاژ متوقف‌کننده $V_s$: <span id="vsLabel">0.00 V</span></label>
+      <input type="range" id="vs" min="0" max="5" step="0.05" value="0">
+    </div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="cv" width="720" height="280"></canvas>
+  </div>
+
+  <div id="status" class="status">…</div>
+
+  <div class="readout">
+    <div class="box" id="boxE"><span>$E_{\text{فوتون}}$</span><b id="Eph">2.76 eV</b></div>
+    <div class="box" id="boxF"><span>$f$ (بسامد)</span><b id="freq">6.67 × 10¹⁴ Hz</b></div>
+    <div class="box" id="boxK"><span>$K_{\max}$</span><b id="Kmax">0.36 eV</b></div>
+  </div>
+
+  <div class="formula">
+    معادله‌ی اینشتین: $\;K_{\max} = hf - W\;$ &nbsp;|&nbsp; بسامد قطع: $\;f_0 = W/h$
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var DPR = Math.max(1, window.devicePixelRatio||1);
+  function fit(){
+    var w = cv.clientWidth, h = cv.clientHeight;
+    cv.width = w*DPR; cv.height = h*DPR;
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  window.addEventListener('resize', function(){ fit(); draw(); });
+
+  // const
+  var h = 6.626e-34, c = 3e8, e_ = 1.602e-19;
+
+  // λ → rgb (approx visible)
+  function wlToRGB(lam){
+    var R=0,G=0,B=0;
+    if(lam>=200 && lam<380){ R=0.5; G=0; B=0.7; }      // فرابنفش
+    else if(lam<440){ R=-(lam-440)/60; G=0; B=1; }
+    else if(lam<490){ R=0; G=(lam-440)/50; B=1; }
+    else if(lam<510){ R=0; G=1; B=-(lam-510)/20; }
+    else if(lam<580){ R=(lam-510)/70; G=1; B=0; }
+    else if(lam<645){ R=1; G=-(lam-645)/65; B=0; }
+    else if(lam<=780){ R=1; G=0; B=0; }
+    else { R=0.5; G=0; B=0; }                          // فروسرخ
+    var f = (lam>=380 && lam<=780)?1.0:0.5;
+    return [Math.round(R*255*f), Math.round(G*255*f), Math.round(B*255*f)];
+  }
+
+  var photons = []; // {x,y,dir} dir=1 down to cathode
+  var electrons = []; // {x,y,vx}
+
+  var W_eV, lam, intensity, Vs, Eph_eV, Kmax_eV, ejects, fcut;
+
+  function update(){
+    W_eV = parseFloat(document.getElementById('metal').value);
+    lam  = parseFloat(document.getElementById('lam').value);
+    intensity = parseFloat(document.getElementById('intensity').value);
+    Vs   = parseFloat(document.getElementById('vs').value);
+
+    var lam_m = lam * 1e-9;
+    var Eph_J = h*c/lam_m;
+    Eph_eV = Eph_J/e_;
+    Kmax_eV = Eph_eV - W_eV;
+    ejects = Kmax_eV > 0;
+    fcut = (W_eV * e_)/h;
+    var f = c/lam_m;
+
+    document.getElementById('lamLabel').textContent = lam.toFixed(0)+' nm';
+    document.getElementById('intLabel').textContent = intensity.toFixed(0)+'%';
+    document.getElementById('vsLabel').textContent = Vs.toFixed(2)+' V';
+    document.getElementById('Eph').textContent = Eph_eV.toFixed(2)+' eV';
+    document.getElementById('freq').textContent = (f/1e14).toFixed(2)+' × 10¹⁴ Hz';
+    document.getElementById('Kmax').textContent = ejects ? Kmax_eV.toFixed(2)+' eV' : '— (هیچ)';
+
+    var st = document.getElementById('status');
+    if(ejects){
+      var current_OK = Vs < Kmax_eV;
+      if(current_OK){
+        st.className = 'status ok';
+        st.innerHTML = '✅ الکترون‌ها بیرون می‌پرن و به آند می‌رسن — جریان داریم!';
+      } else {
+        st.className = 'status no';
+        st.innerHTML = '⚠️ $V_s > K_{\\max}/e$ — الکترون‌ها به آند نمی‌رسن، جریان قطع شد.';
+      }
+    } else {
+      st.className = 'status no';
+      st.innerHTML = '❌ $hf < W$ — هیچ الکترونی بیرون نمی‌پره. (بسامد قطع $f_0 = '+(fcut/1e14).toFixed(2)+' \\times 10^{14}$ Hz)';
+    }
+  }
+
+  function spawnPhoton(){
+    var w = cv.clientWidth;
+    var x = 50 + Math.random()*(w*0.4);
+    photons.push({x:x, y:0, lam:lam});
+  }
+  function spawnElectron(x){
+    var v0 = ejects ? Math.sqrt(2*Kmax_eV*e_/9.11e-31) : 0;
+    // scale for display
+    var vy = -1.5 - Math.min(2.5, Kmax_eV*1.5);
+    electrons.push({x:x, y:cv.clientHeight*0.78, vy:vy, alive:true});
+  }
+
+  var lastT = 0, spawnAcc = 0;
+  function loop(t){
+    if(!lastT) lastT = t;
+    var dt = Math.min(50, t - lastT); lastT = t;
+
+    var rate = intensity/100 * 0.4 + 0.02; // photons per ms baseline
+    spawnAcc += dt * rate;
+    while(spawnAcc >= 1){ spawnPhoton(); spawnAcc -= 1; }
+
+    draw(dt);
+    requestAnimationFrame(loop);
+  }
+
+  function draw(dt){
+    dt = dt || 16;
+    var w = cv.clientWidth, hpx = cv.clientHeight;
+
+    // background — cathode and anode
+    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg');
+    ctx.fillRect(0,0,w,hpx);
+
+    // cathode (metal, right)
+    ctx.fillStyle = '#bcbcbc';
+    ctx.fillRect(w*0.55, hpx*0.78, w*0.45, hpx*0.18);
+    ctx.fillStyle = '#7f7f7f';
+    ctx.font = 'bold 13px Vazirmatn, Tahoma';
+    ctx.textAlign = 'center';
+    ctx.fillText('کاتد (فلز)', w*0.77, hpx*0.94);
+
+    // anode (left)
+    ctx.fillStyle = '#888';
+    ctx.fillRect(0, hpx*0.4, 10, hpx*0.55);
+    ctx.fillText('آند', 30, hpx*0.45);
+
+    // wire bottom and voltmeter
+    ctx.strokeStyle = '#888'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(5, hpx*0.95); ctx.lineTo(5, hpx*1);
+    ctx.stroke();
+
+    // photons travel down-left at an angle
+    var col = wlToRGB(lam);
+    var colStr = 'rgb('+col[0]+','+col[1]+','+col[2]+')';
+
+    photons.forEach(function(p){
+      p.y += dt*0.25;
+      p.x += dt*0.08;
+      ctx.strokeStyle = colStr; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x-12, p.y-12);
+      ctx.stroke();
+      // glow
+      ctx.fillStyle = colStr;
+      ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2); ctx.fill();
+
+      // hit cathode?
+      if(p.y >= hpx*0.78 && p.x >= w*0.55 && p.x <= w){
+        p.dead = true;
+        if(ejects){
+          spawnElectron(p.x);
+        }
+      }
+    });
+    photons = photons.filter(function(p){ return !p.dead && p.y < hpx; });
+
+    // electrons travel left if Vs < Kmax/e, else slow down and reverse
+    var canReach = ejects && (Vs < Kmax_eV);
+    var deceler = ejects ? (Vs/Math.max(0.01,Kmax_eV)) * 0.01 : 0;
+
+    electrons.forEach(function(el){
+      el.x -= dt*0.12 * (1 - Vs/Math.max(0.1, Kmax_eV)*0.3);
+      el.y += el.vy * dt*0.02;
+      el.vy += deceler * dt*0.02;
+      ctx.fillStyle = '#3aa8ff';
+      ctx.beginPath(); ctx.arc(el.x,el.y,4,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#3aa8ff44'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(el.x,el.y,7,0,Math.PI*2); ctx.stroke();
+
+      if(el.x < 12 || el.y > hpx || el.y < -10){
+        el.dead = true;
+        if(el.x < 12 && canReach){
+          // counted as current
+        }
+      }
+    });
+    electrons = electrons.filter(function(e){ return !e.dead; });
+
+    // label
+    ctx.fillStyle = '#bbb';
+    ctx.font = '12px Vazirmatn, Tahoma';
+    ctx.textAlign = 'left';
+    ctx.fillText('λ = '+lam.toFixed(0)+' nm', 12, 18);
+    ctx.fillText('W = '+W_eV.toFixed(2)+' eV', 12, 35);
+  }
+
+  // wire up
+  ['metal','lam','intensity','vs'].forEach(function(id){
+    document.getElementById(id).addEventListener('input', update);
+  });
+
+  fit(); update();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

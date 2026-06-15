@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مولد جریان متناوب — حلقهٔ چرخان</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --N:#d6453c; --S:#2f6fd0; --loop:#a87800;
+    --wave-pos:#1d9e75; --wave-neg:#c43838;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --N:#f06a60; --S:#6aa0ee; --loop:#e0b860;
+      --wave-pos:#5dcaa5; --wave-neg:#f06a60;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;
+  }
+  .wrap{max-width:780px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .layout{display:grid; grid-template-columns:1.2fr 1fr; gap:14px;}
+  @media(max-width:680px){.layout{grid-template-columns:1fr;}}
+  .stage,.wavestage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:300px;}
+  .controls{padding:10px; border-top:1px solid var(--border); display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .slider-row{display:flex; gap:8px; align-items:center; flex:1 1 200px; font-size:13px; min-width:0;}
+  .slider-row span{color:var(--muted); white-space:nowrap;}
+  .slider-row input{flex:1; min-width:0;}
+  .slider-row .val{font-weight:700; min-width:40px; text-align:left;}
+  .btn{font-family:inherit; font-size:13px; padding:7px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); cursor:pointer;}
+  .readout{display:flex; gap:8px; padding:10px 12px; flex-wrap:wrap; border-top:1px solid var(--border); background:var(--bg);}
+  .chip{flex:1 1 80px; background:var(--info-bg); color:var(--info); border-radius:8px; padding:6px 8px; text-align:center; font-size:12.5px;}
+  .chip b{display:block; font-size:14px; margin-top:1px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>مولد جریان متناوب — حلقه چرخان در میدان مغناطیسی 🌊</h2>
+  <p class="sub">سرعتِ چرخش (بسامد) را تغییر بده و رابطهٔ بین حلقه و موجِ سینوسی را ببین.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <canvas id="cvLoop"></canvas>
+      <div class="controls">
+        <div class="slider-row">
+          <span>بسامد f</span>
+          <input type="range" id="freq" min="0.5" max="5" step="0.1" value="1.5">
+          <span class="val" id="fVal">۱.۵ Hz</span>
+        </div>
+        <button class="btn" id="bPause">⏸ توقف</button>
+      </div>
+    </div>
+
+    <div class="wavestage">
+      <canvas id="cvWave"></canvas>
+      <div class="readout">
+        <div class="chip">θ<b id="rTheta">۰°</b></div>
+        <div class="chip">Φ<b id="rPhi">۰</b></div>
+        <div class="chip">ε<b id="rEMF">۰</b></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const cvLoop = document.getElementById('cvLoop');
+const cvWave = document.getElementById('cvWave');
+const ctxL = cvLoop.getContext('2d');
+const ctxW = cvWave.getContext('2d');
+
+function resize(c){
+  const dpr = window.devicePixelRatio||1;
+  c.width = c.clientWidth*dpr; c.height = c.clientHeight*dpr;
+  c.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
+}
+function resizeAll(){ resize(cvLoop); resize(cvWave); }
+window.addEventListener('resize', resizeAll); resizeAll();
+
+let theta = 0;
+let freq = 1.5;
+let paused = false;
+let lastT = 0;
+const B = 0.5, A = 0.01; // SI
+
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || '#000';}
+function toFa(s){return (''+s).replace(/[0-9]/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);}
+
+const waveHistory = [];
+
+function step(t){
+  const dt = Math.min(50, t-lastT)/1000; lastT = t;
+  if(!paused){
+    theta += 2 * Math.PI * freq * dt;
+    if(theta > 2*Math.PI) theta -= 2*Math.PI;
+  }
+  drawLoop();
+  drawWave();
+  updateReadouts();
+  requestAnimationFrame(step);
+}
+requestAnimationFrame(step);
+
+function drawLoop(){
+  const W = cvLoop.clientWidth, H = cvLoop.clientHeight;
+  ctxL.clearRect(0,0,W,H);
+  // Magnet poles (N left, S right)
+  ctxL.fillStyle = getCss('--N'); ctxL.fillRect(10, 60, 40, H-120);
+  ctxL.fillStyle = getCss('--S'); ctxL.fillRect(W-50, 60, 40, H-120);
+  ctxL.fillStyle = '#fff'; ctxL.font='bold 18px Vazirmatn'; ctxL.textAlign='center'; ctxL.textBaseline='middle';
+  ctxL.fillText('N', 30, H/2); ctxL.fillText('S', W-30, H/2);
+  ctxL.textBaseline='alphabetic';
+  // Field lines (horizontal arrows between poles)
+  ctxL.strokeStyle = getCss('--info'); ctxL.lineWidth = 1.5; ctxL.globalAlpha = 0.4;
+  for(let i=0;i<5;i++){
+    const y = 80 + i*((H-160)/4);
+    ctxL.beginPath(); ctxL.moveTo(55, y); ctxL.lineTo(W-55, y); ctxL.stroke();
+    ctxL.beginPath();
+    ctxL.moveTo(W-65, y); ctxL.lineTo(W-72, y-4); ctxL.moveTo(W-65, y); ctxL.lineTo(W-72, y+4);
+    ctxL.stroke();
+  }
+  ctxL.globalAlpha = 1;
+
+  // Loop (rotating)
+  const cx = W/2, cy = H/2;
+  const Rfull = 60;
+  const w = Math.abs(Rfull * Math.cos(theta));
+  ctxL.beginPath();
+  ctxL.ellipse(cx, cy, Math.max(w, 3), Rfull, 0, 0, Math.PI*2);
+  ctxL.fillStyle = 'rgba(168,120,0,.15)'; ctxL.fill();
+  ctxL.strokeStyle = getCss('--loop'); ctxL.lineWidth = 4;
+  ctxL.stroke();
+
+  // Normal vector
+  const nx = Math.cos(theta), ny = -Math.sin(theta)*0;  // keeping 2D representation in plane
+  ctxL.strokeStyle = getCss('--N'); ctxL.lineWidth = 2;
+  ctxL.setLineDash([4,4]);
+  // show normal as line extending right from center based on cos(theta) sign
+  ctxL.beginPath(); ctxL.moveTo(cx, cy); ctxL.lineTo(cx + Math.cos(theta)*50, cy); ctxL.stroke();
+  ctxL.setLineDash([]);
+
+  // current direction indicator on top edge of loop (depending on dPhi/dt sign which equals -sin(theta))
+  const inducedSign = -Math.sin(theta);
+  if(Math.abs(inducedSign) > 0.1){
+    ctxL.fillStyle = getCss('--ok'); ctxL.font='bold 18px Vazirmatn';
+    ctxL.fillText(inducedSign > 0 ? '↑' : '↓', cx + Math.max(w,3) - 5, cy - Rfull/2);
+    ctxL.fillText(inducedSign > 0 ? '↓' : '↑', cx + Math.max(w,3) - 5, cy + Rfull/2 + 8);
+  }
+}
+
+function drawWave(){
+  const W = cvWave.clientWidth, H = cvWave.clientHeight;
+  ctxW.clearRect(0,0,W,H);
+  // axes
+  ctxW.strokeStyle = getCss('--border'); ctxW.lineWidth = 1;
+  ctxW.beginPath();
+  ctxW.moveTo(20, H/2); ctxW.lineTo(W-10, H/2); // x-axis
+  ctxW.moveTo(20, 10); ctxW.lineTo(20, H-10);    // y-axis
+  ctxW.stroke();
+  ctxW.fillStyle = getCss('--muted'); ctxW.font='11px Vazirmatn';
+  ctxW.fillText('t', W-15, H/2-3);
+  ctxW.fillText('ε(t)', 4, 14);
+
+  // Plot sin wave
+  ctxW.strokeStyle = getCss('--wave-pos'); ctxW.lineWidth = 2;
+  ctxW.beginPath();
+  const amplitude = H/2 - 20;
+  // window of 2 periods in display
+  const periods = 2;
+  for(let px = 20; px < W-10; px++){
+    const fracX = (px - 20) / (W - 30);
+    const t = fracX * periods * 2*Math.PI; // theta range
+    const y = H/2 - Math.sin(t) * amplitude * 0.9;
+    if(px === 20) ctxW.moveTo(px, y);
+    else ctxW.lineTo(px, y);
+  }
+  ctxW.stroke();
+
+  // Marker for current theta (in first period)
+  const x_mark = 20 + (theta / (periods*2*Math.PI)) * (W-30);
+  const y_mark = H/2 - Math.sin(theta) * amplitude * 0.9;
+  ctxW.fillStyle = getCss('--N');
+  ctxW.beginPath(); ctxW.arc(x_mark, y_mark, 5, 0, Math.PI*2); ctxW.fill();
+}
+
+function updateReadouts(){
+  const deg = (theta * 180/Math.PI) % 360;
+  document.getElementById('rTheta').textContent = toFa(deg.toFixed(0)) + '°';
+  const phi = B * A * Math.cos(theta) * 1000; // mWb
+  document.getElementById('rPhi').textContent = toFa(phi.toFixed(2)) + ' mWb';
+  const emf = B * A * 2*Math.PI*freq * Math.sin(theta) * 1000; // mV (approx)
+  document.getElementById('rEMF').textContent = toFa(emf.toFixed(1)) + ' mV';
+}
+
+document.getElementById('freq').oninput = e=>{
+  freq = +e.target.value;
+  document.getElementById('fVal').textContent = toFa(freq.toFixed(1)) + ' Hz';
+};
+document.getElementById('bPause').onclick = ()=>{
+  paused = !paused;
+  document.getElementById('bPause').textContent = paused ? '▶ ادامه' : '⏸ توقف';
+};
+</script>
+</body>
+</html>

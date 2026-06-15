@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>میدان مغناطیسی سیملوله</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --hint-c:#a87800; --hint-bg:#fef6e0;
+    --I:#c2410c; --B:#7a4dbd; --field:#9b8acc;
+    --N:#d6453c; --S:#2f6fd0;
+    --wire:#3a3835;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --hint-c:#e0b860; --hint-bg:#4a3a15;
+      --I:#fb923c; --B:#b08be8; --field:#b9a8e0;
+      --N:#f06a60; --S:#6aa0ee;
+      --wire:#cccac4;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:360px; touch-action:none;}
+  .readout{padding:12px; border-top:1px solid var(--border); display:flex; gap:10px; flex-wrap:wrap;}
+  .chip{flex:1 1 130px; background:var(--info-bg); color:var(--info); border-radius:10px; padding:8px 12px; text-align:center; font-size:14px;}
+  .chip b{display:block; font-size:16px; font-weight:700; margin-top:2px;}
+  .chip.ok{background:var(--ok-bg); color:var(--ok);}
+
+  .controls{margin-top:14px; display:grid; gap:10px;}
+  .slider-row{display:grid; grid-template-columns:120px 1fr 70px; gap:10px; align-items:center; font-size:14px;}
+  .slider-row span:first-child{color:var(--muted);}
+  .slider-row .val{font-weight:700; color:var(--text); text-align:left;}
+  input[type=range]{accent-color:var(--info); height:6px;}
+
+  .row{display:flex; gap:8px; flex-wrap:wrap;}
+  .btn{font-family:inherit; font-size:14px; padding:9px 14px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text); cursor:pointer; transition:.12s; flex:1 1 140px;}
+  .btn:hover{background:var(--info-bg); border-color:var(--info); color:var(--info);}
+  .btn.on{background:var(--info); color:#fff; border-color:var(--info);}
+
+  .hint{margin-top:12px; background:var(--hint-bg); color:var(--hint-c);
+    border-radius:10px; padding:10px 14px; font-size:13.5px;
+    border-right:3px solid var(--hint-c);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🧲 سیملوله — آهنربای الکتریکی</h2>
+  <p class="sub">یه سیمِ مارپیچی که میدانِ تقریباً یکنواخت داخلش می‌سازه. تعدادِ دور (N)، طول (L)، و جریان (I) رو تغییر بده و ببین چطور میدان عوض می‌شه. فرمول: $B = \mu_0\, n\, I$ که $n=N/L$ ـه.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">چگالی دور n = N/L <b id="nVal">—</b></div>
+      <div class="chip ok">شدّت میدان B = μ₀nI <b id="BVal">—</b></div>
+      <div class="chip">جهت میدان <b id="dirVal">—</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="slider-row">
+      <span>تعدادِ دور N</span>
+      <input type="range" id="nSlider" min="4" max="20" step="1" value="10">
+      <span class="val" id="nSliderVal">۱۰</span>
+    </div>
+    <div class="slider-row">
+      <span>طول L (cm)</span>
+      <input type="range" id="lSlider" min="6" max="20" step="1" value="14">
+      <span class="val" id="lSliderVal">۱۴</span>
+    </div>
+    <div class="slider-row">
+      <span>جریان I (A)</span>
+      <input type="range" id="iSlider" min="0.5" max="5" step="0.1" value="2">
+      <span class="val" id="iSliderVal">۲٫۰</span>
+    </div>
+    <div class="row">
+      <button class="btn on" id="dirR">جهت جریان: عادی</button>
+      <button class="btn" id="dirL">معکوس کردن جریان</button>
+      <button class="btn on" id="tField">نمایش خطوط میدان</button>
+    </div>
+  </div>
+
+  <div class="hint">
+    💡 توجه کن: <b>هرچه N بیشتر یا L کمتر (n=N/L بزرگ‌تر)</b>، خطوط داخل سیملوله متراکم‌تر و میدان قوی‌تر. در خارج سیملوله، خطوط مثل یه آهنربای میله‌ای دیپلی توزیع می‌شن — به همین خاطر بهش می‌گن «آهنربای الکتریکی». اگه جریان رو معکوس کنی، قطب‌های N و S جابه‌جا می‌شن.
+  </div>
+</div>
+
+<script id="mathjax-config">
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var W,H,cx,cy;
+
+  var N = 10;          // turns
+  var L = 14;          // length in cm
+  var I = 2;
+  var dirRight = true;  // current direction convention: top wires ⊙, bottom wires ⊗ (or reversed)
+  var showField = true;
+
+  function toFa(s){return (''+s).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];}).replace('.','٫');}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  function draw(){
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=rect.width; H=rect.height; cx=W/2; cy=H/2;
+    ctx.clearRect(0,0,W,H);
+
+    // Solenoid dimensions (in px)
+    var solL_max = W * 0.6, solL_min = W * 0.25;
+    var solL = solL_min + (L - 6) / (20 - 6) * (solL_max - solL_min);
+    var solR = 40;        // radius
+    var xL = cx - solL/2, xR = cx + solL/2;
+    var yT = cy - solR, yB = cy + solR;
+
+    // Draw field lines first (so wires draw on top)
+    if (showField){
+      drawFieldLines(xL, xR, solR);
+    }
+
+    // Draw the solenoid as a series of wire cross-sections (top and bottom),
+    //   PLUS subtle helical hints so the student sees the wire is one continuous coil:
+    //   (a) a faint dashed vertical line behind each turn — that turn is a loop wrapping around
+    //   (b) a faint diagonal connecting bottom of turn i to top of turn i+1 — the helix advances
+    // Each turn creates one ⊙ on top and one ⊗ on bottom (or reversed).
+    var spacing = solL / Math.max(1, N);
+
+    // (a) — vertical dashed lines behind each loop position
+    ctx.save();
+    ctx.strokeStyle = cssv('--I'); ctx.globalAlpha = 0.18;
+    ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+    for (var i = 0; i < N; i++){
+      var wx = xL + (i + 0.5) * spacing;
+      ctx.beginPath();
+      ctx.moveTo(wx, yT - 4); ctx.lineTo(wx, yB + 4);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+    ctx.restore();
+
+    // (b) — diagonal hints that the helix continues from one turn to the next.
+    //   Bottom of turn i → top of turn i+1 (the front-facing diagonal of the helix when viewed from the side)
+    ctx.save();
+    ctx.strokeStyle = cssv('--I'); ctx.globalAlpha = 0.28;
+    ctx.lineWidth = 1.4; ctx.setLineDash([5, 3]);
+    ctx.lineCap = 'round';
+    for (var i = 0; i < N - 1; i++){
+      var wx1 = xL + (i + 0.5) * spacing;
+      var wx2 = xL + (i + 1.5) * spacing;
+      ctx.beginPath();
+      ctx.moveTo(wx1, yB);
+      ctx.lineTo(wx2, yT);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+    ctx.restore();
+
+    // External leads — show wires entering/exiting solenoid at the ends, hinting it's wired up
+    ctx.save();
+    ctx.strokeStyle = cssv('--I'); ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.globalAlpha = 0.55;
+    // Left lead (entering the top of the first turn)
+    ctx.beginPath();
+    ctx.moveTo(xL + 0.5*spacing, yT);
+    ctx.lineTo(xL - 14, yT - 10);
+    ctx.stroke();
+    // Right lead (exiting the bottom of the last turn)
+    ctx.beginPath();
+    ctx.moveTo(xL + (N - 0.5)*spacing, yB);
+    ctx.lineTo(xR + 14, yB + 10);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    // Now draw the wire cross-sections on top of the hints
+    ctx.save();
+    for (var i = 0; i < N; i++){
+      var wx = xL + (i + 0.5) * spacing;
+      drawWireCross(wx, yT, dirRight);            // top wire
+      drawWireCross(wx, yB, !dirRight);           // bottom wire (opposite current direction)
+    }
+    ctx.restore();
+
+    // Draw boundaries of solenoid
+    ctx.save();
+    ctx.strokeStyle = cssv('--border');
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4,4]);
+    ctx.beginPath();
+    ctx.moveTo(xL, yT - 6); ctx.lineTo(xR, yT - 6);
+    ctx.moveTo(xL, yB + 6); ctx.lineTo(xR, yB + 6);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // Determine pole labels.
+    // Convention: top wires ⊙ (current out of page), bottom wires ⊗.
+    //   Right-hand grip rule: thumb in direction of fingers' curl gives B direction inside coil.
+    //   Looking at the coil from the side: top current ⊙ means at top of loop, current is toward viewer; bottom is away.
+    //   Inside the coil, B points to the LEFT (using right-hand rule for the loop seen end-on).
+    //   So LEFT side = N pole, RIGHT side = S pole.
+    var nOnLeft = dirRight;   // if dirRight, B points to the left → N on left
+    drawPole(xL - 22, cy, nOnLeft ? 'N' : 'S', nOnLeft ? cssv('--N') : cssv('--S'));
+    drawPole(xR + 22, cy, nOnLeft ? 'S' : 'N', nOnLeft ? cssv('--S') : cssv('--N'));
+
+    // Compute readouts
+    var n = N / L * 100;   // turns per meter (since L is in cm)
+    var mu0 = 4 * Math.PI * 1e-7;
+    var Btesla = mu0 * n * I;
+    document.getElementById('nVal').textContent = toFa(n.toFixed(0)) + ' turns/m';
+    document.getElementById('BVal').textContent = toFa((Btesla * 1e6).toFixed(2)) + ' μT';
+    document.getElementById('dirVal').textContent = nOnLeft ? 'داخل: ← (به سمت N)' : 'داخل: → (به سمت N)';
+  }
+
+  function drawWireCross(x, y, isOut){
+    ctx.save();
+    ctx.fillStyle = cssv('--I');
+    ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6;
+    if (isOut){
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(x, y, 2.6, 0, Math.PI*2); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.moveTo(x-4, y-4); ctx.lineTo(x+4, y+4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x+4, y-4); ctx.lineTo(x-4, y+4); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawPole(x, y, label, color){
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font='bold 16px Vazirmatn';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(label, x, y);
+    ctx.restore();
+  }
+
+  function drawFieldLines(xL, xR, solR){
+    // Inside solenoid: parallel arrows pointing in B direction (left or right depending on current direction)
+    // Outside: field loops around back from one end to the other
+    var bDir = dirRight ? -1 : +1;   // -1 = left (B points left inside), +1 = right
+
+    // Strength factor scales with I (and indirectly with N/L through density).
+    // Default (I=2, N=10, L=14) gives factor ≈ 1. We use it to scale line widths AND
+    // the number of inner/outer field lines so the student sees the field DENSITY
+    // visually change when sliders move.
+    var nI = (N / L) * I;
+    var sFactor = Math.min(3.0, Math.max(0.3, nI / 1.43));  // 1.43 = (10/14)*2
+    ctx.save();
+    ctx.strokeStyle = cssv('--field');
+    ctx.lineWidth = 1.0 + sFactor * 0.9;
+    ctx.globalAlpha = Math.min(0.95, 0.45 + sFactor * 0.18);
+
+    // Inside parallel arrows — count scales with nI: 3 rows at min, up to 9 rows at high nI.
+    var rows = Math.round(3 + sFactor * 2.2);
+    rows = Math.max(3, Math.min(9, rows));
+    for (var r = 0; r < rows; r++){
+      var t = (r + 0.5) / rows;
+      var y = (cy - solR) + t * (2 * solR) - 0;   // y goes from (cy-solR) to (cy+solR)
+      // Adjust so it stays comfortably inside
+      var y2 = cy - solR + 8 + t * (2*solR - 16);
+      // Draw line from xL+10 to xR-10
+      ctx.beginPath();
+      ctx.moveTo(xL + 12, y2); ctx.lineTo(xR - 12, y2);
+      ctx.stroke();
+      // Arrowhead at one end based on bDir
+      var headX = bDir > 0 ? xR - 12 : xL + 12;
+      var tipX = headX;
+      var backX = headX + (bDir > 0 ? -8 : 8);
+      ctx.fillStyle = cssv('--field');
+      ctx.beginPath();
+      ctx.moveTo(tipX, y2);
+      ctx.lineTo(backX, y2 - 4);
+      ctx.lineTo(backX, y2 + 4);
+      ctx.closePath(); ctx.fill();
+    }
+
+    // Outside field loops: arcs that go from one end around to the other end
+    var arcRadii = [solR + 22, solR + 40, solR + 60];
+    arcRadii.forEach(function(rad){
+      // Loop on top
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad, Math.PI, 2*Math.PI, false);
+      ctx.stroke();
+      // Wait, arcs centered at cx,cy with radius rad would mostly overlap solenoid.
+      // Better: draw "loop arcs" connecting the two ends.
+      // For each arc, do a bezier from (xL, cy) outward and around to (xR, cy)
+    });
+
+    // Use bezier loops for cleaner outside field
+    ctx.lineWidth = 1.0 + sFactor * 0.7;
+    ctx.beginPath();
+    var ends = [{x: xL, y: cy}, {x: xR, y: cy}];
+    var topY = cy - solR - 15;
+    var bottomY = cy + solR + 15;
+    // Number of outer arcs scales with nI: 2 at low, up to 6 at high.
+    var arcCount = Math.max(2, Math.min(6, Math.round(2 + sFactor * 1.5)));
+    var outerOffsets = [];
+    for (var oi = 0; oi < arcCount; oi++){
+      outerOffsets.push(20 + oi * 28);
+    }
+    outerOffsets.forEach(function(off){
+      // Top arc
+      var c1x = xL - off*1.5, c1y = topY - off;
+      var c2x = xR + off*1.5, c2y = topY - off;
+      ctx.moveTo(xL, cy);
+      ctx.bezierCurveTo(c1x, c1y, c2x, c2y, xR, cy);
+      // Bottom arc
+      var b1y = bottomY + off;
+      ctx.moveTo(xL, cy);
+      ctx.bezierCurveTo(xL - off*1.5, b1y, xR + off*1.5, b1y, xR, cy);
+    });
+    ctx.stroke();
+
+    // Arrowheads on outer loops at top/bottom midpoints.
+    // Outside the solenoid, field lines complete the closed loop — so they point OPPOSITE to the
+    //   inside direction. If inside B is LEFT (bDir = -1, N on left), then above/below the solenoid,
+    //   B flows from N (left) up and around to S (right) → at top center, outside arrow points RIGHT.
+    function midArrow(xMid, yMid, dirSign){
+      ctx.beginPath();
+      ctx.fillStyle = cssv('--field');
+      var hx = xMid + dirSign * 4;
+      ctx.moveTo(hx, yMid);
+      ctx.lineTo(hx - dirSign*7, yMid - 4);
+      ctx.lineTo(hx - dirSign*7, yMid + 4);
+      ctx.closePath(); ctx.fill();
+    }
+    outerOffsets.forEach(function(off){
+      var topMidY = topY - off * 1.4;
+      var botMidY = bottomY + off * 1.4;
+      midArrow(cx, topMidY, -bDir);     // outside top: opposite of inside
+      midArrow(cx, botMidY, -bDir);     // outside bottom: opposite of inside
+    });
+
+    ctx.restore();
+  }
+
+  document.getElementById('nSlider').addEventListener('input', function(e){
+    N = +e.target.value;
+    document.getElementById('nSliderVal').textContent = toFa(N);
+    draw();
+  });
+  document.getElementById('lSlider').addEventListener('input', function(e){
+    L = +e.target.value;
+    document.getElementById('lSliderVal').textContent = toFa(L);
+    draw();
+  });
+  document.getElementById('iSlider').addEventListener('input', function(e){
+    I = +e.target.value;
+    document.getElementById('iSliderVal').textContent = toFa(I.toFixed(1));
+    draw();
+  });
+  document.getElementById('dirR').addEventListener('click', function(){
+    dirRight = true;
+    this.classList.add('on');
+    document.getElementById('dirL').classList.remove('on');
+    draw();
+  });
+  document.getElementById('dirL').addEventListener('click', function(){
+    dirRight = false;
+    this.classList.add('on');
+    document.getElementById('dirR').classList.remove('on');
+    draw();
+  });
+  document.getElementById('tField').addEventListener('click', function(){
+    showField = !showField;
+    this.classList.toggle('on', showField);
+    draw();
+  });
+
+  window.addEventListener('resize', draw);
+  draw();
+})();
+</script>
+</body>
+</html>

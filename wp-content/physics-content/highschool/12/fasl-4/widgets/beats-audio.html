@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ضربان صوتی — دو فرکانس، یک خروجی</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed; --warn:#a87800; --warn-bg:#fef6e0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e0b860; --warn-bg:#4a3a15;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:980px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .layout{display:grid; grid-template-columns:1fr 260px; gap:12px;}
+  @media(max-width:760px){.layout{grid-template-columns:1fr;}}
+  .stage{background:linear-gradient(to bottom, #f7f9fc, var(--bg)); border:1px solid var(--border); border-radius:14px; padding:8px;}
+  @media(prefers-color-scheme:dark){.stage{background:linear-gradient(to bottom, #2a3040, var(--bg));}}
+  canvas{display:block; width:100%; height:160px;}
+  .row-lbl{font-size:11.5px; color:var(--muted); padding:4px 8px; text-align:center;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:13px; margin:8px 0 6px; color:var(--muted); text-transform:uppercase;}
+  .panel h3:first-child{margin-top:0;}
+  .slider-row{display:grid; grid-template-columns:1fr 70px; gap:6px; align-items:center; font-size:13px; margin-bottom:4px;}
+  .val{font-weight:700; color:var(--info); text-align:left; font-variant-numeric:tabular-nums;}
+  input[type=range]{width:100%; accent-color:var(--info);}
+  .btn{background:var(--info); color:white; border:none; padding:10px 14px; border-radius:8px; font-family:inherit; font-size:14px; cursor:pointer; width:100%; margin-top:8px;}
+  .btn.alt{background:#c43838;}
+  .btn.ok{background:var(--ok);}
+  .readout{display:grid; grid-template-columns:1fr; gap:6px; margin-top:6px;}
+  .read{padding:6px 8px; background:var(--info-bg); color:var(--info); border-radius:6px; text-align:center; font-size:12px;}
+  .read.big{background:var(--warn-bg); color:var(--warn); font-size:14px; font-weight:700;}
+  .read b{display:block; font-size:14px; margin-top:2px;}
+  .note{font-size:12px; padding:8px; background:var(--ok-bg); color:var(--ok); border-radius:8px; margin-top:8px; line-height:1.6;}
+  .preset-row{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;}
+  .preset{padding:5px 10px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:11px; cursor:pointer; font-family:inherit; color:var(--text);}
+  .preset:hover{background:var(--info-bg); color:var(--info);}
+</style>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']], processEscapes: true },
+    startup: { pageReady: function () { return MathJax.startup.defaultPageReady().then(function () {
+      var obs = new MutationObserver(function () { MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); }); });
+      obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+    }); } }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>ضربان صوتی 🎵 — دو فرکانس، یک گوش 👂</h2>
+  <p class="sub">دو موجِ صوتی با فرکانس‌های انتخابی پخش می‌شن. اگه فرکانس‌ها نزدیک باشن، می‌شنوی «وا-وا-وا» — این ضربانه. بسامد ضربان = $|f_1 - f_2|$. <b>دکمه‌ی پخش رو کلیک کن!</b></p>
+
+  <div class="layout">
+    <div class="stage">
+      <div class="row-lbl">↓ موج اول (آبی) + موج دوم (قرمز) — هر کدوم جدا</div>
+      <canvas id="cv1"></canvas>
+      <div class="row-lbl">↓ موجِ جمع‌شده — این چیزیه که گوشت می‌شنوه (دامنه‌ی متغیر = ضربان)</div>
+      <canvas id="cv2"></canvas>
+    </div>
+
+    <div class="panel">
+      <h3>فرکانس‌ها (Hz)</h3>
+      <div class="slider-row"><label>$f_1$ (آبی)</label><span class="val" id="vf1">۴۴۰</span></div>
+      <input type="range" id="f1" min="100" max="800" step="1" value="440">
+
+      <div class="slider-row"><label>$f_2$ (قرمز)</label><span class="val" id="vf2">۴۴۴</span></div>
+      <input type="range" id="f2" min="100" max="800" step="1" value="444">
+
+      <h3>پیش‌فرض‌های جالب</h3>
+      <div class="preset-row">
+        <button class="preset" data-f1="440" data-f2="441">۴۴۰ و ۴۴۱<br>(۱ ضربان/ث)</button>
+        <button class="preset" data-f1="440" data-f2="444">۴۴۰ و ۴۴۴<br>(۴ ضربان/ث)</button>
+        <button class="preset" data-f1="440" data-f2="450">۴۴۰ و ۴۴۵<br>(۱۰ ضربان/ث)</button>
+        <button class="preset" data-f1="440" data-f2="440">۴۴۰ و ۴۴۰<br>(صفر! 🎯)</button>
+      </div>
+
+      <h3>صدا</h3>
+      <div class="slider-row"><label>بلندی (٪)</label><span class="val" id="vV">۳۰</span></div>
+      <input type="range" id="V" min="0" max="100" step="5" value="30">
+
+      <button class="btn ok" id="play">▶ پخش</button>
+      <button class="btn alt" id="stop">⏹ توقف</button>
+
+      <div class="readout">
+        <div class="read big">بسامد ضربان: <b id="rB">۴ Hz</b></div>
+        <div class="read">دوره‌ی ضربان: <b id="rTb">۰٫۲۵ s</b></div>
+        <div class="read">میانگین: <b id="rFav">۴۴۲ Hz</b></div>
+      </div>
+
+      <div class="note">
+        🎧 <b>تست:</b> $f_1$ و $f_2$ رو نزدیک‌تر کن. می‌شنوی ضربان‌ها کندتر می‌شن. وقتی هم‌بسامد بشن، صدا یکنواخت می‌شه — این روشِ کوک‌کننده‌ی پیانوست!
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fa=n=>n.toLocaleString('fa-IR');
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const cv1=$('cv1'), c1=cv1.getContext('2d');
+const cv2=$('cv2'), c2=cv2.getContext('2d');
+let DPR=window.devicePixelRatio||1;
+function fit(cv,c){const r=cv.getBoundingClientRect(); cv.width=r.width*DPR; cv.height=r.height*DPR; c.setTransform(DPR,0,0,DPR,0,0); return {w:r.width, h:r.height};}
+
+let f1=440, f2=444, V=0.30;
+let actx=null, osc1=null, osc2=null, g1=null, g2=null;
+let playing=false;
+
+function startAudio(){
+  if(playing) return;
+  if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)();
+  if(actx.state==='suspended') actx.resume();
+  osc1 = actx.createOscillator(); osc1.type='sine'; osc1.frequency.value=f1;
+  g1 = actx.createGain(); g1.gain.value=V;
+  osc1.connect(g1).connect(actx.destination);
+  osc1.start();
+  osc2 = actx.createOscillator(); osc2.type='sine'; osc2.frequency.value=f2;
+  g2 = actx.createGain(); g2.gain.value=V;
+  osc2.connect(g2).connect(actx.destination);
+  osc2.start();
+  playing=true;
+  $('play').textContent='🔊 درحال پخش...';
+  $('play').classList.remove('ok');
+  $('play').style.background='#a87800';
+}
+function stopAudio(){
+  if(!playing) return;
+  osc1.stop(); osc2.stop();
+  osc1.disconnect(); osc2.disconnect();
+  g1.disconnect(); g2.disconnect();
+  playing=false;
+  $('play').textContent='▶ پخش';
+  $('play').classList.add('ok');
+  $('play').style.background='';
+}
+function updateAudio(){
+  if(!playing) return;
+  osc1.frequency.setValueAtTime(f1, actx.currentTime);
+  osc2.frequency.setValueAtTime(f2, actx.currentTime);
+  g1.gain.setValueAtTime(V, actx.currentTime);
+  g2.gain.setValueAtTime(V, actx.currentTime);
+}
+
+function draw(){
+  // top panel — two separate waves
+  const r1=fit(cv1, c1);
+  c1.fillStyle=css('--surface'); c1.fillRect(0,0,r1.w,r1.h);
+  const cy=r1.h/2;
+  c1.strokeStyle=css('--border'); c1.beginPath(); c1.moveTo(0, cy); c1.lineTo(r1.w, cy); c1.stroke();
+  // pick a display window — say 30 ms
+  const Twin = 0.03; // s
+  c1.lineWidth=1.5;
+  c1.strokeStyle='#0a6cc4';
+  c1.beginPath();
+  for(let px=0; px<r1.w; px++){
+    const t = (px/r1.w)*Twin;
+    const y = Math.sin(2*Math.PI*f1*t);
+    if(px===0) c1.moveTo(px, cy - y*(r1.h*0.35));
+    else c1.lineTo(px, cy - y*(r1.h*0.35));
+  }
+  c1.stroke();
+  c1.strokeStyle='#c43838';
+  c1.beginPath();
+  for(let px=0; px<r1.w; px++){
+    const t = (px/r1.w)*Twin;
+    const y = Math.sin(2*Math.PI*f2*t);
+    if(px===0) c1.moveTo(px, cy - y*(r1.h*0.35));
+    else c1.lineTo(px, cy - y*(r1.h*0.35));
+  }
+  c1.stroke();
+  c1.fillStyle='#0a6cc4'; c1.font='11px Vazirmatn'; c1.textAlign='left';
+  c1.fillText('f₁='+fa(f1)+' Hz', 8, 14);
+  c1.fillStyle='#c43838';
+  c1.fillText('f₂='+fa(f2)+' Hz', 8, 28);
+
+  // bottom panel — sum (beat envelope visible)
+  const r2=fit(cv2, c2);
+  c2.fillStyle=css('--surface'); c2.fillRect(0,0,r2.w,r2.h);
+  c2.strokeStyle=css('--border'); c2.beginPath(); c2.moveTo(0, r2.h/2); c2.lineTo(r2.w, r2.h/2); c2.stroke();
+  const Twide = 2/Math.max(1, Math.abs(f1-f2)); // show 2 beat cycles
+  const Twin2 = Math.max(0.05, Math.min(2.0, Twide));
+  c2.lineWidth=1.5;
+  c2.strokeStyle=css('--info');
+  c2.beginPath();
+  for(let px=0; px<r2.w; px++){
+    const t = (px/r2.w)*Twin2;
+    const y = Math.sin(2*Math.PI*f1*t) + Math.sin(2*Math.PI*f2*t);
+    if(px===0) c2.moveTo(px, r2.h/2 - y*(r2.h*0.20));
+    else c2.lineTo(px, r2.h/2 - y*(r2.h*0.20));
+  }
+  c2.stroke();
+  // envelope guide
+  c2.strokeStyle='rgba(168, 120, 0, 0.6)'; c2.lineWidth=2; c2.setLineDash([4,4]);
+  c2.beginPath();
+  for(let px=0; px<r2.w; px++){
+    const t=(px/r2.w)*Twin2;
+    const env = 2*Math.abs(Math.cos(Math.PI*(f1-f2)*t));
+    c2.moveTo(px, r2.h/2 - env*(r2.h*0.20));
+    c2.lineTo(px, r2.h/2 - env*(r2.h*0.20) + 1);
+  }
+  c2.stroke();
+  c2.setLineDash([]);
+  c2.fillStyle=css('--warn'); c2.font='11px Vazirmatn'; c2.textAlign='right';
+  c2.fillText('پاکَتِ ضربان (envelope)', r2.w-8, 14);
+
+  // readouts
+  const beat = Math.abs(f1-f2);
+  $('rB').textContent = fa(beat)+' Hz';
+  $('rTb').textContent = beat>0 ? fa((1/beat).toFixed(3))+' s' : '∞';
+  $('rFav').textContent = fa(((f1+f2)/2).toFixed(1))+' Hz';
+}
+
+['f1','f2'].forEach(id=>{
+  $(id).addEventListener('input', e=>{
+    const v=parseInt(e.target.value);
+    if(id==='f1'){ f1=v; $('vf1').textContent=fa(v); }
+    if(id==='f2'){ f2=v; $('vf2').textContent=fa(v); }
+    updateAudio();
+    draw();
+  });
+});
+$('V').addEventListener('input', e=>{ V=parseInt(e.target.value)/100; $('vV').textContent=fa(parseInt(e.target.value)); updateAudio(); });
+$('play').addEventListener('click', startAudio);
+$('stop').addEventListener('click', stopAudio);
+document.querySelectorAll('.preset').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    f1=parseInt(btn.dataset.f1); f2=parseInt(btn.dataset.f2);
+    $('f1').value=f1; $('f2').value=f2;
+    $('vf1').textContent=fa(f1); $('vf2').textContent=fa(f2);
+    updateAudio(); draw();
+  });
+});
+window.addEventListener('resize', draw);
+window.addEventListener('beforeunload', stopAudio);
+draw();
+setInterval(draw, 200); // refresh wave display
+</script>
+</body>
+</html>

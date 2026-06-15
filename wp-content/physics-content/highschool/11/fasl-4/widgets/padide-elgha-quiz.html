@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودتو بسنج — پدیدهٔ القای الکترومغناطیسی</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8;
+  }
+  .wrap{max-width:720px; margin:0 auto;}
+  .q-item{
+    border:1px solid var(--border); border-radius:12px; margin-bottom:10px;
+    overflow:hidden; background:var(--surface);
+  }
+  .q-head{
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+    padding:13px 15px; font-weight:500; font-size:15px; user-select:none;
+  }
+  .q-head:hover{background:var(--info-bg);}
+  .q-head .tog{
+    margin-inline-start:auto; flex:0 0 auto; color:var(--info);
+    transition:transform .2s ease; font-size:18px;
+  }
+  .q-item.open .q-head .tog{transform:rotate(45deg);}
+  .q-num{
+    flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+    background:var(--info); color:#fff; display:flex; align-items:center;
+    justify-content:center; font-size:13px; font-weight:700;
+  }
+  .q-body{
+    max-height:0; overflow:hidden; transition:max-height .25s ease;
+    background:var(--ok-bg);
+  }
+  .q-body .inner{padding:13px 15px; color:var(--text); font-size:14.5px;}
+  .q-body .inner::before{
+    content:"پاسخ: "; color:var(--ok); font-weight:700;
+  }
+  .hint{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  mjx-container{font-size:110%!important;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="hint">روی هر سؤال بزن تا پاسخش باز شود 👇</p>
+  <div id="quiz"></div>
+</div>
+
+<script>
+  var items = [
+  {
+    "q": "اگه آهنربا رو ثابت کنار سیملوله نگه دارم، چی توی گالوانومتر می‌بینم؟",
+    "a": "<b>هیچی!</b> عقربه تکون نمی‌خوره. القا فقط زمانی اتفاق می‌افته که <b>تغییر</b> در میدان یا حرکتِ نسبی باشه. آهنربای ساکن، هر قدر هم قوی، جریان القا نمی‌کنه."
+  },
+  {
+    "q": "اگه آهنربا رو ثابت نگه دارم ولی سیملوله رو حرکت بدم، چی می‌شه؟",
+    "a": "بازم جریان القا می‌شه! فاراده این رو خودش امتحان کرد. <b>فقط حرکتِ نسبی</b> مهمه — مهم نیست کدوم حرکت می‌کنه. این ایده ۷۴ سال بعد به اینشتین و نظریهٔ نسبیت کمک کرد."
+  },
+  {
+    "q": "چرا فاراده تا ده سال نتونست جواب رو پیدا کنه، با اینکه از اورستد پیش‌تر می‌دونست جریان میدان درست می‌کنه؟",
+    "a": "چون اول فکر می‌کرد آهنربا و سیملوله‌ی <b>ثابت</b> باید جریان درست کنن. لحظه‌ی طلایی وقتی رسید که فهمید <b>تغییر</b> اصل قضیه‌ست، نه خودِ میدان."
+  },
+  {
+    "q": "کارت‌خوانِ بانک چرا نیاز داره کارت رو <i>بکشی</i>، نه اینکه ثابت نگه داری؟",
+    "a": "چون اطلاعات کارت توی نوارِ مغناطیسیه. وقتی کارت رو می‌کشی، میدانش از کنار یه پیچه‌ی کوچیک رد می‌شه و توی پیچه جریان القا می‌کنه. <b>اگه ثابت نگه داری، هیچ تغییری نیست، هیچ جریانی هم القا نمی‌شه.</b>"
+  },
+  {
+    "q": "کنارِ فاراده، چه دانشمندِ دیگه‌ای هم‌زمان همین پدیده رو کشف کرد؟",
+    "a": "<b>جوزف هانری</b> (Joseph Henry) آمریکایی. به افتخارش یکای ضریب القاوری «هانری» (H) نام‌گذاری شد. کشف هم‌زمان توی فیزیک کم نیست — درست مثل حساب دیفرانسیلِ نیوتن و لایبنیتس."
+  },
+  {
+    "q": "چه سه راهی برای القای جریان در یه پیچه وجود داره؟",
+    "a": "۱) <b>تغییر بزرگیِ میدان</b> (آهنربا رو نزدیک/دور کنی) — ۲) <b>تغییر مساحتِ پیچه</b> (پیچه‌ی انعطاف‌پذیر) — ۳) <b>چرخش پیچه</b> (پیچه رو بچرخونی). همه‌ی این سه تا یه چیزِ مشترک دارن: <b>تغییر شارِ مغناطیسی</b>."
+  },
+  {
+    "q": "چرا فاراده با اینکه حتی مدرسه نرفته بود، یکی از بزرگ‌ترین دانشمندانِ تاریخ شد؟",
+    "a": "چون <b>استعدادِ تجربی‌ش بی‌رقیب بود</b>. ریاضی‌ش ضعیف بود ولی شهودِ فیزیکی‌ش فوق‌العاده. وقتی سِر همفری دیویِ بزرگ از کشفیاتش پرسیدن، گفت «بزرگ‌ترین کشفم، خودِ مایکل فاراده بود!»"
+  },
+  {
+    "q": "اگه یه سیمِ مستقیم رو بدونِ پیچه فقط کنار یه آهنربا حرکت بدم، آیا جریان القا می‌شه؟",
+    "a": "<b>بله</b>، در یه مدار بسته! حرکت سیم در میدان مغناطیسی، روی الکترون‌های آزادش نیروی لورنتس وارد می‌کنه و توی سیم EMF القایی به وجود میاد. این همون اصلِ «میله‌ی متحرک در میدان»ـه که توی مثال‌های کتاب می‌بینی."
+  }
+];
+
+  var box = document.getElementById('quiz');
+  items.forEach(function(it, i){
+    var item = document.createElement('div'); item.className='q-item';
+    var head = document.createElement('div'); head.className='q-head';
+    head.innerHTML = '<span class="q-num">'+toFa(i+1)+'</span><span>'+it.q+'</span><span class="tog">+</span>';
+    var body = document.createElement('div'); body.className='q-body';
+    var inner = document.createElement('div'); inner.className='inner'; inner.innerHTML=it.a;
+    body.appendChild(inner);
+    head.addEventListener('click', function(){
+      var open = item.classList.toggle('open');
+      body.style.maxHeight = open ? (inner.scrollHeight + 26) + 'px' : '0';
+      if(window.MathJax && window.MathJax.typesetPromise){
+        window.MathJax.typesetPromise([inner]);
+      }
+    });
+    item.appendChild(head); item.appendChild(body); box.appendChild(item);
+  });
+  function toFa(n){return (''+n).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+</script>
+</body>
+</html>

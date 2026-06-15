@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مدل بور — مدارهای هیدروژن و گذارهای الکترون</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+<style>
+:root { --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a; --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed; }
+@media (prefers-color-scheme: dark) { :root { --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e; --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35; } }
+body { margin: 0; padding: 16px; font-family: Vazirmatn, Tahoma, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+h2 { color: var(--info); margin: 0 0 14px; font-size: 1.2em; }
+.app { max-width: 800px; margin: 0 auto; }
+.main { display: grid; grid-template-columns: 1fr 280px; gap: 14px; }
+.canvas-wrap { background: #0a0a14; border-radius: 12px; padding: 8px; }
+canvas { display: block; width: 100%; height: 380px; border-radius: 8px; }
+.panel { background: var(--surface); border-radius: 12px; padding: 14px; border: 1px solid var(--border); }
+.panel h3 { margin: 0 0 8px; font-size: 14px; color: var(--info); }
+.row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+.row label { font-size: 13px; color: var(--muted); min-width: 70px; }
+.row select, .row button { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: inherit; cursor: pointer; flex: 1; }
+button.go { background: var(--info); color: white; border-color: var(--info); }
+button.go:hover { opacity: 0.9; }
+.energy { background: var(--info-bg); color: var(--info); padding: 10px; border-radius: 8px; margin-top: 10px; text-align: center; }
+.energy b { display: block; font-size: 16px; margin-top: 4px; }
+.levels { margin-top: 12px; }
+.levels-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.levels-table td { padding: 4px 6px; border-bottom: 1px solid var(--border); }
+.levels-table tr.active { background: var(--ok-bg); color: var(--ok); font-weight: bold; }
+@media (max-width: 720px) { .main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <h2>🌀 مدل بور — مدارهای هیدروژن</h2>
+
+  <div class="main">
+    <div class="canvas-wrap">
+      <canvas id="cv" width="500" height="380"></canvas>
+    </div>
+
+    <div class="panel">
+      <h3>کنترل گذار</h3>
+      <div class="row">
+        <label>از تراز:</label>
+        <select id="n2">
+          <option>2</option><option selected>3</option>
+          <option>4</option><option>5</option><option>6</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>به تراز:</label>
+        <select id="n1">
+          <option selected>1</option><option>2</option>
+          <option>3</option><option>4</option><option>5</option>
+        </select>
+      </div>
+      <div class="row">
+        <button class="go" id="jump">🚀 جهش (نشر فوتون)</button>
+      </div>
+      <div class="row">
+        <button id="absorb">⬆️ جذب (n₁→n₂)</button>
+      </div>
+
+      <div class="energy">
+        $\Delta E$
+        <b id="dE">—</b>
+        طول موج: <b id="lam">—</b>
+        ناحیه: <b id="region">—</b>
+      </div>
+
+      <div class="levels">
+        <table class="levels-table" id="lt">
+          <tr><th>$n$</th><th>$r$ (nm)</th><th>$E$ (eV)</th></tr>
+          <tr><td>1</td><td>0.053</td><td>−13.60</td></tr>
+          <tr><td>2</td><td>0.212</td><td>−3.40</td></tr>
+          <tr><td>3</td><td>0.477</td><td>−1.51</td></tr>
+          <tr><td>4</td><td>0.848</td><td>−0.85</td></tr>
+          <tr><td>5</td><td>1.325</td><td>−0.54</td></tr>
+          <tr><td>∞</td><td>∞</td><td>0</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var DPR = Math.max(1, window.devicePixelRatio||1);
+  function fit(){
+    var w = cv.clientWidth, h = cv.clientHeight;
+    cv.width = w*DPR; cv.height = h*DPR;
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  window.addEventListener('resize', function(){ fit(); });
+
+  var electron = { n: 1, theta: 0, jumping: false, t:0, fromN:1, toN:1 };
+  var photons = []; // {x,y,vx,vy,col, type}
+  var pulses = []; // emit pulse glow
+
+  function En(n){ return -13.6 / (n*n); }
+  function rn(n){ return n*n; } // in units of Bohr radii
+
+  function wlToRGB(lam){
+    var R=0,G=0,B=0;
+    if(lam<200) return [60,0,90];
+    if(lam>=200 && lam<380){ R=0.6; G=0.1; B=0.9; }
+    else if(lam<440){ R=-(lam-440)/60; G=0; B=1; }
+    else if(lam<490){ R=0; G=(lam-440)/50; B=1; }
+    else if(lam<510){ R=0; G=1; B=-(lam-510)/20; }
+    else if(lam<580){ R=(lam-510)/70; G=1; B=0; }
+    else if(lam<645){ R=1; G=-(lam-645)/65; B=0; }
+    else if(lam<=780){ R=1; G=0; B=0; }
+    else { R=0.7; G=0.1; B=0; }
+    return [Math.round(R*255), Math.round(G*255), Math.round(B*255)];
+  }
+
+  function regionLabel(lam_nm){
+    if(lam_nm < 380) return 'فرابنفش (UV)';
+    if(lam_nm <= 780) return 'مرئی';
+    return 'فروسرخ (IR)';
+  }
+
+  function updateInfo(){
+    var n1 = parseInt(document.getElementById('n1').value);
+    var n2 = parseInt(document.getElementById('n2').value);
+    if(n2 <= n1){
+      document.getElementById('dE').textContent = '—';
+      document.getElementById('lam').textContent = '— (n₂ باید بزرگ‌تر باشه)';
+      document.getElementById('region').textContent = '—';
+      return;
+    }
+    var dE = En(n2) - En(n1); // positive
+    var lam_nm = 1240 / dE;
+    document.getElementById('dE').textContent = dE.toFixed(2) + ' eV';
+    document.getElementById('lam').textContent = lam_nm.toFixed(1) + ' nm';
+    document.getElementById('region').textContent = regionLabel(lam_nm);
+
+    var rows = document.querySelectorAll('#lt tr');
+    for(var i=1;i<rows.length;i++){
+      rows[i].classList.remove('active');
+    }
+    if(n1>=1 && n1<=5) rows[n1].classList.add('active');
+    if(n2>=1 && n2<=5) rows[n2].classList.add('active');
+  }
+
+  document.getElementById('n1').addEventListener('change', updateInfo);
+  document.getElementById('n2').addEventListener('change', updateInfo);
+
+  function startJump(toN, fromN){
+    electron.fromN = fromN;
+    electron.toN = toN;
+    electron.jumping = true;
+    electron.t = 0;
+    // create photon for emission
+    if(toN < fromN){
+      var dE = En(fromN) - En(toN);
+      var lam_nm = 1240/dE;
+      var rgb = wlToRGB(lam_nm);
+      var w = cv.clientWidth, h = cv.clientHeight;
+      photons.push({
+        x: w/2, y: h/2, vx: 2.5, vy: -1.5,
+        col: 'rgb('+rgb[0]+','+rgb[1]+','+rgb[2]+')',
+        lam: lam_nm, type: 'emit'
+      });
+      pulses.push({r:0, maxR: 30, alpha:1, col:'rgb('+rgb[0]+','+rgb[1]+','+rgb[2]+')'});
+    } else {
+      // absorb
+      var dE2 = En(toN) - En(fromN);
+      var lam_nm2 = 1240/dE2;
+      var rgb2 = wlToRGB(lam_nm2);
+      pulses.push({r:30, maxR: 0, alpha:1, col:'rgb('+rgb2[0]+','+rgb2[1]+','+rgb2[2]+')', shrink:true});
+    }
+  }
+
+  document.getElementById('jump').addEventListener('click', function(){
+    var n1 = parseInt(document.getElementById('n1').value);
+    var n2 = parseInt(document.getElementById('n2').value);
+    if(n2 <= n1) return;
+    // ensure electron is at n2
+    electron.n = n2;
+    setTimeout(function(){ startJump(n1, n2); }, 50);
+  });
+  document.getElementById('absorb').addEventListener('click', function(){
+    var n1 = parseInt(document.getElementById('n1').value);
+    var n2 = parseInt(document.getElementById('n2').value);
+    if(n2 <= n1) return;
+    electron.n = n1;
+    setTimeout(function(){ startJump(n2, n1); }, 50);
+  });
+
+  function draw(){
+    var w = cv.clientWidth, h = cv.clientHeight;
+    var cx = w/2, cy = h/2;
+
+    ctx.fillStyle = '#0a0a14';
+    ctx.fillRect(0,0,w,h);
+
+    // stars
+    ctx.fillStyle = '#fff';
+    for(var i=0;i<25;i++){
+      var x = (i*97 + 31) % w;
+      var y = (i*53 + 19) % h;
+      ctx.globalAlpha = 0.2 + ((i*7)%5)/20;
+      ctx.fillRect(x, y, 1, 1);
+    }
+    ctx.globalAlpha = 1;
+
+    // nucleus
+    ctx.fillStyle = '#ff7855';
+    ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px Vazirmatn, Tahoma';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('+', cx, cy);
+
+    // orbits
+    var rScale = Math.min(w,h) / (2 * 30); // 5^2 = 25 units, leave margin
+    for(var n=1; n<=5; n++){
+      var r = rn(n) * rScale;
+      ctx.strokeStyle = (n === electron.n || n === electron.fromN || n === electron.toN) ? '#5eb9ff' : '#3a3a55';
+      ctx.lineWidth = (n === electron.n) ? 1.5 : 1;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.stroke();
+      ctx.fillStyle = '#888';
+      ctx.font = '10px Vazirmatn, Tahoma';
+      ctx.textAlign='left';
+      ctx.fillText('n='+n, cx + r + 4, cy - 4);
+    }
+
+    // electron position
+    var rCurrent;
+    if(electron.jumping){
+      electron.t += 0.025;
+      var p = Math.min(1, electron.t);
+      var rFrom = rn(electron.fromN) * rScale;
+      var rTo = rn(electron.toN) * rScale;
+      // ease
+      var ep = p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p+2, 2)/2;
+      rCurrent = rFrom + (rTo - rFrom) * ep;
+      if(p >= 1){
+        electron.jumping = false;
+        electron.n = electron.toN;
+      }
+    } else {
+      rCurrent = rn(electron.n) * rScale;
+      electron.theta += 0.03;
+    }
+    var ex = cx + rCurrent * Math.cos(electron.theta);
+    var ey = cy + rCurrent * Math.sin(electron.theta);
+
+    // pulse glow
+    pulses = pulses.filter(function(p){
+      ctx.strokeStyle = p.col.replace('rgb','rgba').replace(')',','+p.alpha.toFixed(2)+')');
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, p.r, 0, Math.PI*2);
+      ctx.stroke();
+      if(p.shrink){
+        p.r -= 1;
+        p.alpha -= 0.025;
+        return p.alpha > 0 && p.r > 5;
+      } else {
+        p.r += 1.5;
+        p.alpha -= 0.02;
+        return p.alpha > 0;
+      }
+    });
+
+    // electron
+    ctx.fillStyle = '#5eb9ff';
+    ctx.shadowColor = '#5eb9ff';
+    ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(ex, ey, 5, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#5eb9ff66';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(ex, ey, 9, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 9px Vazirmatn, Tahoma';
+    ctx.textAlign='center';
+    ctx.fillText('e⁻', ex, ey-12);
+
+    // photons
+    photons = photons.filter(function(p){
+      p.x += p.vx; p.y += p.vy;
+      ctx.strokeStyle = p.col;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      // wavy line
+      ctx.moveTo(p.x, p.y);
+      for(var i=0;i<6;i++){
+        ctx.lineTo(p.x - i*4, p.y + Math.sin(i*1.5 + p.x*0.05)*3);
+      }
+      ctx.stroke();
+      ctx.shadowColor = p.col; ctx.shadowBlur = 8;
+      ctx.fillStyle = p.col;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+      ctx.shadowBlur = 0;
+      return p.x < w+30 && p.x > -30 && p.y > -30 && p.y < h+30;
+    });
+
+    // current state label
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px Vazirmatn, Tahoma';
+    ctx.textAlign='left';
+    ctx.fillText('الکترون در n = ' + electron.n + '   E = ' + En(electron.n).toFixed(2) + ' eV', 10, 20);
+
+    requestAnimationFrame(draw);
+  }
+
+  fit(); updateInfo(); draw();
+})();
+</script>
+</body>
+</html>

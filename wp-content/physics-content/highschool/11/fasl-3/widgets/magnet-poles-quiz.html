@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودتو بسنج — مغناطیس و قطب‌ها</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8;
+  }
+  .wrap{max-width:720px; margin:0 auto;}
+  .q-item{
+    border:1px solid var(--border); border-radius:12px; margin-bottom:10px;
+    overflow:hidden; background:var(--surface);
+  }
+  .q-head{
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+    padding:13px 15px; font-weight:500; font-size:15px; user-select:none;
+  }
+  .q-head:hover{background:var(--info-bg);}
+  .q-head .tog{
+    margin-inline-start:auto; flex:0 0 auto; color:var(--info);
+    transition:transform .2s ease; font-size:18px;
+  }
+  .q-item.open .q-head .tog{transform:rotate(45deg);}
+  .q-num{
+    flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+    background:var(--info); color:#fff; display:flex; align-items:center;
+    justify-content:center; font-size:13px; font-weight:700;
+  }
+  .q-body{
+    max-height:0; overflow:hidden; transition:max-height .25s ease;
+    background:var(--ok-bg);
+  }
+  .q-body .inner{padding:13px 15px; color:var(--text); font-size:14.5px;}
+  .q-body .inner::before{
+    content:"پاسخ: "; color:var(--ok); font-weight:700;
+  }
+  .hint{font-size:13px; color:var(--muted); margin:0 0 14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="hint">روی هر سؤال بزن تا پاسخش باز شود 👇</p>
+  <div id="quiz"></div>
+</div>
+
+<script>
+  var items = [
+    { q: "اگر یک آهنربای میله‌ای را دقیقاً از وسط بشکنیم، چی پیدا می‌کنیم؟",
+      a: "<b>دو آهنربای کوچک‌ترِ کامل</b> — هر کدوم با یه قطبِ N و یه قطبِ S. قطبِ مغناطیسی هیچ‌وقت تک نمی‌شه؛ همیشه جفتی ظاهر می‌شه. این یکی از تفاوت‌های اصلیِ مغناطیس با بارِ الکتریکیه." },
+    { q: "چرا گیره‌ی کاغذی که به آهنربا چسبیده، خودش هم می‌تونه گیره‌ی دیگه‌ای رو جذب کنه؟",
+      a: "به‌خاطرِ <b>القای مغناطیسی</b>. در حضورِ آهنربا، اتم‌های آهنِ داخل گیرهٔ اول هم‌جهت می‌چینن و کلِ گیره موقتاً به یه آهنربای کوچیک تبدیل می‌شه. به همین خاطر می‌تونه گیرهٔ بعدی رو جذب کنه." },
+    { q: "اگر دو آهنربای میله‌ای را با قطب‌های N به N مقابل هم بذاری، چه اتفاقی می‌افته؟",
+      a: "<b>همدیگه رو دفع می‌کنن.</b> قاعده‌ی پایه: قطب‌های همنام دفع می‌کنن، ناهمنام جذب. این دقیقاً همون اصلیه که قطارهای مَگ‌لو رو روی هوا نگه می‌داره." },
+    { q: "آهنربای دائمی با آهنربای القایی چه فرقی داره؟",
+      a: "<b>دائمی</b> (مثل فولاد یا آلیاژهای خاص) خاصیت مغناطیسی‌ش رو حتی بعد از دور شدنِ منبع، حفظ می‌کنه. <b>القایی</b> (مثلِ آهنِ نرم) فقط در حضورِ آهنربای دیگه مغناطیسی می‌شه و با دور شدنش خاصیتش رو از دست می‌ده." },
+    { q: "چرا به یک سرِ آهنربا میگن «قطبِ شمال»؟",
+      a: "چون اگه آهنربا رو از وسط آویزون کنی، اون سر <b>به طرفِ شمالِ جغرافیاییِ زمین</b> می‌چرخه — یعنی «شمال‌یاب» ـه. این رازِ کارِ <b>قطب‌نما</b> هم همینه." },
+    { q: "نکتهٔ شیرینِ پارادوکس: قطبِ شمالِ مغناطیسیِ زمین، در واقع چه نوع قطبیه؟",
+      a: "<b>قطبِ S آهنربایی!</b> 🤯 چون اگه شمالِ سوزنِ قطب‌نما (که قطب N ـه) به طرفش کشیده می‌شه، باید قطبِ مقابل (یعنی S) باشه که جذبش می‌کنه. یعنی اسمِ جغرافیایی و اسمِ مغناطیسیِ زمین جابه‌جان." },
+    { q: "آهنربای نعل‌اسبی چرا قوی‌تر از آهنربای میله‌ایِ هم‌اندازه‌ست؟",
+      a: "چون دو قطبش <b>نزدیکِ هم</b> قرار گرفتن. خطوطِ میدان کوتاه‌ترن و متمرکزتر، پس نیروی جذب توی منطقه‌ی بینِ دو قطب خیلی قوی می‌شه. به همین دلیل توی آزمایشگاه برای جذبِ قوی از نعل‌اسبی استفاده می‌کنیم." },
+    { q: "چرا توی بیمارستان قبل از MRI باید همه‌ی فلزات رو دربیاری؟",
+      a: "چون MRI از آهنربای فوق‌قوی استفاده می‌کنه (تا <b>۳۰ هزار برابرِ میدان زمین</b>). اگه یه شیءِ فلزی روی بدن داشته باشی، با اون نیرو پرتاب می‌شه و آسیبِ جدی می‌زنه. حتی پرِ شلوار هم باید درآد!" }
+  ];
+
+  var box = document.getElementById('quiz');
+  items.forEach(function(it, i){
+    var item = document.createElement('div'); item.className='q-item';
+    var head = document.createElement('div'); head.className='q-head';
+    head.innerHTML = '<span class="q-num">'+toFa(i+1)+'</span><span>'+it.q+'</span><span class="tog">+</span>';
+    var body = document.createElement('div'); body.className='q-body';
+    var inner = document.createElement('div'); inner.className='inner'; inner.innerHTML=it.a;
+    body.appendChild(inner);
+    head.addEventListener('click', function(){
+      var open = item.classList.toggle('open');
+      body.style.maxHeight = open ? (inner.scrollHeight + 26) + 'px' : '0';
+    });
+    item.appendChild(head); item.appendChild(body); box.appendChild(item);
+  });
+  function toFa(n){return (''+n).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+</script>
+</body>
+</html>

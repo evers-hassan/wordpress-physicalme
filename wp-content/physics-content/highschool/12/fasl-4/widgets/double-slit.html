@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>آزمایش دو شکاف یانگ</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:980px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .layout{display:grid; grid-template-columns:1fr 250px; gap:12px;}
+  @media(max-width:760px){.layout{grid-template-columns:1fr;}}
+  .stage{background:#06070d; border:1px solid var(--border); border-radius:14px; padding:8px;}
+  canvas{display:block; width:100%;}
+  #cvP{height:280px;}
+  #cvI{height:130px; background:var(--surface); border-radius:8px; margin-top:8px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:13px; margin:8px 0 6px; color:var(--muted); text-transform:uppercase;}
+  .panel h3:first-child{margin-top:0;}
+  .slider-row{display:grid; grid-template-columns:1fr 60px; gap:6px; align-items:center; font-size:13px; margin-bottom:4px;}
+  .val{font-weight:700; color:var(--info); text-align:left; font-variant-numeric:tabular-nums;}
+  input[type=range]{width:100%; accent-color:var(--info);}
+  select{width:100%; padding:6px; font-family:inherit; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; margin-bottom:6px;}
+  .readout{margin-top:6px;}
+  .read{padding:6px 8px; background:var(--info-bg); color:var(--info); border-radius:6px; text-align:center; font-size:12px; margin-bottom:4px;}
+  .read.full{background:var(--ok-bg); color:var(--ok);}
+  .note{font-size:12px; padding:8px; background:var(--ok-bg); color:var(--ok); border-radius:8px; margin-top:8px; line-height:1.6;}
+</style>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']], processEscapes: true },
+    startup: { pageReady: function () { return MathJax.startup.defaultPageReady().then(function () {
+      var obs = new MutationObserver(function () { MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); }); });
+      obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+    }); } }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>آزمایشِ دو شکافِ یانگ ✨ — اثبات موجی بودن نور</h2>
+  <p class="sub">منبع، شکاف‌ها و پرده رو تنظیم کن. فاصله‌ی شکاف‌ها ($d$)، فاصله‌ی پرده ($L$)، فاصله‌ی منبع تا شکاف ($D_s$) و طول موج رو تغییر بده. فرمول: $\Delta y = \lambda L / d$.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <canvas id="cvP"></canvas>
+      <canvas id="cvI"></canvas>
+    </div>
+
+    <div class="panel">
+      <h3>رنگ نور</h3>
+      <select id="color">
+        <option value="650">قرمز (۶۵۰ nm) 🔴</option>
+        <option value="532">سبز (۵۳۲ nm) 🟢</option>
+        <option value="450" selected>آبی (۴۵۰ nm) 🔵</option>
+        <option value="white">سفید ⚪</option>
+      </select>
+
+      <h3>هندسه‌ی آزمایش</h3>
+      <div class="slider-row"><label>فاصله‌ی شکاف $d$ (mm)</label><span class="val" id="vd">۰٫۲</span></div>
+      <input type="range" id="d" min="0.05" max="1" step="0.01" value="0.2">
+
+      <div class="slider-row"><label>عرضِ هر شکاف $a$ (µm)</label><span class="val" id="va">۵۰</span></div>
+      <input type="range" id="a" min="10" max="200" step="5" value="50">
+
+      <div class="slider-row"><label>فاصله‌ی پرده $L$ (m)</label><span class="val" id="vL">۲٫۰</span></div>
+      <input type="range" id="L" min="0.5" max="5" step="0.1" value="2.0">
+
+      <div class="slider-row"><label>فاصله‌ی منبع $D_s$ (cm)</label><span class="val" id="vDs">۲۰</span></div>
+      <input type="range" id="Ds" min="5" max="100" step="5" value="20">
+
+      <h3>نتیجه</h3>
+      <div class="readout">
+        <div class="read full">$\Delta y = \dfrac{\lambda L}{d}$</div>
+        <div class="read">فاصله‌ی نوارها: <b id="rDy">— mm</b></div>
+        <div class="read">زاویه‌ی نوارِ اول: <b id="rTh">—</b></div>
+      </div>
+
+      <div class="note">
+        💡 منبع رو نزدیک‌تر کن — می‌بینی پرتوها تَپ‌مانند می‌شن (موجِ کروی). دور کن، می‌شن موجِ تقریباً تخت.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fa=n=>n.toLocaleString('fa-IR');
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const cvP=$('cvP'), ctxP=cvP.getContext('2d');
+const cvI=$('cvI'), ctxI=cvI.getContext('2d');
+let DPR=window.devicePixelRatio||1;
+function fit(cv,c){const r=cv.getBoundingClientRect(); cv.width=r.width*DPR; cv.height=r.height*DPR; c.setTransform(DPR,0,0,DPR,0,0); return {w:r.width, h:r.height};}
+
+let d=0.2e-3, a=50e-6, L=2.0, Ds=0.20, colorMode='450';
+
+function spectrum(lam_nm){
+  const lam=lam_nm;
+  let r=0,g=0,b=0;
+  if(lam<440){ r=-(lam-440)/60; g=0; b=1;}
+  else if(lam<490){ r=0; g=(lam-440)/50; b=1;}
+  else if(lam<510){ r=0; g=1; b=-(lam-510)/20;}
+  else if(lam<580){ r=(lam-510)/70; g=1; b=0;}
+  else if(lam<645){ r=1; g=-(lam-645)/65; b=0;}
+  else { r=1; g=0; b=0;}
+  return [Math.round(r*255), Math.round(g*255), Math.round(b*255)];
+}
+
+function intensity(theta, lam, d, a){
+  // Single-slit envelope × two-slit interference
+  const beta = Math.PI*a*Math.sin(theta)/lam;
+  const single = (Math.abs(beta)<1e-6) ? 1 : Math.pow(Math.sin(beta)/beta, 2);
+  const delta = Math.PI*d*Math.sin(theta)/lam;
+  const cosp = Math.cos(delta);
+  return single * cosp*cosp;
+}
+
+function draw(){
+  const r1=fit(cvP, ctxP);
+  ctxP.fillStyle='#06070d'; ctxP.fillRect(0,0,r1.w,r1.h);
+  const cy=r1.h/2;
+  // sketch: source (laser), barrier, screen
+  // RTL layout: source on right? Actually for LTR diagram source on left
+  const xSource = 30;
+  const xBarrier = Math.max(60, 30 + Ds*200);
+  const xScreen = r1.w - 30;
+  // wave coming from source toward barrier — draw arcs
+  ctxP.strokeStyle='rgba(120, 200, 255, 0.35)'; ctxP.lineWidth=1;
+  for(let R=10; R<xBarrier-xSource; R+=14){
+    ctxP.beginPath();
+    ctxP.arc(xSource, cy, R, -Math.PI/3, Math.PI/3);
+    ctxP.stroke();
+  }
+  // source
+  ctxP.fillStyle='#5dcaa5'; ctxP.beginPath(); ctxP.arc(xSource, cy, 6, 0, 2*Math.PI); ctxP.fill();
+  ctxP.fillStyle='#fff'; ctxP.font='10px Vazirmatn'; ctxP.textAlign='left';
+  ctxP.fillText('منبع', xSource-4, cy-12);
+
+  // barrier with two slits
+  const slitGap = Math.max(6, Math.min(60, d*1e3*60));
+  ctxP.fillStyle='#888';
+  ctxP.fillRect(xBarrier-4, 10, 8, cy - slitGap/2 - 10);
+  ctxP.fillRect(xBarrier-4, cy + slitGap/2, 8, r1.h - 10 - (cy+slitGap/2));
+  ctxP.fillRect(xBarrier-4, cy - slitGap/2 + 4, 8, slitGap - 8); // thin gap actually
+  // re-cut slits
+  ctxP.clearRect(xBarrier-4, cy - slitGap/2, 8, 3);
+  ctxP.clearRect(xBarrier-4, cy + slitGap/2 - 3, 8, 3);
+  ctxP.fillStyle='#fff'; ctxP.font='10px Vazirmatn'; ctxP.textAlign='center';
+  ctxP.fillText('d', xBarrier, cy + slitGap/2 + 14);
+
+  // wavelets from each slit
+  const slits = [cy - slitGap/2, cy + slitGap/2];
+  ctxP.strokeStyle='rgba(255, 220, 120, 0.35)'; ctxP.lineWidth=1;
+  for(let i=0;i<slits.length;i++){
+    for(let R=10; R<xScreen-xBarrier; R+=14){
+      ctxP.beginPath();
+      ctxP.arc(xBarrier, slits[i], R, -Math.PI/3, Math.PI/3);
+      ctxP.stroke();
+    }
+  }
+
+  // screen
+  ctxP.fillStyle='#222'; ctxP.fillRect(xScreen, 5, 4, r1.h-10);
+  ctxP.fillStyle='#fff'; ctxP.font='10px Vazirmatn'; ctxP.textAlign='right';
+  ctxP.fillText('پرده', xScreen-6, 16);
+
+  // distance labels
+  ctxP.strokeStyle='rgba(255,255,255,0.3)'; ctxP.setLineDash([3,3]);
+  ctxP.beginPath(); ctxP.moveTo(xBarrier, r1.h-18); ctxP.lineTo(xScreen, r1.h-18); ctxP.stroke();
+  ctxP.beginPath(); ctxP.moveTo(xSource, r1.h-30); ctxP.lineTo(xBarrier, r1.h-30); ctxP.stroke();
+  ctxP.setLineDash([]);
+  ctxP.fillStyle='#fff'; ctxP.font='10px Vazirmatn'; ctxP.textAlign='center';
+  ctxP.fillText('Ds = '+fa((Ds*100).toFixed(0))+' cm', (xSource+xBarrier)/2, r1.h-32);
+  ctxP.fillText('L = '+fa(L.toFixed(1))+' m', (xBarrier+xScreen)/2, r1.h-20);
+
+  // === Interference pattern on screen (drawn on top of screen area in cvP) ===
+  // Show colored pattern on right edge of cvP as well as in cvI
+  let lams=[];
+  if(colorMode==='white'){ for(let l=400; l<=680; l+=20) lams.push(l); }
+  else lams=[parseFloat(colorMode)];
+  // Draw vertical color band along screen
+  const yExtent = 0.04; // ±4 cm
+  const bandX = xScreen+6, bandW=12;
+  const img = ctxP.getImageData(bandX, 5, bandW, r1.h-10);
+  for(let py=0; py<r1.h-10; py++){
+    const yScreen = -yExtent + (2*yExtent)*py/(r1.h-10);
+    const theta = Math.atan(yScreen/L);
+    let R=0,G=0,B=0;
+    lams.forEach(lam=>{
+      const I = intensity(theta, lam*1e-9, d, a);
+      const c=spectrum(lam);
+      R += c[0]*I; G += c[1]*I; B += c[2]*I;
+    });
+    if(colorMode==='white'){ R/=4; G/=4; B/=4; }
+    R=Math.min(255,R); G=Math.min(255,G); B=Math.min(255,B);
+    for(let px=0; px<bandW; px++){
+      const i=(py*bandW + px)*4;
+      img.data[i]=R; img.data[i+1]=G; img.data[i+2]=B; img.data[i+3]=255;
+    }
+  }
+  ctxP.putImageData(img, bandX, 5);
+
+  // === Intensity curve in cvI ===
+  const r2=fit(cvI, ctxI);
+  ctxI.fillStyle=css('--surface'); ctxI.fillRect(0,0,r2.w,r2.h);
+  ctxI.strokeStyle=css('--border');
+  ctxI.beginPath(); ctxI.moveTo(0, r2.h-14); ctxI.lineTo(r2.w, r2.h-14); ctxI.stroke();
+
+  ctxI.strokeStyle=css('--info'); ctxI.lineWidth=2;
+  ctxI.beginPath();
+  for(let px=0; px<r2.w; px++){
+    const yScreen = -yExtent + (2*yExtent)*px/r2.w;
+    const theta = Math.atan(yScreen/L);
+    let I=0;
+    lams.forEach(lam=>{ I += intensity(theta, lam*1e-9, d, a); });
+    I /= lams.length;
+    const py = (r2.h-16) - I*(r2.h-24);
+    if(px===0) ctxI.moveTo(px, py); else ctxI.lineTo(px, py);
+  }
+  ctxI.stroke();
+  ctxI.fillStyle=css('--muted'); ctxI.font='10px Vazirmatn'; ctxI.textAlign='center';
+  ctxI.fillText('فاصله از مرکز پرده (cm)', r2.w/2, r2.h-2);
+  for(let i=-4;i<=4;i++){
+    const px = r2.w/2 + (i/4)*(r2.w/2-8);
+    ctxI.fillText(fa(i), px, r2.h-14);
+  }
+
+  // readouts
+  const lam0 = (colorMode==='white') ? 550e-9 : parseFloat(colorMode)*1e-9;
+  const Dy = lam0*L/d * 1000;
+  $('rDy').innerHTML = fa(Dy.toFixed(2))+' mm';
+  const th1 = Math.asin(lam0/d)*180/Math.PI;
+  $('rTh').innerHTML = fa(th1.toFixed(3))+'°';
+}
+
+['d','a','L','Ds'].forEach(id=>{
+  $(id).addEventListener('input', e=>{
+    const v=parseFloat(e.target.value);
+    if(id==='d'){ d=v*1e-3; $('vd').textContent=fa(v.toFixed(2)); }
+    if(id==='a'){ a=v*1e-6; $('va').textContent=fa(v); }
+    if(id==='L'){ L=v; $('vL').textContent=fa(v.toFixed(1)); }
+    if(id==='Ds'){ Ds=v/100; $('vDs').textContent=fa(v); }
+    draw();
+  });
+});
+$('color').addEventListener('change', e=>{ colorMode=e.target.value; draw(); });
+window.addEventListener('resize', draw);
+draw();
+</script>
+</body>
+</html>

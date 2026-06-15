@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌سازی نیروی محرکه و مدار</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --wire:#8a8676; --cur:#d6453c; --useful:#1d9e75; --waste:#d6453c; --bat:#f4c430;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --wire:#9a9482; --cur:#f06a60; --useful:#5dcaa5; --waste:#f06a60; --bat:#f4c430;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8; animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:220px;}
+  .bar-wrap{padding:12px; border-top:1px solid var(--border);}
+  .bar-label{font-size:12px; color:var(--muted); margin-bottom:5px; text-align:center;}
+  .bar{display:flex; height:26px; border-radius:8px; overflow:hidden; border:1px solid var(--border);}
+  .bar .seg{display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; font-weight:700; white-space:nowrap; transition:flex-basis .15s;}
+  .bar .useful{background:var(--useful);}
+  .bar .waste{background:var(--waste);}
+  .readout{display:flex; gap:8px; flex-wrap:wrap; padding:0 12px 12px;}
+  .chip{flex:1 1 90px; background:var(--info-bg); color:var(--info); border-radius:10px; padding:8px 10px; text-align:center; font-weight:500; font-size:13px;}
+  .chip b{display:block; font-size:15px; font-weight:700; margin-top:2px; direction:ltr;}
+  .controls{margin-top:14px; display:grid; gap:11px;}
+  .row{display:flex; justify-content:space-between; align-items:center; font-size:14px;}
+  .val{font-weight:700;}
+  input[type=range]{width:100%; accent-color:var(--info); height:6px;}
+  .btns{display:flex; gap:10px;}
+  .btn{appearance:none;border:0;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px;color:#fff;background:var(--muted);padding:9px 14px;border-radius:10px;flex:1 1 auto;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🔋 شبیه‌سازی: نیروی محرکه و مدار</h2>
+  <p class="sub">یک باتریِ واقعی (با نیروی محرکه ε و مقاومتِ داخلی r) که مقاومتِ R را تغذیه می‌کند. ببین چرا ولتاژِ پایانه زیرِ بار از ε کمتر می‌شود.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="bar-wrap">
+      <div class="bar-label">تقسیمِ نیروی محرکه ε بینِ مقاومتِ بیرونی (مفید) و مقاومتِ داخلی (اتلاف)</div>
+      <div class="bar">
+        <div class="seg useful" id="segU">V<sub>R</sub></div>
+        <div class="seg waste" id="segW">Ir</div>
+      </div>
+    </div>
+    <div class="readout">
+      <div class="chip">جریان I <b id="iVal">—</b></div>
+      <div class="chip">ولتاژِ پایانه <b id="vVal">—</b></div>
+      <div class="chip">بازده <b id="effVal">—</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="row"><span>نیروی محرکه ε</span><span class="val"><span id="eSet"></span> V</span></div>
+    <input type="range" id="E" min="1.5" max="24" step="0.5" value="12">
+    <div class="row"><span>مقاومتِ داخلی r</span><span class="val"><span id="rSet"></span> Ω</span></div>
+    <input type="range" id="r" min="0.1" max="10" step="0.1" value="2">
+    <div class="row"><span>مقاومتِ بیرونی R</span><span class="val"><span id="rExSet"></span> Ω</span></div>
+    <input type="range" id="R" min="0.5" max="20" step="0.5" value="4">
+    <div class="btns"><button class="btn" id="short" type="button">⚡ اتصالِ کوتاه (R → کمینه)</button></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var EEl=document.getElementById('E'), rEl=document.getElementById('r'), REl=document.getElementById('R');
+  var eSet=document.getElementById('eSet'), rSet=document.getElementById('rSet'), rExSet=document.getElementById('rExSet');
+  var iVal=document.getElementById('iVal'), vVal=document.getElementById('vVal'), effVal=document.getElementById('effVal');
+  var segU=document.getElementById('segU'), segW=document.getElementById('segW'), shortBtn=document.getElementById('short');
+  var t=0;
+  function toFa(s){return (''+s).replace(/[0-9.]/g,function(d){return d==='.'?'٫':'۰۱۲۳۴۵۶۷۸۹'[+d];});}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  function calc(){
+    var E=+EEl.value, r=+rEl.value, R=+REl.value;
+    var I=E/(R+r);
+    var Vt=I*R;          // ولتاژِ پایانه = E - I r = I R
+    var Ir=I*r;
+    var eff=R/(R+r)*100;
+    return {E:E,r:r,R:R,I:I,Vt:Vt,Ir:Ir,eff:eff};
+  }
+  function draw(){
+    var d=calc();
+    eSet.textContent=toFa(d.E); rSet.textContent=toFa(d.r); rExSet.textContent=toFa(d.R);
+    iVal.textContent=toFa(d.I.toFixed(2))+' A';
+    vVal.textContent=toFa(d.Vt.toFixed(1))+' V';
+    effVal.textContent=toFa(d.eff.toFixed(0))+'٪';
+    segU.style.flexBasis=(d.Vt/d.E*100)+'%';
+    segW.style.flexBasis=(d.Ir/d.E*100)+'%';
+    segU.textContent='V_R='+toFa(d.Vt.toFixed(1));
+    segW.textContent= d.Ir/d.E>0.12 ? 'Ir='+toFa(d.Ir.toFixed(1)) : '';
+
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    var W=rect.width, H=rect.height; ctx.clearRect(0,0,W,H);
+    var L=46, Rt=W-46, Tp=46, B=H-30;
+
+    // سیم‌ها
+    ctx.strokeStyle=cssv('--wire'); ctx.lineWidth=4; ctx.lineJoin='round';
+    ctx.strokeRect(L,Tp,Rt-L,B-Tp);
+
+    var by=(Tp+B)/2;
+    // باتریِ واقعی (ضلعِ چپ): نمادِ ε + مقاومتِ داخلیِ r (زیگزاگِ کوچک)
+    ctx.fillStyle=cssv('--bg'); ctx.fillRect(L-10,by-40,20,80);
+    ctx.strokeStyle=cssv('--text'); ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(L-13,by-26); ctx.lineTo(L+13,by-26); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(L-6,by-16); ctx.lineTo(L+6,by-16); ctx.stroke();
+    ctx.fillStyle=cssv('--muted'); ctx.font='12px Vazirmatn, sans-serif'; ctx.textAlign='right';
+    ctx.fillText('ε='+toFa(d.E)+'V', L-16, by-22);
+    // مقاومتِ داخلی r (زیگزاگ پایینِ باتری)
+    ctx.strokeStyle=cssv('--waste'); ctx.lineWidth=2.5; ctx.beginPath();
+    var ry1=by-6, ry2=by+34, seg=(ry2-ry1)/6;
+    ctx.moveTo(L,ry1);
+    for(var i=0;i<6;i++){ ctx.lineTo(L+(i%2?7:-7), ry1+seg*(i+0.5)); }
+    ctx.lineTo(L,ry2); ctx.stroke();
+    ctx.fillStyle=cssv('--waste'); ctx.textAlign='right'; ctx.fillText('r='+toFa(d.r)+'Ω', L-16, by+22);
+
+    // مقاومتِ بیرونی R (ضلعِ راست)
+    ctx.strokeStyle=cssv('--text'); ctx.lineWidth=3; ctx.beginPath();
+    var Ry1=by-30, Ry2=by+30, segR=(Ry2-Ry1)/6;
+    ctx.moveTo(Rt,Ry1);
+    for(var j=0;j<6;j++){ ctx.lineTo(Rt+(j%2?9:-9), Ry1+segR*(j+0.5)); }
+    ctx.lineTo(Rt,Ry2); ctx.stroke();
+    ctx.fillStyle=cssv('--muted'); ctx.textAlign='left'; ctx.fillText('R='+toFa(d.R)+'Ω', Rt+14, by);
+
+    // ولت‌سنجِ پایانه (دایره V بالای مدار)
+    var vmx=W/2, vmy=Tp-2;
+    ctx.fillStyle=cssv('--bg'); ctx.strokeStyle=cssv('--info'); ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(vmx, Tp-0, 0, 0, 0); // no-op
+    // جریانِ متحرک (سرعت ∝ I)
+    var per=2*((Rt-L)+(B-Tp));
+    t += Math.min(7, d.I*0.7+0.2);
+    var n=16;
+    ctx.fillStyle=cssv('--cur');
+    for(var k=0;k<n;k++){
+      var dd=((t + k*per/n)%per+per)%per;
+      var pt=perim(dd,L,Rt,Tp,B);
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,3.5,0,Math.PI*2); ctx.fill();
+    }
+    // برچسبِ جریان
+    ctx.fillStyle=cssv('--cur'); ctx.font='12px Vazirmatn, sans-serif'; ctx.textAlign='center';
+    ctx.fillText('I = '+toFa(d.I.toFixed(2))+' A', W/2, Tp-14);
+
+    requestAnimationFrame(draw);
+  }
+  function perim(d,L,Rt,Tp,B){
+    var w=Rt-L, h=B-Tp;
+    if(d<w) return {x:L+d,y:Tp};
+    d-=w; if(d<h) return {x:Rt,y:Tp+d};
+    d-=h; if(d<w) return {x:Rt-d,y:B};
+    d-=w; return {x:L,y:B-d};
+  }
+  shortBtn.addEventListener('click',function(){ REl.value=REl.min; });
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

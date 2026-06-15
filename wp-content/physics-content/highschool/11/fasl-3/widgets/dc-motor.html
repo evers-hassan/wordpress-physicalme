@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>موتور DC — حلقه‌ی چرخان در میدان</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --hint-c:#a87800; --hint-bg:#fef6e0;
+    --N:#d6453c; --S:#2f6fd0;
+    --I:#c2410c; --B:#7a4dbd; --F:#1d9e75;
+    --wire:#3a3835; --commutator:#a87800;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --hint-c:#e0b860; --hint-bg:#4a3a15;
+      --N:#f06a60; --S:#6aa0ee;
+      --I:#fb923c; --B:#b08be8; --F:#5dcaa5;
+      --wire:#cccac4; --commutator:#e0b860;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;
+  }
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:380px; touch-action:none;}
+  .readout{padding:12px; border-top:1px solid var(--border); display:flex; gap:10px; flex-wrap:wrap;}
+  .chip{flex:1 1 130px; background:var(--info-bg); color:var(--info); border-radius:10px; padding:8px 12px; text-align:center; font-size:14px;}
+  .chip b{display:block; font-size:16px; font-weight:700; margin-top:2px;}
+  .chip.ok{background:var(--ok-bg); color:var(--ok);}
+
+  .controls{margin-top:14px; display:grid; gap:10px;}
+  .row{display:flex; gap:8px; flex-wrap:wrap;}
+  .btn{
+    font-family:inherit; font-size:14px; padding:9px 14px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text); cursor:pointer;
+    transition:.12s; flex:1 1 130px;
+  }
+  .btn:hover{background:var(--info-bg); border-color:var(--info); color:var(--info);}
+  .btn.on{background:var(--info); color:#fff; border-color:var(--info);}
+  .slider-row{display:grid; grid-template-columns:90px 1fr 60px; gap:10px; align-items:center; font-size:14px;}
+  .slider-row span:first-child{color:var(--muted);}
+  .slider-row .val{font-weight:700; color:var(--text); text-align:left;}
+  input[type=range]{accent-color:var(--info); height:6px;}
+
+  .hint{
+    margin-top:12px; background:var(--hint-bg); color:var(--hint-c);
+    border-radius:10px; padding:10px 14px; font-size:13.5px;
+    border-right:3px solid var(--hint-c);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>⚙️ موتور الکتریکی DC — کاوش زنده</h2>
+  <p class="sub">دو سرِ حلقه (سیمِ بالا و پایین) در میدان مغناطیسی نیروی متضاد می‌گیرن — این می‌شه گشتاور (torque). با <b>کموتاتور</b>، گشتاور همیشه در یک جهت می‌مونه و حلقه پیوسته می‌چرخه.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">زاویه حلقه <b id="thetaVal">۰°</b></div>
+      <div class="chip">گشتاور (∝ sin θ) <b id="torqueVal">—</b></div>
+      <div class="chip ok">حالت <b id="modeVal">با کموتاتور</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="row">
+      <button class="btn on" id="modeOn">⚙️ با کموتاتور (موتور)</button>
+      <button class="btn" id="modeOff">🔁 بدون کموتاتور (نوسان)</button>
+    </div>
+    <div class="slider-row">
+      <span>سرعت چرخش</span>
+      <input type="range" id="speedSlider" min="0.3" max="3" step="0.1" value="1.2">
+      <span class="val" id="speedVal">۱٫۲</span>
+    </div>
+    <div class="row">
+      <button class="btn" id="pauseBtn">⏸ مکث</button>
+      <button class="btn" id="resetBtn">↺ بازنشانی</button>
+      <button class="btn" id="reverseBtn">🔁 معکوس‌کردنِ جهت جریان</button>
+    </div>
+  </div>
+
+  <div class="hint">
+    💡 <b>چجوری کار می‌کنه؟</b> سیمِ بالای حلقه به‌خاطر $\vec{F} = I\vec{L}\times\vec{B}$ یه نیرو به‌سمت یه طرف می‌گیره، سیمِ پایینی به طرفِ مخالف. این جفت‌نیرو، گشتاور می‌سازه و حلقه می‌چرخه. وقتی حلقه به <b>عمودِ کاملِ میدان</b> می‌رسه، کموتاتور (حلقه‌ی شکافته) جریان رو معکوس می‌کنه — نتیجه: گشتاور همیشه در یک جهت → چرخش پیوسته.
+  </div>
+</div>
+
+<script id="mathjax-config">
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var W,H,cx,cy;
+
+  // State
+  var theta = 0;        // rotation angle (rad) — viewed as top-down. 0 = loop horizontal (perpendicular to B field).
+  var omega = 1.2;      // angular speed (rad/s)
+  var paused = false;
+  var withCommutator = true;
+  var currentSign = +1; // ±1: lets user manually reverse all currents
+  var lastTs = 0;
+
+  // For "without commutator" mode: loop oscillates because torque reverses sign past θ=π/2
+  // We model this with a simple driven oscillator: at any θ, torque ∝ cos(θ) (decreases as it aligns with B).
+  //   This gives equilibrium at θ=π/2 → loop oscillates around it.
+  // For visualization, we just animate based on a "fictional" linear angle if commutator is on (constant ω),
+  //   or pendulum-like motion if commutator is off.
+  var pendAngle = 0, pendVel = 0;
+
+  function toFa(s){return (''+s).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];}).replace('.','٫');}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  function arrow(x1,y1, x2,y2, color, width){
+    width=width||3;
+    var dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy);
+    if(len<2) return;
+    var ux=dx/len, uy=dy/len, hs=9;
+    ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=width; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2-ux*hs*0.5, y2-uy*hs*0.5); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-ux*hs - uy*hs*0.55, y2-uy*hs + ux*hs*0.55);
+    ctx.lineTo(x2-ux*hs + uy*hs*0.55, y2-uy*hs - ux*hs*0.55);
+    ctx.closePath(); ctx.fill();
+  }
+
+  function drawPoles(){
+    var W4 = 70, H2 = 100;
+    // N pole on the right (so B points from N→S = right→left outside, hmm wait)
+    // Convention: outside the magnet, B goes from N to S. So if we want B pointing right (→) between
+    //   the poles, then N should be on the LEFT and S on the RIGHT.
+    // N on left
+    ctx.save();
+    ctx.fillStyle = cssv('--N');
+    ctx.fillRect(10, cy-H2, W4, 2*H2);
+    ctx.fillStyle='#fff'; ctx.font='bold 28px Vazirmatn'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('N', 10+W4/2, cy);
+    // S on right
+    ctx.fillStyle = cssv('--S');
+    ctx.fillRect(W-10-W4, cy-H2, W4, 2*H2);
+    ctx.fillStyle='#fff';
+    ctx.fillText('S', W-10-W4/2, cy);
+    ctx.restore();
+  }
+
+  function drawFieldArrows(){
+    ctx.save();
+    ctx.strokeStyle = cssv('--B'); ctx.fillStyle = cssv('--B');
+    ctx.globalAlpha = 0.4;
+    ctx.lineWidth = 1.6; ctx.lineCap='round';
+    var xL = 95, xR = W-95;
+    var rows = [cy - 75, cy - 25, cy + 25, cy + 75];
+    rows.forEach(function(y){
+      // Horizontal arrow from left to right
+      ctx.beginPath(); ctx.moveTo(xL, y); ctx.lineTo(xR - 12, y); ctx.stroke();
+      // Arrowhead
+      ctx.beginPath();
+      ctx.moveTo(xR, y);
+      ctx.lineTo(xR-12, y-7);
+      ctx.lineTo(xR-12, y+7);
+      ctx.closePath(); ctx.fill();
+    });
+    ctx.restore();
+    // Label
+    ctx.save();
+    ctx.fillStyle = cssv('--B'); ctx.font='bold 14px Vazirmatn';
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText('B →', 95, cy - 105);
+    ctx.restore();
+  }
+
+  function drawLoopAndForces(){
+    // Top-down view. Loop has length 2r in the "loop plane". The two long sides are perpendicular to the
+    // diagram (out of page). We see them edge-on (as circles).
+    // Side A at (cx + r*cos θ, cy - r*sin θ)  — note canvas y inverted
+    // Side B at (cx - r*cos θ, cy + r*sin θ)
+    var r = 90;
+    var ax = cx + r*Math.cos(theta), ay = cy - r*Math.sin(theta);
+    var bx = cx - r*Math.cos(theta), by = cy + r*Math.sin(theta);
+
+    // Determine current direction at each side.
+    //   With commutator: A always carries current out-of-page (⊙), B always into-page (⊗).
+    //     (Because commutator switches every 180°, so the "right-half" wire always has the same direction.)
+    //   Without commutator: A's direction stays fixed in lab frame. After θ rotates past 180°,
+    //     the wire-labeled-A is at the position where it physically still has the same circulation direction
+    //     in its frame, but the geometric label "A" follows the physical wire.
+    // To visualize "without commutator" clearly: the wire physically rotates with the loop; the current
+    //   direction in lab frame stays fixed (current always enters terminal X, leaves terminal Y).
+    //   So if at θ=0 wire-at-right has ⊙ current, then at θ=π wire-at-right (formerly wire-at-left)
+    //   has ⊗ current (because the wire has rotated by 180° but current direction was fixed in lab frame).
+    // For simplicity: with commutator → currents are determined by which side is "right" or "left".
+    // Without commutator → currents are determined by which wire (rotates with loop).
+    var aOut, bOut;  // out means ⊙ (current out of page), false means ⊗
+    if (withCommutator){
+      // Right side always ⊙, left always ⊗
+      aOut = Math.cos(theta) > 0;   // A's x position relative to center
+      bOut = !aOut;
+    } else {
+      // Current direction fixed to the wire identity. Wire A always carries current in same lab-direction.
+      // Visualization: A is ⊙ for first half (0..π), ⊗ for second half (after physical 180° rotation
+      //   the wire has flipped) — but actually the current symbol in lab frame depends on how we interpret.
+      // Easier: just say without commutator, the current symbol is always relative to the physical wire,
+      //   and as the wire rotates, its current direction in lab frame depends on rotation angle:
+      //   A's "out-ness" alternates: out at θ=0, in at θ=π, out at θ=2π, ...
+      // But actually for a current that's continuously flowing in the SAME direction relative to the wire,
+      //   as the wire rotates by 180°, the lab-frame current direction stays the SAME physical direction in space.
+      //   So if wire A had ⊙ current and rotates 180°, the wire is now where B was, and its current is still ⊙.
+      // OK the simplest model: without commutator, the SAME side (always A) carries ⊙. So at θ=π, A is on the
+      //   left, still carrying ⊙. So now the "left side" has ⊙ current — opposite of the commutator case!
+      // This is what creates oscillation: the force direction depends on current direction + position.
+      aOut = true;   // wire A always carries ⊙ current in lab frame
+      bOut = false;
+    }
+    // Apply user's manual reversal
+    if (currentSign < 0){ aOut = !aOut; bOut = !bOut; }
+
+    // Draw the loop's connecting back-frame: a thin line connecting A and B (these represent the two long sides)
+    ctx.save();
+    ctx.strokeStyle = cssv('--wire'); ctx.lineWidth = 2; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // Draw the two ends (wires seen end-on)
+    function drawWireEnd(x,y, isOut, label){
+      ctx.save();
+      ctx.fillStyle = cssv('--I');
+      ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5;
+      if (isOut){
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI*2); ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.moveTo(x-7, y-7); ctx.lineTo(x+7, y+7); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x+7, y-7); ctx.lineTo(x-7, y+7); ctx.stroke();
+      }
+      ctx.fillStyle = cssv('--I'); ctx.font='bold 12px Vazirmatn';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(label, x, y - 24);
+      ctx.restore();
+    }
+    drawWireEnd(ax, ay, aOut, 'A');
+    drawWireEnd(bx, by, bOut, 'B');
+
+    // Forces: F = IL × B. For B = +x̂ and wire current along ±ẑ:
+    //   ẑ × x̂ = ŷ → ⊙ current produces force in +y (down in canvas since y inverted)
+    //   ⊗ current produces force in -y (up in canvas since y inverted)
+    function forceDirCanvas(isOut){
+      // ⊙ → physics +y → canvas -y (since canvas y is inverted)
+      // Hmm wait. Standard physics convention: +y is up. Canvas y is down. So physics +y = canvas -y direction.
+      // ⊙ current → F in physics +y → canvas direction is up
+      // ⊗ current → F in physics -y → canvas direction is down
+      return isOut ? -1 : +1;   // -1 means up, +1 means down
+    }
+    var fyA = forceDirCanvas(aOut);
+    var fyB = forceDirCanvas(bOut);
+    var fLen = 50;
+    arrow(ax, ay, ax, ay + fyA*fLen, cssv('--F'), 3.5);
+    arrow(bx, by, bx, by + fyB*fLen, cssv('--F'), 3.5);
+
+    ctx.fillStyle = cssv('--F'); ctx.font='bold 14px Vazirmatn';
+    ctx.textAlign='center';
+    ctx.fillText('F', ax + 15, ay + fyA*fLen*0.5);
+    ctx.fillText('F', bx + 15, by + fyB*fLen*0.5);
+
+    // Draw rotation indicator (curved arrow) showing direction
+    // Calculate net torque sign: positive means CCW on canvas (i.e., CW in physics since y inverted... ugh)
+    // Easier: just compute the angular acceleration direction from torque = r × F
+    //   r_A = (cos θ, -sin θ) (canvas coords from center)
+    //   F_A = (0, fyA)
+    //   torque_z = r_A.x * F_A.y - r_A.y * F_A.x = cos θ * fyA - (-sin θ)*0 = cos θ * fyA
+    //   (in canvas coords, +z torque means CW on screen visually)
+    var torqueA = Math.cos(theta) * fyA;
+    var torqueB = (-Math.cos(theta)) * fyB;
+    var netTorque = torqueA + torqueB;  // both A and B contribute the same direction usually
+
+    // Draw a curved arrow indicating rotation direction
+    if (Math.abs(netTorque) > 0.05){
+      var dir = netTorque > 0 ? 1 : -1;  // +1 = CW on canvas
+      ctx.save();
+      ctx.strokeStyle = cssv('--ok'); ctx.lineWidth = 3; ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      var rR = 38;
+      // Draw a 3/4 arc starting at "top right" and going CW or CCW
+      var startA = -Math.PI/4, endA = -Math.PI/4 + dir * Math.PI * 1.5;
+      ctx.arc(cx, cy, rR, startA, endA, dir<0);
+      ctx.stroke();
+      // Arrowhead at end
+      var hx = cx + rR * Math.cos(endA);
+      var hy = cy + rR * Math.sin(endA);
+      var tangentAng = endA + dir * Math.PI/2;
+      ctx.beginPath();
+      ctx.moveTo(hx, hy);
+      ctx.lineTo(hx + 9*Math.cos(tangentAng - 0.4), hy + 9*Math.sin(tangentAng - 0.4));
+      ctx.lineTo(hx + 9*Math.cos(tangentAng + 0.4), hy + 9*Math.sin(tangentAng + 0.4));
+      ctx.closePath(); ctx.fillStyle = cssv('--ok'); ctx.fill();
+      ctx.restore();
+    }
+
+    // Update readouts
+    var degrees = (theta * 180/Math.PI) % 360;
+    if (degrees<0) degrees += 360;
+    document.getElementById('thetaVal').textContent = toFa(degrees.toFixed(0)) + '°';
+    var torque = Math.abs(netTorque);
+    document.getElementById('torqueVal').textContent = toFa(torque.toFixed(2));
+    document.getElementById('modeVal').textContent = withCommutator ? 'با کموتاتور' : 'بدون کموتاتور';
+  }
+
+  function drawCommutatorDiagram(){
+    // Small inset showing commutator at bottom: two semi-circular brushes, split-ring
+    var bx = W - 220, by = H - 70;
+    ctx.save();
+    ctx.strokeStyle = cssv('--muted'); ctx.lineWidth = 1;
+    ctx.fillStyle = cssv('--bg'); ctx.globalAlpha = 0.96;
+    ctx.fillRect(bx-8, by-50, 230, 90);
+    ctx.strokeRect(bx-8, by-50, 230, 90);
+    ctx.restore();
+    // Title
+    ctx.save();
+    ctx.fillStyle = cssv('--muted'); ctx.font='11px Vazirmatn'; ctx.textAlign='right';
+    ctx.fillText(withCommutator ? 'کموتاتور: حلقه‌ی شکافته' : 'بدون کموتاتور: حلقه‌ی پیوسته', bx+220, by-35);
+    // Draw split ring (or full ring depending on mode)
+    var ringCx = bx + 70, ringCy = by + 5, ringR = 22;
+    ctx.lineWidth = 4;
+    if (withCommutator){
+      ctx.strokeStyle = cssv('--commutator');
+      ctx.beginPath(); ctx.arc(ringCx, ringCy, ringR, Math.PI*0.1, Math.PI*0.9); ctx.stroke();
+      ctx.beginPath(); ctx.arc(ringCx, ringCy, ringR, Math.PI*1.1, Math.PI*1.9); ctx.stroke();
+    } else {
+      ctx.strokeStyle = cssv('--I');
+      ctx.beginPath(); ctx.arc(ringCx, ringCy, ringR, 0, Math.PI*2); ctx.stroke();
+    }
+    // Brushes
+    ctx.fillStyle = cssv('--muted');
+    ctx.fillRect(ringCx - ringR - 12, ringCy - 5, 10, 10);
+    ctx.fillRect(ringCx + ringR + 2, ringCy - 5, 10, 10);
+    // Power source
+    ctx.fillStyle = cssv('--I'); ctx.font='bold 14px Vazirmatn'; ctx.textAlign='left';
+    ctx.fillText('+', bx + 130, by - 5);
+    ctx.fillText('−', bx + 130, by + 18);
+    ctx.strokeStyle = cssv('--I'); ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(ringCx + ringR + 12, ringCy - 5); ctx.lineTo(bx + 125, by - 10);
+    ctx.moveTo(ringCx - ringR - 12, ringCy + 5); ctx.lineTo(bx + 125, by + 14);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function draw(){
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=rect.width; H=rect.height; cx=W/2; cy=H/2 - 10;  // shift up to leave room for commutator diagram
+    ctx.clearRect(0,0,W,H);
+    drawPoles();
+    drawFieldArrows();
+    drawLoopAndForces();
+    drawCommutatorDiagram();
+  }
+
+  function tick(ts){
+    if (!lastTs) lastTs = ts;
+    var dt = (ts - lastTs)/1000; lastTs = ts;
+    if (!paused){
+      if (withCommutator){
+        theta += omega * currentSign * dt;
+      } else {
+        // Pendulum-like motion: torque = -k * cos(θ) → equilibrium at θ=π/2
+        // Actually without commutator, the loop oscillates around the position where it's aligned with B
+        //   (perpendicular to applied torque direction). Use a simple pendulum equation:
+        //   θ'' = -k * cos(θ - π/2) ≈ -k * sin(θ) when displaced from equilibrium at π/2
+        // For visual clarity, just use: θ'' = -ω² * sin(θ)  (oscillates around 0)
+        var damping = 0.4;
+        var acc = -omega * omega * Math.sin(pendAngle) * currentSign;
+        pendVel += acc * dt - damping * pendVel * dt;
+        pendAngle += pendVel * dt;
+        theta = pendAngle;
+      }
+    }
+    draw();
+    requestAnimationFrame(tick);
+  }
+
+  document.getElementById('modeOn').addEventListener('click', function(){
+    withCommutator = true;
+    this.classList.add('on');
+    document.getElementById('modeOff').classList.remove('on');
+    pendAngle = theta; pendVel = 0;  // smooth transition
+  });
+  document.getElementById('modeOff').addEventListener('click', function(){
+    withCommutator = false;
+    this.classList.add('on');
+    document.getElementById('modeOn').classList.remove('on');
+    pendAngle = theta; pendVel = 0;
+  });
+  document.getElementById('speedSlider').addEventListener('input', function(e){
+    omega=+e.target.value;
+    document.getElementById('speedVal').textContent = toFa(omega.toFixed(1));
+  });
+  document.getElementById('pauseBtn').addEventListener('click', function(){
+    paused = !paused;
+    this.textContent = paused ? '▶ ادامه' : '⏸ مکث';
+  });
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    theta = 0; pendAngle = 0; pendVel = 0;
+  });
+  document.getElementById('reverseBtn').addEventListener('click', function(){
+    currentSign *= -1;
+  });
+  window.addEventListener('resize', draw);
+
+  setTimeout(function(){
+    var rect=cv.getBoundingClientRect();
+    W=rect.width; H=rect.height; cx=W/2; cy=H/2-10;
+    requestAnimationFrame(tick);
+  }, 50);
+})();
+</script>
+</body>
+</html>

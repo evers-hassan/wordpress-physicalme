@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دقت در برابر درستی</title>
+<style>
+  :root{--bg:#fff;--surface:#f4f3ef;--text:#1a1a18;--muted:#5f5e5a;--hint:#9b9a93;--border-strong:#cbc9c0;--info:#185fa5;}
+  @media (prefers-color-scheme:dark){:root{--bg:#1f1e1c;--surface:#2a2926;--text:#f0efe9;--muted:#a8a69e;--hint:#76746d;--border-strong:#4a4844;--info:#85b7eb;}}
+  *{box-sizing:border-box;}
+  body{margin:0;padding:16px;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;background:var(--bg);color:var(--text);}
+  .tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  button{font-size:13px;font-family:inherit;background:transparent;color:var(--text);border:1px solid var(--border-strong);border-radius:8px;padding:8px 12px;cursor:pointer;transition:.15s;}
+  button:hover{background:var(--surface);}
+  button.active{border-color:var(--info);color:var(--info);}
+  canvas{width:100%;max-width:300px;height:auto;background:var(--surface);border-radius:12px;display:block;margin:0 auto;}
+  .desc{font-size:14px;color:var(--muted);line-height:1.8;margin-top:14px;text-align:center;min-height:48px;}
+  .desc b{color:var(--text);}
+</style>
+</head>
+<body>
+  <div class="tabs">
+    <button data-m="both">هم دقیق هم درست</button>
+    <button data-m="precise">دقیق ولی نادرست</button>
+    <button data-m="neither">نه دقیق نه درست</button>
+  </div>
+  <canvas id="cv" width="300" height="300"></canvas>
+  <p class="desc" id="desc"></p>
+<script>
+  var cv=document.getElementById("cv"),ctx=cv.getContext("2d"),descEl=document.getElementById("desc");
+  function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||"#888";}
+  var modes={
+    both:{c:[150,150],spread:14,d:"<b>هم دقیق هم درست:</b> همه‌ی تیرها هم نزدیکِ همن (دقیق) و هم وسطِ هدف (درست). این حالتِ ایده‌آلِ اندازه‌گیریه."},
+    precise:{c:[205,100],spread:14,d:"<b>دقیق ولی نادرست:</b> تیرها نزدیکِ همن (پس دقیقه)، ولی از وسطِ هدف دورن (پس درست نیست). مثلِ ترازویی که همیشه ۲ کیلو بیشتر نشون می‌ده."},
+    neither:{c:[150,150],spread:55,d:"<b>نه دقیق نه درست:</b> تیرها همه‌جا پخشن. نه به هم نزدیکن، نه به وسط. بدترین حالت."}
+  };
+  var cur="both";
+  function draw(){
+    var mode=modes[cur];
+    ctx.clearRect(0,0,cv.width,cv.height);
+    var rings=[140,105,70,35],cols=["#e6f1fb","#b5d4f4","#85b7eb","#378add"];
+    for(var i=0;i<rings.length;i++){ctx.fillStyle=cols[i];ctx.beginPath();ctx.arc(150,150,rings[i],0,7);ctx.fill();}
+    ctx.fillStyle="#185fa5";ctx.beginPath();ctx.arc(150,150,10,0,7);ctx.fill();
+    var seed=cur.length*7;
+    function rnd(){seed=(seed*9301+49297)%233280;return seed/233280;}
+    ctx.fillStyle="#d85a30";ctx.strokeStyle=css("--bg");ctx.lineWidth=1.5;
+    for(var j=0;j<7;j++){
+      var x=mode.c[0]+(rnd()-0.5)*mode.spread*2;
+      var y=mode.c[1]+(rnd()-0.5)*mode.spread*2;
+      ctx.beginPath();ctx.arc(x,y,5,0,7);ctx.fill();ctx.stroke();
+    }
+    descEl.innerHTML=mode.d;
+  }
+  document.querySelectorAll("button").forEach(function(b){
+    b.addEventListener("click",function(){
+      cur=b.dataset.m;
+      document.querySelectorAll("button").forEach(function(x){x.classList.remove("active");});
+      b.classList.add("active");draw();
+    });
+  });
+  document.querySelector("button").classList.add("active");
+  draw();
+</script>
+</body>
+</html>

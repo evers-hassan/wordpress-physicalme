@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>حل مسائل — فصل ۳ یازدهم: مغناطیس</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --hint:#9b9a93; --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --hint-c:#a87800; --hint-bg:#fef6e0; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --check:#7a4dbd; --check-bg:#efe6f9; --bad:#c43838; --bad-bg:#fce5e5;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --hint:#76746d; --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --hint-c:#e0b860; --hint-bg:#4a3a15; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --check:#b08be8; --check-bg:#3a2858; --bad:#f0807d; --bad-bg:#4a1f1f; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.8;}
+  .problem{border:1px solid var(--border); border-radius:14px; padding:18px 20px;
+    margin-bottom:18px; background:var(--bg);}
+  .pnum{display:inline-block; background:var(--info-bg); color:var(--info);
+    font-weight:700; padding:2px 10px; border-radius:8px; font-size:13px; margin-bottom:8px;}
+  .pq{font-size:15.5px; margin:6px 0 14px; color:var(--text); line-height:1.85;}
+  .ptype{font-size:12px; color:var(--muted); margin-bottom:10px;}
+  .relate{font-size:13px; color:var(--muted); background:var(--surface);
+    padding:8px 12px; border-radius:8px; margin-bottom:12px; border-right:3px solid var(--info);}
+  .controls{margin:10px 0 4px; display:flex; flex-wrap:wrap; gap:8px;}
+  .btn{font-family:inherit; font-size:14px; padding:8px 16px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text);
+    cursor:pointer; transition:.15s;}
+  .btn:hover{background:var(--surface);}
+  .btn-hint{color:var(--hint-c); border-color:var(--hint-c);}
+  .btn-next{color:var(--info); border-color:var(--info);}
+  .btn-check{color:var(--check); border-color:var(--check);}
+  .btn:disabled{opacity:.4; cursor:not-allowed;}
+  .step{margin-top:12px; padding:12px 14px; border-radius:10px; background:var(--info-bg);
+    border-right:3px solid var(--info); animation:fadeIn .25s ease;}
+  .step b{color:var(--info);}
+  .hint-box{margin-top:12px; padding:12px 14px; border-radius:10px;
+    background:var(--hint-bg); border-right:3px solid var(--hint-c);
+    animation:fadeIn .25s ease;}
+  .hint-box b{color:var(--hint-c);}
+  .final{margin-top:12px; padding:14px; border-radius:10px; background:var(--ok-bg);
+    border-right:3px solid var(--ok); animation:fadeIn .25s ease;}
+  .final b{color:var(--ok);}
+  .check-box{margin-top:12px; padding:14px; border-radius:10px; background:var(--check-bg);
+    border-right:3px solid var(--check); animation:fadeIn .25s ease;}
+  .check-box b{color:var(--check);}
+  .check-row{display:flex; align-items:center; gap:8px; margin:6px 0; flex-wrap:wrap;}
+  .check-row label{min-width:24px; font-weight:600; color:var(--text);}
+  .check-row input{flex:1; min-width:120px; padding:7px 10px; border-radius:8px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text);
+    font-family:inherit; font-size:14px;}
+  .check-row .unit{font-size:13px; color:var(--muted); white-space:nowrap;}
+  .check-result{margin-top:10px; padding:10px 12px; border-radius:8px; font-size:14px;}
+  .check-result.ok{background:var(--ok-bg); color:var(--ok); border-right:3px solid var(--ok);}
+  .check-result.bad{background:var(--bad-bg); color:var(--bad); border-right:3px solid var(--bad);}
+  .check-result b{font-weight:700;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:none;}}
+  .label{font-size:11px; font-weight:700; letter-spacing:.5px; margin-bottom:4px;
+    display:inline-block;}
+  h1.page-title{font-size:22px; margin:8px 0 18px; color:var(--text);}
+  .intro{background:var(--surface); padding:14px 16px; border-radius:12px; margin-bottom:18px;
+    font-size:14px; color:var(--muted); line-height:1.8;}
+  .intro b{color:var(--text);}
+
+  /* ---- master-detail layout ---- */
+  .layout{display:grid; grid-template-columns:200px 1fr; gap:22px; align-items:start;}
+  @media (max-width:620px){ .layout{grid-template-columns:1fr;} }
+  .sidebar{background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:14px; position:sticky; top:16px; max-height:calc(100vh - 32px);
+    overflow-y:auto;}
+  .sidebar h2{font-size:13px; font-weight:700; color:var(--muted); letter-spacing:1px;
+    margin:0 0 10px; text-transform:uppercase; padding:0 4px;}
+  .sidebar ol{list-style:none; padding:0; margin:0; counter-reset:msc;}
+  .sidebar li{margin:2px 0;}
+  .sidebar .nav-btn{display:flex; align-items:center; gap:10px; width:100%;
+    text-align:right; font-family:inherit; font-size:14px; color:var(--text);
+    padding:9px 12px; background:transparent; border:none; border-radius:8px;
+    cursor:pointer; line-height:1.5; transition:.12s;}
+  .sidebar .nav-btn:hover{background:var(--bg);}
+  .sidebar .nav-btn.active{background:var(--info-bg); color:var(--info); font-weight:700;}
+  .sidebar .nav-btn .nb-num{flex-shrink:0; min-width:26px; height:26px;
+    border-radius:50%; background:var(--bg); color:var(--muted); display:flex;
+    align-items:center; justify-content:center; font-size:12px; font-weight:700;
+    border:1px solid var(--border);}
+  .sidebar .nav-btn.active .nb-num{background:var(--info); color:#fff; border-color:var(--info);}
+  .sidebar .nav-btn .nb-title{flex:1; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap;}
+  @media (max-width:620px){
+    .sidebar{position:relative; top:0; max-height:none;}
+    .sidebar ol{display:grid; grid-template-columns:repeat(auto-fill, minmax(56px,1fr)); gap:6px;}
+    .sidebar .nav-btn{justify-content:center; padding:8px 6px; font-size:13px;}
+    .sidebar .nav-btn .nb-title{display:none;}
+  }
+  .nav-arrows{display:flex; gap:10px; margin-top:18px; justify-content:space-between;}
+  .nav-arrows .btn{flex:1;}
+  .nav-arrows .btn:disabled{visibility:hidden;}
+</style>
+  <script id="mathjax-config">
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\(','\)']],
+           displayMath: [['$$','$$'], ['\[','\]']],
+           processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+  <h1 class="page-title">حل مسائل فصل ۳ یازدهم — مغناطیس 🧲</h1>
+  <div class="intro">
+    اینجا هر مسئله رو می‌تونی <b>قدم‌به‌قدم</b> پیش بری. اگه گیر کردی <b>💡 راهنمایی</b> بگیر؛ اگه خودت حل کردی و فقط می‌خوای جوابتو چک کنی، رو <b>🔍 بررسی جواب من</b> کلیک کن. تلرانسِ بررسی حدودِ ۵٪ ـه تا اعدادِ رُند هم قبول بشن.
+  </div>
+  <div class="layout">
+    <aside class="sidebar">
+      <h2>فهرست مسائل</h2>
+      <ol id="nav-list"></ol>
+    </aside>
+    <main>
+      <div id="problems"></div>
+      <div class="nav-arrows">
+        <button class="btn" id="prev-btn">← مسئله‌ی قبلی</button>
+        <button class="btn btn-next" id="next-btn">مسئله‌ی بعدی →</button>
+      </div>
+    </main>
+  </div>
+
+<script>
+// ============================================================
+// مسائل فصل ۱
+// ساختار هر مسئله:
+//   n         شماره (نمایشی)
+//   type      نوع
+//   q         صورت سؤال (HTML)
+//   relate    ارتباط با مسائل قبلی (اختیاری)
+//   hint      راهنمایی (اختیاری)
+//   steps     آرایه‌ی قدم‌های حل (HTML)
+//   final     جواب نهایی (HTML)
+//   check     [{label, value, unit, tol?}]  ← اگر بود، دکمه‌ی بررسی جواب فعال می‌شود
+// ============================================================
+var problems = [
+
+  // ===== ۳-۱ و ۳-۲: مغناطیس، قطب‌ها، میدان مغناطیسی =====
+  {n:"۱", type:"مفهومی — قطب‌نما و خطوط میدان",
+   q:"با توجه به جهت‌گیری عقربه‌های مغناطیسی در شکل زیر، قطب‌های آهنربای میله‌ای و جهت خط‌های میدان مغناطیسی را تعیین کنید.<br><img src=\"../images/03-p01-magnet-poles.png\" alt=\"عقربه‌های قطب‌نما\" style=\"max-width:340px;width:100%;display:block;margin:10px auto;\">",
+   relate:"🔗 جهت‌گیری قطب‌نما را در «۳-۱ مغناطیس و قطب‌ها» دیدیم.",
+   hint:"یادت باشه: نوکِ <b>قرمزِ</b> سوزن قطب‌نما (قطب N سوزن) همیشه به سمتِ خط میدان اشاره می‌کنه — یعنی به طرفِ قطبِ S آهنربا.",
+   steps:[
+     "<b>قانون پایه:</b> خطوط میدان مغناطیسی بیرونِ آهنربا از قطبِ N خارج می‌شن و به قطبِ S برمی‌گردن.",
+     "<b>کاربرد روی شکل:</b> هر سوزنِ قطب‌نما، نوک قرمزش (N) رو در جهت خط میدان نشون می‌ده. اگه نوک‌ها به یه سرِ آهنربا اشاره می‌کنن، اون سر S ـه (چون خطوط به طرف S می‌رن). اگه از یه سر دور می‌شن، اون سر N ـه.",
+     "<b>جهت خطوط:</b> از طرف N آهنربا به سمت S، با مسیر منحنیِ بسته‌ای که از بیرون اطراف می‌چرخه."
+   ],
+   final:"<b>درسِ کلیدی:</b> سوزنِ قطب‌نما در هر نقطه، جهتِ <b>بردار B</b> رو در اون نقطه نشون می‌ده — نوک N سوزن همیشه در جهتِ میدان می‌چرخه. این تعریفِ عملیِ جهت میدان مغناطیسی است."
+  },
+
+  {n:"۲", type:"مفهومی — میدان بینِ دو آهنربای همنام",
+   q:"شکل زیر خط‌های میدان مغناطیسی نزدیک دو آهنربای میله‌ای یکسان رو نشون می‌ده.<br><img src=\"../images/03-p02-two-magnets.png\" alt=\"میدان دو آهنربا\" style=\"max-width:380px;width:100%;display:block;margin:10px auto;\"><br><b>الف)</b> دربارهٔ میدان در نقطهٔ A چی می‌تونی بگی؟<br><b>ب)</b> با رسم شکل نشون بده عقربهٔ قطب‌نما در نقاط B و C در چه جهتی قرار می‌گیره؟<br><b>پ)</b> اگه یکی از آهنرباها چرخونده بشه و قطب‌هاش جابه‌جا بشن، خطوط در ناحیهٔ نقطه‌چین چجوری رسم می‌شن؟",
+   hint:"وقتی دو قطبِ همنام مقابلِ هم باشن (N به N یا S به S)، خطوط میدان از همدیگه دفع می‌شن. در نقطهٔ <b>وسطی</b> ممکنه میدان صفر بشه — همه‌ی خطوط دفع می‌شن، هیچ‌کدوم از اون نقطه عبور نمی‌کنه.",
+   steps:[
+     "<b>الف — نقطهٔ A (وسطِ بین دو قطبِ همنام):</b> دو میدان از هر دو آهنربا هم‌اندازه و در جهت‌های <b>مخالف</b> می‌رسن → برهم‌نهی → <b>میدان صفر</b>. این یه «نقطه‌ی خنثی» (Neutral Point) ـه.",
+     "<b>ب — قطب‌نما در B و C:</b> در هر نقطه، عقربه در جهتِ <b>میدان برایند</b> در اون نقطه قرار می‌گیره. در B (نزدیک‌تر به یه آهنربا) عقربه عمدتاً از میدانِ همون آهنربا تأثیر می‌گیره؛ در C هم همینطور.",
+     "<b>پ — وقتی یه آهنربا چرخونده بشه:</b> حالا قطب‌های مقابل ناهمنام می‌شن (N به S). خطوط بینشون به‌جای دفع، <b>به هم متصل</b> می‌شن — مثل آهنربای میله‌ایِ بزرگ‌تر."
+   ],
+   final:"<b>درسِ کلیدی:</b> در نقطه‌ای که میدان‌های دو آهنربا هم‌اندازه و مخالف باشن، <b>نقطهٔ خنثی</b> ایجاد می‌شه. این جاها قطب‌نما نمی‌چرخه چون هیچ نیرویی روش نیست."
+  },
+
+  {n:"۳", type:"مفهومی — تشخیص قطب و مقایسهٔ شدّت",
+   q:"<b>الف)</b> آهنربای میله‌ای با قطب‌های نامشخص داریم. دستِ کم دو روش برای تعیین قطب‌ها بیان کنید.<br><b>ب)</b> در شکل زیر، اندازهٔ میدان نزدیکِ قطب‌های دو آهنربا را با هم مقایسه کنید.<br><img src=\"../images/03-p03-compare-magnets.png\" alt=\"مقایسهٔ شدّت میدان\" style=\"max-width:340px;width:100%;display:block;margin:10px auto;\">",
+   hint:"چگالی خطوط میدان = شدّت میدان. هرجا خطوط متراکم‌ترن، میدان قوی‌تره.",
+   steps:[
+     "<b>الف — روش‌های تشخیص قطب:</b><br>۱) <b>قطب‌نمای کمکی</b>: یه قطب‌نمای با قطب معلوم رو نزدیک کن؛ سرِ N سوزن به سمت قطبِ S آهنربای ناشناخته می‌چرخه.<br>۲) <b>آویزانش کن:</b> آهنربا رو از وسط با نخ آویزون کن. سرش به طرفِ شمالِ جغرافیایی (که قطب S آهنربایی زمینه) می‌چرخه؛ پس اون سر، N آهنرباست.<br>۳) <b>برادهٔ آهن</b>: روی کاغذ بپاش، آهنربا زیرش بذار. الگوی خطوط رو ببین؛ سپس با قطب‌نمای کمکی جهت رو پیدا کن.",
+     "<b>ب — مقایسهٔ شدّت:</b> در شکل، نزدیکِ یکی از آهنرباها خطوط متراکم‌ترن. اون آهنربا، نزدیکِ قطب‌هاش <b>میدان قوی‌تری</b> داره. تراکم خطوط، مستقیماً متناسب با اندازهٔ B ـه."
+   ],
+   final:"<b>درسِ کلیدی:</b> دو قاعده‌ی مهم: قطبِ N سوزنِ آویز به سمتِ شمال جغرافیایی می‌چرخه (اولین استفاده‌ی تاریخی قطب‌نما) + <b>تراکم خطوط میدان</b> در نقشه‌ی میدان، اندازه‌ی B رو نشون می‌ده."
+  },
+
+  {n:"۴", type:"مفهومی — کاربردِ پزشکی",
+   q:"کودکی یه قطعهٔ کوچکِ آهنی رو بلعیده. پزشک می‌خواد با دستگاهی مثل شکل زیر (آهنربای دائمیِ متحرک در غلافِ انعطاف‌پذیر و نوکِ آهنیِ ثابت) از گلوش بیرون بیاره.<br><img src=\"../images/03-p04-throat-doctor.png\" alt=\"دستگاه استخراج پزشکی\" style=\"max-width:340px;width:100%;display:block;margin:10px auto;\"><br><b>الف)</b> چه اتفاقی توی نوکِ آهنی می‌افته وقتی آهنربا نزدیکش می‌شه؟<br><b>ب)</b> نوکِ آهنیِ ثابت چه مزیتی داره؟<br><b>پ)</b> چرا غلاف باید انعطاف‌پذیر باشه؟<br><b>ت)</b> گیرهٔ آهنی و واشرِ آلومینیومی — کدوم رو می‌شه بیرون آورد؟",
+   hint:"دو مفهوم کلیدی: <b>القای مغناطیسی</b> (آهنِ نرم در حضور آهنربا، خودش هم آهنربا می‌شه) + تفاوت رفتار <b>آهن</b> (فرومغناطیس) با <b>آلومینیوم</b> (پارامغناطیسِ خیلی ضعیف).",
+   steps:[
+     "<b>الف — القا در نوک آهنی:</b> وقتی آهنربای دائمی به نوکِ آهنیِ ثابت نزدیک می‌شه، نوک <b>القاءاً مغناطیسی</b> می‌شه — اتم‌های آهن نوک هم‌جهت با میدان آهنربا می‌شن. نوک تبدیل به یه آهنربای کوچکِ موقتی می‌شه که می‌تونه قطعهٔ آهنیِ بلعیده‌شده رو جذب کنه.",
+     "<b>ب — مزیتِ نوک آهنی:</b> نوک تماس مستقیم با بافت داره و باعث می‌شه میدان مغناطیسی <b>متمرکز</b> و <b>قوی</b> در محل کار باشه. آهنربای دائمی توی غلاف ـه (بدون تماس)، نوک کارِ آهن‌ربا رو در نزدیکیِ هدف انجام می‌ده.",
+     "<b>پ — چرا غلاف انعطاف‌پذیر؟</b> چون باید از گلو و مری‌ی <b>پیچ‌خورده</b>ی کودک عبور کنه؛ سفت بودنش آسیب می‌زنه.",
+     "<b>ت — گیره‌ی آهنی یا واشر آلومینیومی؟</b><br>گیره‌ی آهنی <b>فرومغناطیسه</b> و به‌شدت جذب می‌شه → <b>بیرون می‌آد</b>.<br>واشر آلومینیومی <b>پارامغناطیسِ ضعیفه</b> → عملاً <b>جذب نمی‌شه</b> و نمی‌شه با این روش بیرون آوردش."
+   ],
+   final:"<b>درسِ کلیدی:</b> این دستگاه از دو پدیده استفاده می‌کنه: <b>القای مغناطیسی</b> در نوکِ آهنی، و تفاوت اساسیِ بین فرومغناطیس (آهن) و پارامغناطیس (آلومینیوم). همین تفاوته که توی MRI هم اهمیت داره — فلزات مغناطیسی خطرناک‌اند."
+  },
+
+  // ===== ۳-۳: نیرو بر بار متحرک =====
+  {n:"۵", type:"مفهومی — نوع بار از مسیر",
+   q:"چهار ذرّه در حین عبور از میدان مغناطیسی هم‌جهت، مسیرهایی مطابق شکل می‌پیمایند. دربارهٔ نوع بار هر ذرّه چی می‌تونی بگی؟<br><img src=\"../images/03-p05-trajectories.png\" alt=\"مسیر چهار ذرّه\" style=\"max-width:340px;width:100%;display:block;margin:10px auto;\">",
+   hint:"<b>F = qv×B</b>. اگه ذرّه‌ای منحرف نشه، یا q=0 ـه یا v موازی B. جهت انحراف نشون‌دهنده‌ی <b>علامتِ q</b> ـه (قاعدهٔ دست راست برای + و عکسش برای −).",
+   steps:[
+     "<b>ذرّه‌ی بدون انحراف:</b> یا <b>خنثی</b> ـه (q=0) یا سرعتش موازی B ـه (که در این مسئله v عمود بر B ـه، پس باید خنثی باشه).",
+     "<b>ذرّه‌ای که به یه سمت منحرف شده:</b> با قاعده‌ی دست راست، با فرضِ بار <b>مثبت</b>، جهت F = qv×B رو محاسبه کن. اگه مسیر در همون جهت ـه → بار مثبت. اگه عکس ـه → بار منفی.",
+     "<b>ذرّه‌ای که به سمت مقابل منحرف شده:</b> برعکسِ مورد قبلی."
+   ],
+   final:"<b>درسِ کلیدی:</b> در طیف‌سنج جرمی هم همین اصل به‌کار می‌ره — از انحرافِ ذرّه‌ها در میدان معلوم، <b>نوع بار و نسبت q/m</b> رو پیدا می‌کنن. این روش، ذرّاتی مثل پروتون، الکترون، آنتی‌پوزیترون رو در دستگاه‌های فیزیکِ ذرّاتِ بنیادی شناسایی می‌کنه."
+  },
+
+  {n:"۶", type:"مفهومی — قاعده‌ی دست راست",
+   q:"جهت نیروی مغناطیسی وارد بر بارِ مثبت رو در هر یک از حالت‌های نشون داده شده در شکل تعیین کن.<br><img src=\"../images/03-p06-rhr-6cases.png\" alt=\"شش حالت v و B\" style=\"max-width:380px;width:100%;display:block;margin:10px auto;\">",
+   hint:"کفِ دستِ راست رو باز کن، انگشت‌ها در جهت v، طوری که با خم‌کردن به سمت B برسن. شَست در جهت F ـه.",
+   steps:[
+     "<b>روش گام‌به‌گام:</b> برای هر حالت:<br>۱) جهت v رو پیدا کن (بُرد فیزیکی)<br>۲) جهت B رو پیدا کن<br>۳) قاعدهٔ دست راست رو اعمال کن (یا فرمولِ v×B رو محاسبه کن)<br>۴) چون بار مثبته، F هم‌جهت با v×B ـه.",
+     "<b>چند مثال:</b> اگه v به سمت راست و B خارج صفحه: F رو به پایین.<br>اگه v به سمت راست و B داخل صفحه: F رو به بالا.<br>اگه v به سمت بالا و B خارج صفحه: F به سمت راست.<br>(برای هر حالت با ویجتِ «قاعدهٔ دست راست» امتحان کن!)",
+     "<b>وقتی v موازی B ـه:</b> F = 0 — هیچ نیرویی نیست."
+   ],
+   final:"<b>درسِ کلیدی:</b> نیروی مغناطیسی همیشه <b>عمود بر صفحهٔ شامل v و B</b> ـه. این یعنی نیرو هیچ‌وقت در راستای سرعت نیست — پس کاری روی ذرّه انجام نمی‌ده و سرعت رو تغییر <b>نمی‌ده</b>، فقط <b>جهت</b>ش رو."
+  },
+
+  {n:"۷", type:"مفهومی — قاعده برای الکترون",
+   q:"نیروی مغناطیسی F وارد بر الکترونی که در میدان B در حرکت است در شکل نشون داده شده. فرض کن راستای حرکتِ الکترون بر میدان عموده. در هر حالت جهت سرعت الکترون رو تعیین کن.<br><img src=\"../images/03-p07-electron-v.png\" alt=\"چهار حالت F و B برای الکترون\" style=\"max-width:380px;width:100%;display:block;margin:10px auto;\">",
+   hint:"الکترون بار <b>منفی</b> داره. پس F برعکسِ جهت v×B ـه. می‌تونی این رو معکوس کنی: <b>v</b> رو طوری انتخاب کن که v×B در خلاف F باشه.",
+   steps:[
+     "<b>کلیدی:</b> برای الکترون (q منفی): F = qv×B = -|q|v×B. پس v×B در خلاف جهت F ـه.",
+     "<b>روش:</b> ۱) جهت B و F رو ببین. ۲) جهتی پیدا کن که v×B در خلاف F باشه. ۳) از طریقِ قاعدهٔ دست راست (یا فرمول)، v رو محاسبه کن.",
+     "<b>راه میان‌بُر:</b> همون قاعدهٔ دست راست رو اعمال کن، فقط در آخرش جوابِ v×B (که F برای بار + می‌داد) رو <b>برعکس</b> کن تا v واقعی پیدا بشه."
+   ],
+   final:"<b>درسِ کلیدی:</b> الکترون و پروتون با همون v و B، نیروی <b>مخالف</b> می‌گیرن. این پایه‌ی <b>جداسازی بار</b> در دستگاه‌های الکترومغناطیسی است."
+  },
+
+  {n:"۸", type:"مفهومی — جهت جریان در حلقه",
+   q:"حلقهٔ رسانای مستطیلیِ حاملِ جریان I، بر اثر نیروهای مغناطیسی روی اضلاعش، در میدان مغناطیسیِ یکنواخت می‌چرخه. جهت جریان رو تعیین کنید.<br><img src=\"../images/03-p08-loop-current.png\" alt=\"حلقهٔ مستطیلی\" style=\"max-width:300px;width:100%;display:block;margin:10px auto;\">",
+   hint:"دو ضلعِ مقابل، نیروهای متضاد می‌گیرن. این جفت‌نیرو، گشتاور می‌سازه که حلقه رو در یه جهتِ خاص می‌چرخونه. از جهتِ چرخش، می‌تونی جهتِ نیروها و در نتیجه جهت جریان رو پیدا کنی.",
+   steps:[
+     "<b>گام ۱ — جهتِ چرخش:</b> از شکل ببین حلقه به کدوم سمت می‌چرخه (مثلاً جلوسوش به سمت بالا).",
+     "<b>گام ۲ — جهت نیرو روی هر ضلع:</b> روی ضلعی که جلو میاد، F باید به همون سمت باشه؛ روی ضلعِ پشتی، F باید برعکس.",
+     "<b>گام ۳ — جهت جریان از F = IL×B:</b> با قاعدهٔ دست راست، می‌فهمی جریان در اون ضلع باید کدوم طرف باشه. در ضلعِ دیگه برعکس (چون حلقه‌ست)."
+   ],
+   final:"<b>درسِ کلیدی:</b> این پایه‌ی <b>موتور الکتریکی</b> ـه! دو ضلع مقابلِ یه حلقه‌ی حامل جریان، در میدان مغناطیسی، جفت‌نیرو می‌گیرن → گشتاور → چرخش. (همراه با کموتاتور، یه موتور پیوسته می‌چرخه.)"
+  },
+
+  {n:"۹", type:"محاسباتی — F و a روی پروتون",
+   q:"پروتونی با تندیِ $v = 4.2\\times 10^5$ m/s درون میدانِ مغناطیسیِ یکنواختی با اندازهٔ $B = 18$ mT در حرکته. جهت حرکت پروتون با $\\vec{B}$ زاویهٔ ۶۰° می‌سازه.<br><b>الف)</b> اندازهٔ نیرو رو حساب کنید.<br><b>ب)</b> اگه فقط همین نیرو روی پروتون عمل کنه، شتابش چقدره؟ ($q_p = 1.6\\times 10^{-19}$ C، $m_p = 1.7\\times 10^{-27}$ kg)",
+   hint:"$F = |q|vB\\sin\\theta$. وقتی F رو پیدا کردی، با $a = F/m$ شتاب رو محاسبه کن.",
+   steps:[
+     "<b>الف — اندازهٔ نیرو:</b><br>$F = |q|vB\\sin\\theta = (1.6\\times 10^{-19})(4.2\\times 10^5)(18\\times 10^{-3})\\sin 60°$<br>$\\sin 60° = 0.866$<br>$F = 1.6\\times 4.2\\times 18\\times 0.866 \\times 10^{-19+5-3}$<br>$F \\approx 1.05 \\times 10^{-16}$ N",
+     "<b>ب — شتاب:</b><br>$a = F/m = \\dfrac{1.05\\times 10^{-16}}{1.7\\times 10^{-27}}$<br>$a \\approx 6.2 \\times 10^{10}$ m/s²"
+   ],
+   final:"<b>الف)</b> $F \\approx 1.05 \\times 10^{-16}$ N، <b>ب)</b> $a \\approx 6.2 \\times 10^{10}$ m/s² ≈ ۶ میلیارد برابرِ g!<br><b>درسِ کلیدی:</b> ذرّات زیراتمی به‌خاطر جرم خیلی کم، حتی با نیروهای ناچیز هم به شتاب‌های افسانه‌ای می‌رسن. این پایه‌ی سیکلوترون و شتاب‌دهنده‌هاست.",
+   check:[
+     {label:"F", value:1.05e-16, unit:"N", tol:0.05},
+     {label:"a", value:6.2e10, unit:"m/s²", tol:0.05}
+   ]
+  },
+
+  {n:"۱۰", type:"محاسباتی — یافتنِ B از نیروی روی الکترون",
+   q:"الکترونی با تندیِ $v = 2.4\\times 10^5$ m/s در میدانِ یکنواختی در حرکته. اندازهٔ نیرو روی این الکترون <b>بیشینه</b> است وقتی به سمت جنوب حرکت می‌کنه.<br><b>الف)</b> اگه جهت این نیروی بیشینه رو به بالا و اندازه‌ش $F = 6.8\\times 10^{-14}$ N باشه، میدان مغناطیسی رو تعیین کنید.<br><b>ب)</b> اندازهٔ میدانِ الکتریکیِ معادل (که همین نیرو رو ایجاد کنه) چقدره؟",
+   hint:"<b>بیشینه</b> یعنی $\\sin\\theta = 1$، یعنی v ⊥ B. حالا جهت B رو با F = qv×B (با q منفی!) پیدا کن.",
+   steps:[
+     "<b>الف — اندازهٔ B:</b><br>چون $\\sin\\theta=1$: $F = |q|vB$<br>$B = \\dfrac{F}{|q|v} = \\dfrac{6.8\\times 10^{-14}}{(1.6\\times 10^{-19})(2.4\\times 10^5)}$<br>$B \\approx 1.77$ T",
+     "<b>جهت B:</b> v به جنوب، F به بالا (روبه آسمان)، q منفی. باید جهتِ <b>v×B</b> برابر <b>پایین</b> باشه (تا با علامت منفی، F رو به بالا بده). با قاعدهٔ دست راست: v×B = پایین یعنی B باید به سمت <b>شرق</b> باشه. (یا غرب؟ بستگی به جهتِ دست راست — بررسی کن.)<br>دقیق: v×B = پایین. v = جنوب. ⇒ B = شرق (با قاعدهٔ دست راست).",
+     "<b>ب — میدان الکتریکی معادل:</b><br>$F = |q|E ⇒ E = \\dfrac{F}{|q|} = \\dfrac{6.8\\times 10^{-14}}{1.6\\times 10^{-19}}$<br>$E = 4.25\\times 10^5$ N/C"
+   ],
+   final:"<b>الف)</b> $B \\approx 1.77$ T به سمت <b>شرق</b>. <b>ب)</b> $E = 4.25\\times 10^5$ N/C.<br><b>درسِ کلیدی:</b> برای ایجاد نیروی یکسان روی ذرّه، میدان الکتریکی باید خیلی قوی باشه ($\\sim 10^5$ N/C)، در حالی که میدان مغناطیسی به مرتبه‌ی ۱ تسلا کفایت می‌کنه. این یکی از دلایلی‌ست که چرا در فیزیکِ ذرّاتِ بنیادی، از میدان مغناطیسی به‌جای الکتریکی برای انحراف ذرّات سریع استفاده می‌شه.",
+   check:[
+     {label:"B", value:1.77, unit:"T", tol:0.05},
+     {label:"E", value:4.25e5, unit:"N/C", tol:0.05}
+   ]
+  },
+
+  {n:"۱۱", type:"محاسباتی — انتخاب‌گرِ سرعت",
+   q:"ذرّه‌ی بارداری در امتدادِ محور x با سرعت $\\vec{v}$ حرکت می‌کنه. در همین فضا میدان الکتریکیِ $\\vec{E}$ و میدان مغناطیسیِ $\\vec{B}$ یکنواخت وجود دارن (شکل). اندازهٔ این میدان‌ها برابرِ $E = 250$ N/C و $B = 0.182$ T. تندیِ ذرّه چقدر باشه تا در امتداد همون محور x راست بره (بدون انحراف)؟<br><img src=\"../images/03-p11-velocity-selector.png\" alt=\"انتخاب‌گر سرعت\" style=\"max-width:340px;width:100%;display:block;margin:10px auto;\">",
+   hint:"برای حرکت <b>راست</b>، نیروی الکتریکی و مغناطیسی روی ذرّه باید همدیگه رو خنثی کنن: $qE = qvB$.",
+   steps:[
+     "<b>تعادل نیروها:</b> ذرّه مستقیم می‌ره ⇒ مجموع نیروها صفره: $\\vec{F}_E + \\vec{F}_B = 0$.",
+     "<b>اندازه‌ها برابر:</b> $|q|E = |q|vB ⇒ v = E/B$",
+     "<b>محاسبه:</b> $v = \\dfrac{250}{0.182} \\approx 1374$ m/s ≈ $1.37\\times 10^3$ m/s"
+   ],
+   final:"<b>تندی موردنیاز:</b> $v \\approx 1.37\\times 10^3$ m/s.<br><b>درسِ کلیدی:</b> دستگاه‌های <b>انتخاب‌گر سرعت</b> در طیف‌سنج جرمی و آزمایش‌های فیزیکی، با همین قاعده فقط ذرّاتِ هم‌سرعت رو عبور می‌دن — بقیه منحرف می‌شن. (به این روش، Joseph Thomson در ۱۸۹۷ مقدارِ e/m الکترون رو محاسبه کرد!)",
+   check:[
+     {label:"v", value:1374, unit:"m/s", tol:0.05}
+   ]
+  },
+
+  // ===== ۳-۴: نیرو بر سیم حامل جریان =====
+  {n:"۱۲", type:"مفهومی — جهت نیرو روی سیم",
+   q:"جهت نیروی مغناطیسی روی سیم حامل جریان رو در هر یک از حالت‌های الف، ب، پ با قاعدهٔ دست راست بیابید.<br><img src=\"../images/03-p12-wire-3cases.png\" alt=\"سه حالت سیم در میدان\" style=\"max-width:340px;width:100%;display:block;margin:10px auto;\">",
+   hint:"همون قاعدهٔ دست راست: اشاره در جهت I، میانی در جهت B، شَست در جهت F. تنها فرق با حالت ذرّه اینه که الان به‌جای v داریم I (در جهت جریان).",
+   steps:[
+     "برای هر کدوم از سه حالت:<br>۱) جهت جریان I رو از شکل ببین.<br>۲) جهت B از قطب‌های آهنربا (N→S خارج آهنربا).<br>۳) با قاعدهٔ دست راست، F = IL×B رو پیدا کن.",
+     "<b>یادآوری:</b> هر سه‌بُردار (I، B، F) باید بر هم عمود باشن."
+   ],
+   final:"<b>درسِ کلیدی:</b> این قاعده، پایه‌ی همه‌ی موتورها، گالوانومترها، و بلندگوهاست. تو ویجتِ «نیرو بر سیم در میدان» تو درس ۳-۴ این رو دیدی."
+  },
+
+  {n:"۱۳", type:"مفهومی — میله رسانا بین قطب‌های آهنربا",
+   q:"یه میلهٔ رسانا به پایانه‌های باتری وصل شده و در فضای بین قطب‌های آهنربا قرار داره؛ کلیدش که بسته بشه، میله می‌تونه آزادانه نوسان کنه. با بستن کلید چه اتفاقی می‌افته؟<br><img src=\"../images/03-p13-rod-magnet.png\" alt=\"میله بین آهنربا\" style=\"max-width:300px;width:100%;display:block;margin:10px auto;\">",
+   hint:"وقتی کلید بسته می‌شه، جریان از میله می‌گذره. میله در میدان آهنرباست — F = IL×B روش وارد می‌شه. میله نوسانی‌ست — یعنی می‌تونه به یه طرف حرکت کنه.",
+   steps:[
+     "<b>گام ۱:</b> با بستنِ کلید، جریان از میله می‌گذره. جهت جریان از علامتِ باتری مشخصه.",
+     "<b>گام ۲:</b> با قاعدهٔ دست راست، جهت F روی میله رو پیدا کن.",
+     "<b>گام ۳:</b> میله به اون سمت <b>هل</b> داده می‌شه — اگه آزادانه نوسان می‌کنه، به اون طرف می‌چرخه و به‌عنوان یه آونگ نوسان می‌کنه."
+   ],
+   final:"<b>درسِ کلیدی:</b> این آزمایشِ کلاسیک نیروی مغناطیسی روی سیم رو نشون می‌ده. اگه جهت باتری معکوس بشه، میله در جهت <b>مخالف</b> حرکت می‌کنه — این پایه‌ی موتورهای DC ساده است."
+  },
+
+  {n:"۱۴", type:"محاسباتی — یافتنِ I از F",
+   q:"سیمِ رسانای CD به طولِ $\\ell = 2$ m مطابق شکل عمود بر میدانِ یکنواختِ $B = 5$ mT قرار داره. اگه اندازهٔ نیرو روی سیم برابرِ $F = 1$ N باشه، مقدارِ جریان از سیم چقدره؟<br><img src=\"../images/03-p14-wire-grid.png\" alt=\"سیم در میدان نقطه‌چین\" style=\"max-width:300px;width:100%;display:block;margin:10px auto;\">",
+   hint:"$F = BIL\\sin\\theta$. عمود یعنی θ=۹۰° و sin=۱. برای I حلش کن.",
+   steps:[
+     "<b>فرمول:</b> $F = BIL\\sin\\theta$",
+     "<b>سیم عمود بر B:</b> $\\sin 90° = 1$ ⇒ $F = BIL$",
+     "<b>حل برای I:</b> $I = \\dfrac{F}{BL} = \\dfrac{1}{(5\\times 10^{-3})(2)} = \\dfrac{1}{0.01} = 100$ A"
+   ],
+   final:"<b>جریان لازم:</b> $I = 100$ A.<br><b>درسِ کلیدی:</b> برای ایجادِ نیرویی به اندازهٔ ۱ نیوتن (می‌تونه ۱۰۰ گرم رو بلند کنه) با یه میدانِ ضعیفِ ۵ میلی‌تسلا، جریان قابلِ‌توجهی نیاز ـه. در موتورهای صنعتیِ بزرگ، با میدان‌های قوی‌تر، جریان‌های کوچک‌تر کفایت می‌کنن.",
+   check:[
+     {label:"I", value:100, unit:"A", tol:0.05}
+   ]
+  },
+
+  {n:"۱۵", type:"محاسباتی — سیم روی نیروسنج",
+   q:"سیم حاملِ جریانِ $I = 1.6$ A به دو انتهای نیروسنجِ فنری بسته شده، به‌طور افقی و در راستای غرب-شرق. میدان مغناطیسی زمین در محل، یکنواخت، به طرف شمال، اندازه‌ش $B = 5$ mT. <b>الف)</b> اندازهٔ نیرو بر هر متر از سیم رو پیدا کنید. <b>ب)</b> اگه بخوایم نیروسنج صفر رو نشون بده، چه جریانی و در چه جهتی باید از سیم بگذره؟ (جرم هر متر سیم ۸ گرمه، g = 9.8 N/kg)<br><img src=\"../images/03-p15-spring-scale.png\" alt=\"سیم روی نیروسنج\" style=\"max-width:340px;width:100%;display:block;margin:10px auto;\">",
+   hint:"<b>الف)</b> سیم عمود بر B، F = BIL. <b>ب)</b> برای صفر نیروسنج، نیروی مغناطیسی باید وزنِ سیم رو خنثی کنه (به سمتِ بالا باشه).",
+   steps:[
+     "<b>الف — نیرو بر هر متر:</b><br>$F/L = BI = (5\\times 10^{-3})(1.6) = 8\\times 10^{-3}$ N/m",
+     "<b>ب — جریان لازم برای صفرِ نیروسنج:</b><br>وزن هر متر: $W/L = mg/L = (0.008)(9.8) = 0.0784$ N/m<br>برای تعادل: $BIL = W ⇒ I = \\dfrac{W/L}{B} = \\dfrac{0.0784}{5\\times 10^{-3}} = 15.68$ A",
+     "<b>جهت جریان:</b> برای اینکه F به سمتِ <b>بالا</b> باشه و وزن رو خنثی کنه — با B به سمتِ شمال، با قاعدهٔ دست راست، باید جریان به سمتِ <b>شرق</b> باشه (نه غرب)."
+   ],
+   final:"<b>الف)</b> $F/L = 8\\times 10^{-3}$ N/m. <b>ب)</b> $I \\approx 15.7$ A به سمت شرق.<br><b>درسِ کلیدی:</b> با ترکیب میدان مغناطیسی زمین و جریان مناسب، می‌شه نیروی محسوسی روی سیم ایجاد کرد. این پایه‌ی <b>کنتورهای آنالوگ</b> و گالوانومتر ـه.",
+   check:[
+     {label:"F/L", value:0.008, unit:"N/m", tol:0.05},
+     {label:"I", value:15.7, unit:"A", tol:0.05}
+   ]
+  },
+
+  {n:"۱۶", type:"مفهومی — آهنربای آویزان بالای سیملوله",
+   q:"یه آهنربای میله‌ای مطابق شکل بالای یه سیملوله آویزون شده. توضیح بدید با بستنِ کلید، چه اتفاقی برای آهنربا می‌افته.<br><img src=\"../images/03-p16-solenoid-magnet.png\" alt=\"آهنربای آویزان روی سیملوله\" style=\"max-width:340px;width:100%;display:block;margin:10px auto;\">",
+   hint:"وقتی کلید بسته می‌شه، سیملوله یه آهنربای الکتریکی می‌شه. بسته به جهتِ جریان (که جهت قطب‌های سیملوله رو تعیین می‌کنه)، نسبت به آهنربای آویزان <b>جذب</b> یا <b>دفع</b> می‌سازه.",
+   steps:[
+     "<b>گام ۱:</b> با قاعدهٔ دست راست (جهتِ پیچ‌خوردگیِ جریان در سیملوله)، قطبِ N و S سیملوله رو پیدا کن.",
+     "<b>گام ۲:</b> قطبِ آهنربای آویزانِ نزدیک رو ببین.",
+     "<b>گام ۳:</b> اگه قطبِ نزدیکِ آهنربا و قطبِ بالایی سیملوله <b>همنام</b>اند → دفع → آهنربا بالا می‌ره. اگه <b>ناهمنام</b>اند → جذب → آهنربا پایین کشیده می‌شه."
+   ],
+   final:"<b>درسِ کلیدی:</b> سیملوله با جریان، مثل یه آهنربای میله‌ایه. با تغییر جهتِ جریان، قطب‌هاش جابه‌جا می‌شن. این پایه‌ی <b>رله‌ها</b>، زنگِ خانگی، و قفل‌های الکترومغناطیسیه."
+  },
+
+  // ===== ۳-۵: میدان از جریان =====
+  {n:"۱۷", type:"مفهومی — جهت باتری برای چرخش CCW",
+   q:"کدوم باتری رو در مدارِ شکل قرار بدیم تا بعد از بستن کلید، عقربهٔ مغناطیسی روی سیم، در <b>خلافِ جهتِ ساعت</b> چرخش کنه؟<br><img src=\"../images/03-p17-compass-battery.png\" alt=\"عقربه روی سیم\" style=\"max-width:340px;width:100%;display:block;margin:10px auto;\">",
+   hint:"جریان در سیم میدانِ دایره‌ای دور خودش می‌سازه (قاعدهٔ دست راست گرفتن). عقربه در امتداد این میدان قرار می‌گیره.",
+   steps:[
+     "<b>گام ۱:</b> برای چرخش عقربه به سمت <b>چپ</b> (خلاف عقربه‌ساعت) از حالت اولیه‌ش، میدانِ سیم باید در جهتِ خاصی باشه.",
+     "<b>گام ۲:</b> با قاعدهٔ دست راست گرفتن (شَست در جهت جریان، انگشت‌ها دور سیم در جهت B)، جهتِ جریان رو پیدا کن.",
+     "<b>گام ۳:</b> از دو باتری (A یا B)، اون رو انتخاب کن که جهتِ جریانش با جهتِ موردنیاز هم‌خوون باشه."
+   ],
+   final:"<b>درسِ کلیدی:</b> این آزمایشِ تاریخیِ اورستد ـه — جریان میدان مغناطیسی می‌سازه، و این میدان <b>قطب‌نما رو می‌چرخونه</b>. جهتِ چرخش، نشانِ جهتِ جریانه."
+  },
+
+  {n:"۱۸", type:"مفهومی — کدام باتری برای جذب آهنربا",
+   q:"کدوم باتری رو در مدار قرار بدیم تا آهنربای میله‌ایِ آویزان به سمتِ سیملوله <b>جذب</b> بشه؟<br><img src=\"../images/03-p18-solenoid-attraction.png\" alt=\"سیملوله و آهنربای آویزان\" style=\"max-width:340px;width:100%;display:block;margin:10px auto;\">",
+   hint:"برای جذب، قطبِ بالایی سیملوله باید <b>ناهمنام</b> با قطبِ پایینیِ آهنربای آویزان باشه. قطبِ سیملوله از جهت جریان (و قاعدهٔ گریپ) پیدا می‌شه.",
+   steps:[
+     "<b>گام ۱:</b> ببین قطبِ پایینیِ آهنربای آویزان N ـه یا S.",
+     "<b>گام ۲:</b> جهتِ جریان لازم برای ایجادِ <b>قطب ناهمنام</b> در سرِ بالاییِ سیملوله رو پیدا کن (با قاعدهٔ دست راست).",
+     "<b>گام ۳:</b> از دو باتری، اون باتری رو انتخاب کن که این جهت جریان رو فراهم کنه."
+   ],
+   final:"<b>درسِ کلیدی:</b> با تنظیمِ جهتِ جریان در سیملوله، می‌تونیم اون رو به یه قطبِ خاص (N یا S) تبدیل کنیم. این چیزیه که <b>رله‌ها</b> و <b>درب‌بازکن‌های الکترومغناطیسی</b> از اون استفاده می‌کنن."
+  },
+
+  {n:"۱۹", type:"مفهومی — میدان بین دو سیم موازی",
+   q:"شکل زیر دو سیم موازیِ بلند حامل جریان رو نشون می‌ده. اگه میدان مغناطیسی برایند در نقطهٔ مشخص‌شده در شکل صفر باشه، چه شرطی بین جریان‌ها و فاصله‌ها برقراره؟<br><img src=\"../images/03-p19-two-wires.png\" alt=\"دو سیم موازی\" style=\"max-width:300px;width:100%;display:block;margin:10px auto;\">",
+   hint:"میدانِ هر سیم در فاصلهٔ r ازش $B = \\mu_0 I/(2\\pi r)$ ـه. برای صفر شدنِ برایند، دو میدان باید <b>هم‌اندازه و در جهت‌های مخالف</b> باشن.",
+   steps:[
+     "<b>گام ۱:</b> فرض کن جریان‌ها هم‌جهت‌اند (یا مخالف — بسته به شکل). جهتِ B هر سیم در نقطه‌ی موردنظر رو پیدا کن.",
+     "<b>گام ۲:</b> برای صفرشدن: $B_1 = B_2$ ⇒ $\\dfrac{\\mu_0 I_1}{2\\pi r_1} = \\dfrac{\\mu_0 I_2}{2\\pi r_2}$",
+     "<b>گام ۳:</b> ساده‌سازی: $\\dfrac{I_1}{r_1} = \\dfrac{I_2}{r_2}$. اگه فاصله‌ها مشخص‌اند، می‌تونی نسبت جریان‌ها رو پیدا کنی."
+   ],
+   final:"<b>درسِ کلیدی:</b> برای ایجاد <b>نقطه‌ی خنثی</b> بین دو سیم، نسبتِ جریان‌ها برابر نسبتِ فاصله‌هاست. این مفهوم در طراحی الکترومغناطیس‌های دقیق و سپرِ مغناطیسی به کار می‌ره."
+  },
+
+  {n:"۲۰", type:"محاسباتی — میدان داخل سیملوله",
+   q:"یه سیملوله‌ی پلاستیکیِ توخالی به طولِ $L = 50$ cm شاملِ $N = 400$ دور سیمه. جریانِ گذرنده از سیملوله $I = 2$ A. میدانِ مغناطیسی داخل سیملوله رو حساب کنید.",
+   hint:"$B = \\mu_0 n I$ که $n = N/L$ ـه. $\\mu_0 = 4\\pi\\times 10^{-7}$ T·m/A.",
+   steps:[
+     "<b>چگالی دور:</b> $n = \\dfrac{N}{L} = \\dfrac{400}{0.5} = 800$ turns/m",
+     "<b>میدان:</b> $B = \\mu_0 n I = (4\\pi\\times 10^{-7})(800)(2)$",
+     "<b>محاسبه:</b> $B = 4\\pi \\times 1600 \\times 10^{-7} \\approx 2.01\\times 10^{-3}$ T = $2.01$ mT"
+   ],
+   final:"<b>میدان داخل:</b> $B \\approx 2$ mT (یا $0.002$ T).<br><b>درسِ کلیدی:</b> یه سیملوله‌ی کوچک با ۴۰۰ دور و ۲ آمپر، می‌تونه میدانی حدوداً <b>۴۰ برابرِ زمین</b> تولید کنه. با هسته‌ی آهن نرم داخلش، این مقدار می‌تونه هزار برابر بیشتر بشه.",
+   check:[
+     {label:"B", value:2.01e-3, unit:"T", tol:0.05}
+   ]
+  },
+
+  {n:"۲۱", type:"مفهومی — مقایسهٔ دو سیملوله",
+   q:"در شکل زیر دو سیملوله رو می‌بینی. تعدادِ دورِ سیملولهٔ راست $N_2 = 2N_1$ (دو برابرِ چپی) و جریانش $I_2 = I_1$ (مساوی). میدانِ ناشی از این دو سیملوله رو در نقطه‌ای روی محورِ بینشون مقایسه کن.<br><img src=\"../images/03-p21-two-solenoids.png\" alt=\"دو سیملوله\" style=\"max-width:340px;width:100%;display:block;margin:10px auto;\">",
+   hint:"$B$ داخل سیملوله = $\\mu_0 n I = \\mu_0 (N/L) I$. اگه طول‌ها برابر باشن، چگالی دور دومی هم دو برابر می‌شه.",
+   steps:[
+     "<b>اگه طول‌ها برابرند:</b> $n_2 = N_2/L = 2N_1/L = 2n_1$. پس $B_2 = 2B_1$ داخل سیملوله ۲.",
+     "<b>اگه طول‌ها مختلف‌اند:</b> $n_2 = N_2/L_2$، باید با $n_1 = N_1/L_1$ مقایسه کنیم. نسبتِ B وابسته به $(N_2/L_2)/(N_1/L_1)$.",
+     "<b>در نقطهٔ بین:</b> چون فاصله از هر دو سیملوله مهمه و خارج سیملوله میدان ضعیف‌تره، باید موقعیت دقیقِ نقطه رو در نظر گرفت."
+   ],
+   final:"<b>درسِ کلیدی:</b> با دو برابرکردنِ تعداد دور، اگه طول ثابت بمونه، میدان <b>دو برابر</b> می‌شه. این رو می‌تونی توی ویجتِ سیملوله امتحان کنی — slider N رو ببر بالا و ببین فلش‌های داخل چقدر متراکم‌تر می‌شن."
+  },
+
+  // ===== ۳-۶: ویژگی‌های مغناطیسی مواد =====
+  {n:"۲۲", type:"مفهومی — نوع ماده از رفتار دامنه",
+   q:"شکل الف، دامنه‌های یه مادهٔ فرومغناطیسی رو در میدانِ خارجیِ B نشون می‌ده. شکل ب، همون ماده بعد از <b>حذف</b> میدان خارجی رو نشون می‌ده. نوع ماده (آهن نرم یا فولاد سخت) رو با ذکر دلیل تعیین کن.<br><img src=\"../images/03-p22-domains.png\" alt=\"دامنه‌های دو حالت\" style=\"max-width:340px;width:100%;display:block;margin:10px auto;\">",
+   hint:"یاد بیار: آهن نرم بعد از قطعِ میدان، دامنه‌هاش <b>برمی‌گردن</b> به آشفتگی. فولاد سخت، دامنه‌هاش <b>هم‌جهت می‌مونن</b>.",
+   steps:[
+     "<b>گام ۱:</b> به شکل ب نگاه کن. اگه دامنه‌ها هنوز <b>هم‌جهت‌اند</b> → فولاد سخت (آهنربای دائمی).",
+     "<b>گام ۲:</b> اگه دامنه‌ها به <b>آشفتگی</b> برگشتن → آهن نرم.",
+     "<b>گام ۳:</b> نتیجه رو با دلیل بنویس."
+   ],
+   final:"<b>درسِ کلیدی:</b> این <b>تستِ هیسترزیس مغناطیسی</b> ـه. ساختارِ بلوریِ فولاد، دامنه‌ها رو قفل می‌کنه — به همین خاطر آهنربای دائمی می‌سازه. آهن نرم برای موتورها و ترانسفورماتورها استفاده می‌شه (که نیاز به مغناطیده/غیرمغناطیده‌شدنِ مداوم دارن)."
+  },
+
+  {n:"۲۳", type:"مفهومی — نقشهٔ مفهومی مواد مغناطیسی",
+   q:"با توجه به آنچه در بخش ویژگی‌های مغناطیسی مواد دیدی، نقشه‌ی مفهومی زیر رو کامل کن:<br>«مواد از نظر مغناطیسی شامل [...] که اتم‌هاشون دوقطبیِ ذاتی <b>ندارند</b>، مانند [...]، و [...] که دوقطبیِ ذاتی <b>دارند</b>، مانند [...]»",
+   hint:"مرور کن: کدوم گروه ماده‌ها، اتم‌هاشون دوقطبیِ مغناطیسیِ ذاتی دارن و کدوم نه؟",
+   steps:[
+     "<b>مواد بدون دوقطبیِ ذاتی:</b> دیامغناطیس‌ها (مس، طلا، بیسموت، آب، گرافیت). در اتم‌های این مواد، الکترون‌ها در زوج‌های متضاد قرار گرفتن و میدان‌هاشون خنثی شده.",
+     "<b>مواد با دوقطبیِ ذاتی:</b> پارامغناطیس‌ها (آلومینیوم، پلاتین، اکسیژن) و فرومغناطیس‌ها (آهن، نیکل، کبالت). در این مواد، اتم‌ها الکترون‌های جفت‌نشده دارن — یه دوقطبیِ کوچک ذاتی.",
+     "<b>فرومغناطیس‌ها خاص‌اند:</b> چون اتم‌های همسایه به‌طور طبیعی هم‌جهت می‌شن (تشکیل دامنه)، می‌تونن آهنربای دائمی بسازن."
+   ],
+   final:"<b>نقشهٔ کامل:</b><br>• <b>دیامغناطیس</b> (مس، طلا، آب) — بدون دوقطبیِ ذاتی، فقط جریانِ القایی مخالف می‌سازن، <b>دفع ضعیف</b>.<br>• <b>پارامغناطیس</b> (آلومینیوم، پلاتین) — با دوقطبیِ ذاتیِ آشفته، با میدان کم هم‌جهت می‌شن، <b>جذب ضعیف</b>.<br>• <b>فرومغناطیس</b> (آهن، نیکل، کبالت) — دوقطبی‌های ذاتی به‌طور خودبه‌خود هم‌جهت می‌شن (دامنه)، <b>جذب قوی</b>.<br><b>درس کلیدی:</b> رفتار مغناطیسی هر ماده، در نهایت به <b>آرایش الکترون‌های اتم</b>ش برمی‌گرده."
+  }
+
+];
+
+// ============================================================
+// رندر
+// ============================================================
+var faNum = function(n){
+  return String(n).replace(/[0-9]/g, function(d){ return "۰۱۲۳۴۵۶۷۸۹"[d]; });
+};
+
+function formatExpected(v){
+  // برای اعدادِ علمیِ بزرگ، نمایشِ خواناتر
+  if(Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-2 && v !== 0)){
+    return v.toExponential(2);
+  }
+  return String(v);
+}
+
+function checkAnswer(user, expected, tol){
+  // tol پیش‌فرض ۵٪
+  tol = tol || 0.05;
+  if(isNaN(user)) return {ok:false, msg:"عددِ معتبر وارد کن."};
+  if(expected === 0){
+    return {ok: Math.abs(user) < 1e-9, msg:""};
+  }
+  var diff = Math.abs(user - expected) / Math.abs(expected);
+  return {ok: diff <= tol, diff: diff};
+}
+
+var box     = document.getElementById("problems");
+var navList = document.getElementById("nav-list");
+var prevBtn = document.getElementById("prev-btn");
+var nextBtn = document.getElementById("next-btn");
+var problemDivs = [];   // index → DOM
+var navBtns     = [];   // index → DOM
+
+problems.forEach(function(p, pIdx){
+  var div = document.createElement("div");
+  div.className = "problem";
+  div.style.display = "none";   // hidden by default — only one visible at a time
+  problemDivs.push(div);
+
+  // sidebar entry
+  var li  = document.createElement("li");
+  var btn = document.createElement("button");
+  btn.className = "nav-btn";
+  btn.type = "button";
+  btn.innerHTML = '<span class="nb-num">' + p.n + '</span>'
+                + '<span class="nb-title">مسئله ' + p.n + '</span>';
+  btn.addEventListener("click", (function (capturedIdx) {
+    return function () { showProblem(capturedIdx, true); };
+  })(pIdx));
+  li.appendChild(btn);
+  navList.appendChild(li);
+  navBtns.push(btn);
+
+  var num = document.createElement("div");
+  num.className = "pnum";
+  num.textContent = "مسئله‌ی " + p.n;
+  div.appendChild(num);
+
+  var typ = document.createElement("div");
+  typ.className = "ptype";
+  typ.textContent = "نوع: " + p.type;
+  div.appendChild(typ);
+
+  if(p.relate){
+    var rel = document.createElement("div");
+    rel.className = "relate";
+    rel.innerHTML = "🔗 " + p.relate;
+    div.appendChild(rel);
+  }
+
+  var q = document.createElement("div");
+  q.className = "pq";
+  q.innerHTML = p.q;
+  div.appendChild(q);
+
+  // ----- controls -----
+  var ctrl = document.createElement("div");
+  ctrl.className = "controls";
+
+  var hintBtn = null;
+  if(p.hint){
+    hintBtn = document.createElement("button");
+    hintBtn.className = "btn btn-hint";
+    hintBtn.textContent = "💡 راهنمایی";
+    ctrl.appendChild(hintBtn);
+  }
+
+  var nextBtn = document.createElement("button");
+  nextBtn.className = "btn btn-next";
+  nextBtn.textContent = "▶️ شروع حل / قدم بعدی";
+  ctrl.appendChild(nextBtn);
+
+  var checkBtn = null;
+  if(p.check && p.check.length){
+    checkBtn = document.createElement("button");
+    checkBtn.className = "btn btn-check";
+    checkBtn.textContent = "🔍 بررسی جواب من";
+    ctrl.appendChild(checkBtn);
+  }
+
+  div.appendChild(ctrl);
+
+  // hint handler
+  if(hintBtn){
+    var hintShown = false;
+    hintBtn.addEventListener("click", function(){
+      if(hintShown) return;
+      hintShown = true;
+      var h = document.createElement("div");
+      h.className = "hint-box";
+      h.innerHTML = "<b>راهنمایی:</b> " + p.hint;
+      div.appendChild(h);
+      hintBtn.disabled = true;
+    });
+  }
+
+  // step-by-step
+  var idx = 0;
+  nextBtn.addEventListener("click", function(){
+    if(idx < p.steps.length){
+      var s = document.createElement("div");
+      s.className = "step";
+      s.innerHTML = "<span class='label' style='color:var(--info);'>قدم " + faNum(String(idx+1)) + "</span><br>" + p.steps[idx];
+      div.appendChild(s);
+      idx++;
+      if(idx === p.steps.length){
+        nextBtn.textContent = "✅ نمایش جواب نهایی";
+      }
+    } else if(idx === p.steps.length){
+      var f = document.createElement("div");
+      f.className = "final";
+      f.innerHTML = "<b>✅ جواب نهایی:</b><br>" + p.final;
+      div.appendChild(f);
+      nextBtn.disabled = true;
+      nextBtn.textContent = "تمام";
+      idx++;
+    }
+  });
+
+  // check-answer
+  if(checkBtn){
+    var checkShown = false;
+    checkBtn.addEventListener("click", function(){
+      if(checkShown) return;
+      checkShown = true;
+      checkBtn.disabled = true;
+
+      var cb = document.createElement("div");
+      cb.className = "check-box";
+      cb.innerHTML = "<b>🔍 جوابِ خودتو وارد کن:</b><br><span style='font-size:13px; color:var(--muted);'>تلرانس ۵٪؛ از اعدادِ علمی مثل <code>3e4</code> هم می‌تونی استفاده کنی.</span>";
+
+      var inputs = [];
+      p.check.forEach(function(c){
+        var row = document.createElement("div");
+        row.className = "check-row";
+        var lbl = document.createElement("label"); lbl.textContent = c.label + ":"; row.appendChild(lbl);
+        var inp = document.createElement("input"); inp.type = "text"; inp.placeholder = "عدد..."; row.appendChild(inp);
+        var u = document.createElement("span"); u.className = "unit"; u.textContent = c.unit || ""; row.appendChild(u);
+        cb.appendChild(row);
+        inputs.push({c:c, inp:inp});
+      });
+
+      var goBtn = document.createElement("button");
+      goBtn.className = "btn btn-check";
+      goBtn.textContent = "بررسی";
+      goBtn.style.marginTop = "8px";
+      cb.appendChild(goBtn);
+
+      var resultArea = document.createElement("div");
+      cb.appendChild(resultArea);
+
+      goBtn.addEventListener("click", function(){
+        resultArea.innerHTML = "";
+        var allOk = true;
+        inputs.forEach(function(it){
+          var userVal = parseFloat(it.inp.value);
+          var r = checkAnswer(userVal, it.c.value, it.c.tol);
+          var row = document.createElement("div");
+          row.className = "check-result " + (r.ok ? "ok" : "bad");
+          if(r.ok){
+            row.innerHTML = "✅ <b>" + it.c.label + ":</b> درسته! جوابِ تو نزدیک به " + formatExpected(it.c.value) + " " + (it.c.unit||"") + " ـه.";
+          } else {
+            allOk = false;
+            if(isNaN(userVal)){
+              row.innerHTML = "❌ <b>" + it.c.label + ":</b> عددِ معتبر وارد نکردی.";
+            } else {
+              row.innerHTML = "❌ <b>" + it.c.label + ":</b> جوابت با مقدارِ موردِ انتظار (" + formatExpected(it.c.value) + " " + (it.c.unit||"") + ") اختلافِ زیادی داره. حلِ قدم‌به‌قدم رو ببین.";
+            }
+          }
+          resultArea.appendChild(row);
+        });
+        if(allOk){
+          var hooray = document.createElement("div");
+          hooray.className = "check-result ok";
+          hooray.style.marginTop = "8px";
+          hooray.innerHTML = "🎉 آفرین! همه‌ی جواب‌هات درست بود.";
+          resultArea.appendChild(hooray);
+        }
+      });
+
+      div.appendChild(cb);
+    });
+  }
+
+  box.appendChild(div);
+});
+
+// ─── master-detail navigation ────────────────────────────────
+var currentIdx = 0;
+
+function showProblem(idx, updateHash) {
+  if (idx < 0 || idx >= problemDivs.length) return;
+  problemDivs.forEach(function (d, i) { d.style.display = (i === idx) ? "" : "none"; });
+  navBtns.forEach(function (b, i) { b.classList.toggle("active", i === idx); });
+  prevBtn.disabled = (idx === 0);
+  nextBtn.disabled = (idx === problemDivs.length - 1);
+  // scroll the active sidebar item into view (mobile + when list is long)
+  navBtns[idx].scrollIntoView({block: "nearest"});
+  currentIdx = idx;
+  if (updateHash) {
+    try { history.replaceState(null, "", "#mas-" + (idx + 1)); } catch (e) {}
+  }
+  // notify parent iframe (autosize)
+  try { window.parent.postMessage({pmEvent: "problem-changed", idx: idx}, "*"); } catch (e) {}
+}
+
+prevBtn.addEventListener("click", function () { showProblem(currentIdx - 1, true); });
+nextBtn.addEventListener("click", function () { showProblem(currentIdx + 1, true); });
+
+// keyboard left/right
+document.addEventListener("keydown", function (e) {
+  if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  if (e.key === "ArrowLeft")  showProblem(currentIdx + 1, true);   // RTL: left = next
+  if (e.key === "ArrowRight") showProblem(currentIdx - 1, true);
+});
+
+// initial: read hash or default to first
+(function init() {
+  var m = /^#mas-(\d+)$/.exec(location.hash);
+  var start = m ? Math.max(0, Math.min(problems.length - 1, parseInt(m[1], 10) - 1)) : 0;
+  showProblem(start, false);
+})();
+</script>
+</body>
+</html>

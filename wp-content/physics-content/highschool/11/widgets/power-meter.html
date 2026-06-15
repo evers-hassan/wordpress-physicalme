@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌سازی توان و هزینه‌ی برق</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --wire:#8a8676; --cur:#d6453c; --heat:#e8633f; --gold:#f4c430;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --wire:#9a9482; --cur:#f06a60; --heat:#f0764f; --gold:#f4c430;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8; animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:180px;}
+  .readout{display:flex; gap:8px; flex-wrap:wrap; padding:12px; border-top:1px solid var(--border);}
+  .chip{flex:1 1 80px; background:var(--info-bg); color:var(--info); border-radius:10px; padding:8px 10px; text-align:center; font-weight:500; font-size:13px;}
+  .chip b{display:block; font-size:15px; font-weight:700; margin-top:2px; direction:ltr;}
+  .cost{margin:0 12px 12px; background:var(--ok-bg); color:var(--ok); border-radius:10px; padding:10px 12px; display:flex; gap:8px; flex-wrap:wrap;}
+  .cost .c{flex:1 1 120px; text-align:center; font-size:13px; font-weight:500;}
+  .cost .c b{display:block; font-size:16px; font-weight:700; margin-top:2px; direction:ltr;}
+  .controls{margin-top:14px; display:grid; gap:11px;}
+  .row{display:flex; justify-content:space-between; align-items:center; font-size:14px;}
+  .val{font-weight:700;}
+  input[type=range]{width:100%; accent-color:var(--info); height:6px;}
+  select{font-family:inherit; font-size:14px; padding:6px 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text);}
+  .selrow{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>⚡ شبیه‌سازی: توان و هزینه‌ی برق</h2>
+  <p class="sub">یک وسیله را به برقِ خانگیِ ۲۲۰ ولت وصل کن و ببین چقدر توان می‌کشد، چقدر گرما می‌دهد و ماهانه چقدر هزینه دارد.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">توان P <b id="pVal">—</b></div>
+      <div class="chip">جریان I <b id="iVal">—</b></div>
+      <div class="chip">مقاومت R <b id="rVal">—</b></div>
+    </div>
+    <div class="cost">
+      <div class="c">مصرفِ ماهانه <b id="kwhVal">—</b></div>
+      <div class="c">هزینه‌ی ماهانه <b id="tomanVal">—</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="selrow"><span>وسیله (در ۲۲۰ ولت)</span>
+      <select id="dev">
+        <option value="10">لامپِ LED — ۱۰W</option>
+        <option value="100">لامپِ رشته‌ای — ۱۰۰W</option>
+        <option value="150">تلویزیون — ۱۵۰W</option>
+        <option value="250">یخچال — ۲۵۰W</option>
+        <option value="1000">جاروبرقی — ۱۰۰۰W</option>
+        <option value="2000" selected>بخاریِ برقی — ۲۰۰۰W</option>
+        <option value="3000">آبگرمکنِ برقی — ۳۰۰۰W</option>
+      </select>
+    </div>
+    <div class="row"><span>ساعت مصرف در روز</span><span class="val"><span id="hSet"></span> ساعت</span></div>
+    <input type="range" id="H" min="0.5" max="24" step="0.5" value="4">
+    <div class="row"><span>قیمتِ هر کیلووات‌ساعت</span><span class="val"><span id="cSet"></span> تومان</span></div>
+    <input type="range" id="C" min="50" max="2000" step="50" value="500">
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var devEl=document.getElementById('dev'), HEl=document.getElementById('H'), CEl=document.getElementById('C');
+  var hSet=document.getElementById('hSet'), cSet=document.getElementById('cSet');
+  var pVal=document.getElementById('pVal'), iVal=document.getElementById('iVal'), rVal=document.getElementById('rVal');
+  var kwhVal=document.getElementById('kwhVal'), tomanVal=document.getElementById('tomanVal');
+  var V=220, t=0;
+  function toFa(s){return (''+s).replace(/[0-9.,]/g,function(d){return d==='.'?'٫':(d===','?'٬':'۰۱۲۳۴۵۶۷۸۹'[+d]);});}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+  function grp(n){ return n.toLocaleString('en-US'); }
+
+  function draw(){
+    var P=+devEl.value, H=+HEl.value, price=+CEl.value;
+    var I=P/V, R=V*V/P;
+    hSet.textContent=toFa(H); cSet.textContent=toFa(grp(price));
+    pVal.textContent= P>=1000? toFa((P/1000).toFixed(1))+' kW' : toFa(P)+' W';
+    iVal.textContent= toFa(I.toFixed(1))+' A';
+    rVal.textContent= toFa(R.toFixed(0))+' Ω';
+    var kwh=(P/1000)*H*30;
+    var toman=kwh*price;
+    kwhVal.textContent= toFa(kwh.toFixed(1))+' kWh';
+    tomanVal.textContent= toFa(grp(Math.round(toman)))+' ت';
+
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    var W=rect.width, Hc=rect.height; ctx.clearRect(0,0,W,Hc);
+    var y=Hc/2;
+
+    // منبعِ ۲۲۰V (چپ)
+    ctx.fillStyle=cssv('--muted'); ctx.font='13px Vazirmatn, sans-serif'; ctx.textAlign='center';
+    ctx.fillText('۲۲۰V', 30, y-26);
+    ctx.fillStyle=cssv('--bg'); ctx.strokeStyle=cssv('--text'); ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(24,y-14); ctx.lineTo(24,y+14); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(34,y-8); ctx.lineTo(34,y+8); ctx.stroke();
+
+    // سیم به وسیله
+    var devX=W-130, devW=100, devY=y-34, devH=68;
+    ctx.strokeStyle=cssv('--wire'); ctx.lineWidth=4;
+    ctx.beginPath(); ctx.moveTo(34,y); ctx.lineTo(devX,y); ctx.stroke();
+
+    // وسیله (جعبه‌ای که با توان داغ/روشن می‌شه)
+    var glow=Math.min(1, P/3000);
+    if(glow>0.02){
+      var g=ctx.createRadialGradient(devX+devW/2,y,4,devX+devW/2,y,90);
+      g.addColorStop(0,'rgba(232,99,63,'+(0.8*glow)+')');
+      g.addColorStop(1,'rgba(232,99,63,0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(devX+devW/2,y,90,0,Math.PI*2); ctx.fill();
+    }
+    ctx.fillStyle=cssv('--surface'); ctx.strokeStyle=cssv('--text'); ctx.lineWidth=2.5;
+    roundRect(devX,devY,devW,devH,12); ctx.fill(); ctx.stroke();
+    // المنتِ مارپیچ داخلِ وسیله (قرمزتر با توان)
+    ctx.strokeStyle = glow>0.05 ? mix(cssv('--gold'),cssv('--heat'),glow) : cssv('--muted');
+    ctx.lineWidth=3; ctx.beginPath();
+    var ex=devX+16, ew=devW-32, en=6;
+    ctx.moveTo(ex,y);
+    for(var i=0;i<en;i++){ ctx.lineTo(ex+ew*(i+0.5)/en, y+(i%2?12:-12)); }
+    ctx.lineTo(ex+ew,y); ctx.stroke();
+
+    // جریانِ متحرک (سرعت ∝ I)
+    t += Math.min(7, I*0.5+0.3);
+    var n=Math.round((devX-34)/26);
+    ctx.fillStyle=cssv('--cur');
+    for(var k=0;k<n;k++){
+      var dx=34 + ((t + k*(devX-34)/n)%(devX-34));
+      ctx.beginPath(); ctx.arc(dx, y, 3.5, 0, Math.PI*2); ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath(); ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+  }
+  function mix(a,b,t){ // a,b as #rrggbb
+    function h(c){return [parseInt(c.substr(1,2),16),parseInt(c.substr(3,2),16),parseInt(c.substr(5,2),16)];}
+    var A=h(a),B=h(b); var r=Math.round(A[0]+(B[0]-A[0])*t),g=Math.round(A[1]+(B[1]-A[1])*t),bl=Math.round(A[2]+(B[2]-A[2])*t);
+    return 'rgb('+r+','+g+','+bl+')';
+  }
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

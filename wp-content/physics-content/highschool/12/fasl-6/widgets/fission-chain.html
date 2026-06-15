@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>واکنش زنجیره‌ای شکافت U-235</title>
+<style>
+:root {
+  --bg: #ffffff; --surface: #f4f3ef; --text: #1a1a18; --muted: #5f5e5a;
+  --border: #e0ded7; --info: #185fa5; --info-bg: #e6f1fb;
+  --u: #5b5bb5; --product: #1d9e75; --neutron: #d4a847; --fission: #e63946;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+          --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+          --u:#7878d3; --product:#5dcaa5; --neutron:#e0b860; --fission:#ee6a6a; }
+}
+body { margin: 0; padding: 16px; font-family: Vazirmatn, Tahoma, system-ui, sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.7; }
+h2 { color: var(--info); margin: 0 0 12px; font-size: 1.15em; }
+.app { max-width: 780px; margin: 0 auto; }
+.controls { display: flex; gap: 12px; justify-content: center; margin-bottom: 12px; flex-wrap: wrap; }
+.btn { padding: 9px 14px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--text); font-family: inherit; cursor: pointer;
+  font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+.btn.primary { background: var(--info); color: #fff; border-color: var(--info); }
+.btn.danger { background: var(--fission); color: #fff; border-color: var(--fission); }
+.ctrl { display: inline-flex; align-items: center; gap: 8px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 13px; }
+.ctrl input[type=range] { width: 80px; }
+.canvas-wrap { background: var(--surface); border-radius: 12px; padding: 12px;
+  border: 1px solid var(--border); }
+canvas { display: block; width: 100%; height: 380px; }
+.readout { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+.box { background: var(--info-bg); color: var(--info); padding: 8px;
+  border-radius: 8px; text-align: center; font-size: 12px; }
+.box b { display: block; font-size: 16px; margin-top: 2px; }
+.hint { text-align: center; color: var(--muted); font-size: 12px; margin: 8px 0; }
+@media (max-width: 620px) {
+  .readout { grid-template-columns: 1fr 1fr; }
+  canvas { height: 320px; }
+}
+</style>
+  <script id="mathjax-config">
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+           displayMath: [['$$','$$'], ['\\[','\\]']],
+           processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="app">
+  <h2>💥 واکنش زنجیره‌ای — شکافت ${}^{235}\text{U}$</h2>
+  <p class="hint">روی هسته‌ی اورانیوم کلیک کن تا واکنش رو شروع کنی. هر شکافت ۲-۳ نوترون می‌ده.</p>
+
+  <div class="controls">
+    <button class="btn primary" id="start">🎯 شلیک نوترون اول</button>
+    <button class="btn" id="reset">↻ ریست</button>
+    <span class="ctrl">نوترون به ازای شکافت: <input type="range" id="kFac" min="1" max="3" step="1" value="3"><span id="kVal">3</span></span>
+  </div>
+
+  <div class="canvas-wrap"><canvas id="cv"></canvas></div>
+
+  <div class="readout">
+    <div class="box"><div>هسته‌های باقیمانده</div><b id="rem">80</b></div>
+    <div class="box"><div>شکافت‌ها</div><b id="fis">0</b></div>
+    <div class="box"><div>نوترون‌های پرواز</div><b id="ne">0</b></div>
+    <div class="box"><div>انرژی آزاد (MeV)</div><b id="en">0</b></div>
+  </div>
+
+  <p class="hint">📌 هر شکافت ~۲۰۰ MeV انرژی آزاد می‌کنه (معادلِ ۸×۱۰⁻¹¹ ژول).</p>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const dpr = window.devicePixelRatio || 1;
+const $ = id => document.getElementById(id);
+
+let state = { uranium: [], neutrons: [], fissions: 0, k: 3, started: false };
+
+function getCSS(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function resize() {
+  const r = cv.getBoundingClientRect();
+  cv.width = r.width * dpr;
+  cv.height = r.height * dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  draw();
+}
+window.addEventListener('resize', resize);
+
+function build() {
+  state.uranium = [];
+  state.neutrons = [];
+  state.fissions = 0;
+  state.started = false;
+  const r = cv.getBoundingClientRect();
+  const cols = 12, rows = 7;
+  const gap_x = r.width / (cols + 1);
+  const gap_y = r.height / (rows + 1);
+  for (let i=0; i<cols; i++) {
+    for (let j=0; j<rows; j++) {
+      // کمی جابجایی تصادفی برای حالت طبیعی
+      state.uranium.push({
+        x: gap_x * (i + 1) + (Math.random() - 0.5) * gap_x * 0.2,
+        y: gap_y * (j + 1) + (Math.random() - 0.5) * gap_y * 0.2,
+        alive: true,
+        anim: 0
+      });
+    }
+  }
+  updateRead();
+  draw();
+}
+
+cv.addEventListener('click', (e) => {
+  const rect = cv.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  let best = null, bestD = 30;
+  for (const u of state.uranium) {
+    if (!u.alive) continue;
+    const d = Math.hypot(mx - u.x, my - u.y);
+    if (d < bestD) { bestD = d; best = u; }
+  }
+  if (best) {
+    fission(best, true);
+    state.started = true;
+  }
+});
+
+function fission(u, fromClick) {
+  u.alive = false;
+  u.anim = 1.0;
+  state.fissions++;
+  // K نوترون با زاویه‌های یکنواخت
+  for (let i=0; i<state.k; i++) {
+    const ang = (i / state.k) * Math.PI * 2 + Math.random() * 0.5;
+    const sp = 1.8 + Math.random() * 0.6;
+    state.neutrons.push({
+      x: u.x, y: u.y,
+      vx: Math.cos(ang) * sp,
+      vy: Math.sin(ang) * sp,
+      life: 200
+    });
+  }
+}
+
+function update() {
+  const r = cv.getBoundingClientRect();
+  for (const u of state.uranium) {
+    if (u.anim > 0) u.anim *= 0.92;
+  }
+  for (let i=state.neutrons.length - 1; i>=0; i--) {
+    const n = state.neutrons[i];
+    n.x += n.vx;
+    n.y += n.vy;
+    n.life--;
+    if (n.x < 0 || n.x > r.width || n.y < 0 || n.y > r.height || n.life <= 0) {
+      state.neutrons.splice(i, 1);
+      continue;
+    }
+    // برخورد با اورانیوم
+    for (const u of state.uranium) {
+      if (!u.alive) continue;
+      const d = Math.hypot(n.x - u.x, n.y - u.y);
+      if (d < 14) {
+        state.neutrons.splice(i, 1);
+        fission(u, false);
+        break;
+      }
+    }
+  }
+  updateRead();
+}
+
+function updateRead() {
+  $('rem').textContent = state.uranium.filter(u => u.alive).length;
+  $('fis').textContent = state.fissions;
+  $('ne').textContent = state.neutrons.length;
+  $('en').textContent = (state.fissions * 200).toLocaleString('fa-IR');
+}
+
+function draw() {
+  const r = cv.getBoundingClientRect();
+  const W = r.width, H = r.height;
+  ctx.clearRect(0,0,W,H);
+  for (const u of state.uranium) {
+    if (u.alive) {
+      ctx.fillStyle = getCSS('--u');
+      ctx.beginPath();
+      ctx.arc(u.x, u.y, 14, 0, 2*Math.PI);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('²³⁵U', u.x, u.y + 3);
+    } else {
+      // محصول
+      if (u.anim > 0.1) {
+        ctx.fillStyle = getCSS('--fission');
+        ctx.globalAlpha = u.anim;
+        ctx.beginPath();
+        ctx.arc(u.x, u.y, 14 + (1-u.anim)*16, 0, 2*Math.PI);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = getCSS('--product');
+      ctx.beginPath();
+      ctx.arc(u.x - 6, u.y, 7, 0, 2*Math.PI);
+      ctx.arc(u.x + 6, u.y, 7, 0, 2*Math.PI);
+      ctx.fill();
+    }
+  }
+  // نوترون‌ها
+  for (const n of state.neutrons) {
+    ctx.fillStyle = getCSS('--neutron');
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, 4, 0, 2*Math.PI);
+    ctx.fill();
+    // tail
+    ctx.strokeStyle = getCSS('--neutron');
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(n.x, n.y);
+    ctx.lineTo(n.x - n.vx * 4, n.y - n.vy * 4);
+    ctx.stroke();
+  }
+}
+
+$('start').addEventListener('click', () => {
+  // یه نوترون از سمت چپ بفرست به سمت یه هسته
+  const r = cv.getBoundingClientRect();
+  state.neutrons.push({
+    x: 4, y: r.height / 2,
+    vx: 3, vy: 0,
+    life: 400
+  });
+  state.started = true;
+});
+$('reset').addEventListener('click', build);
+$('kFac').addEventListener('input', e => {
+  state.k = parseInt(e.target.value);
+  $('kVal').textContent = state.k;
+});
+
+resize();
+build();
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

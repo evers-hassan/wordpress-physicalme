@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>آزمایش فاراده — آهنربا و سیملوله</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --N:#d6453c; --S:#2f6fd0; --wire:#a87800; --coil:#b8702a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --N:#f06a60; --S:#6aa0ee; --wire:#e0b860; --coil:#d49060;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;
+  }
+  .wrap{max-width:780px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:360px; touch-action:none;}
+  .controls{padding:12px; border-top:1px solid var(--border); display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  .slider-row{display:flex; gap:8px; align-items:center; flex:1 1 240px; font-size:13px; min-width:0;}
+  .slider-row span{color:var(--muted); white-space:nowrap;}
+  .slider-row input{flex:1; min-width:0;}
+  .btn{
+    font-family:inherit; font-size:13px; padding:7px 12px; border-radius:8px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text); cursor:pointer;
+  }
+  .btn.on{background:var(--info); color:#fff; border-color:var(--info);}
+  .readout{display:flex; gap:8px; padding:10px 12px; flex-wrap:wrap; background:var(--bg); border-top:1px solid var(--border);}
+  .chip{flex:1 1 110px; background:var(--info-bg); color:var(--info); border-radius:8px; padding:7px 10px; text-align:center; font-size:13px;}
+  .chip b{display:block; font-size:15px; margin-top:1px;}
+  .legend{font-size:12.5px; color:var(--muted); padding:8px 12px;}
+</style>
+  <script id="mathjax-config">
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+           displayMath: [['$$','$$'], ['\\[','\\]']],
+           processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>آزمایش تاریخیِ فاراده — آهنربا را داخل/خارج سیملوله ببر 🧲</h2>
+  <p class="sub">آهنربا را بکش (drag) یا با دکمه‌ها حرکت بده. گالوانومتر را تماشا کن.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="controls">
+      <button class="btn" id="bIn">⏩ به داخل</button>
+      <button class="btn" id="bOut">⏪ به بیرون</button>
+      <button class="btn" id="bStop">⏸ ایست</button>
+      <div class="slider-row">
+        <span>تندی</span>
+        <input type="range" id="vSlider" min="0.3" max="3" step="0.1" value="1.2">
+        <span class="vVal" id="vVal" style="min-width:32px;text-align:left;color:var(--text);font-weight:700;">۱.۲</span>
+      </div>
+    </div>
+    <div class="readout">
+      <div class="chip">شار $\Phi$<b id="rPhi">0</b></div>
+      <div class="chip">EMF القایی<b id="rEMF">0 mV</b></div>
+      <div class="chip">جهت جریان<b id="rDir">—</b></div>
+    </div>
+    <div class="legend">
+      🔴 N (شمال)  &nbsp;  🔵 S (جنوب)  &nbsp;  وقتی آهنربا ساکنه، EMF = صفر — هرچقدر هم نزدیک باشه!
+    </div>
+  </div>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+function resize(){
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = cv.clientWidth * dpr;
+  cv.height = cv.clientHeight * dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize', resize); resize();
+
+// State
+let magnetX = 90;       // pixel position (canvas coords)
+let magnetV = 0;        // pixel/frame
+let speed   = 1.2;      // multiplier from slider
+let lastT = 0;
+
+// Coil position (fixed at right side)
+const coilX = 480; // center of coil
+const coilW = 120; // width of coil
+const coilY = 180; // vertical center
+
+function getCoilLeft(){ return coilX - coilW/2; }
+function getCoilRight(){ return coilX + coilW/2; }
+
+// Compute "flux" (proxy): based on overlap of magnet inside coil
+function computeFlux(){
+  // Position of N pole (right end of magnet) and S pole (left end)
+  const magnetW = 110;
+  const xN = magnetX + magnetW/2;    // tip pole (the front of the moving magnet)
+  // simple model: flux ~ 1 - distance from N to coil center, clamped
+  const d = Math.abs(xN - coilX) / 80;
+  return Math.exp(-d*d) * (1.5);
+}
+
+// Run loop
+function draw(t){
+  const dt = Math.min(50, t - lastT); lastT = t;
+  // update
+  magnetX += magnetV * speed * (dt/16);
+  // bounds
+  if(magnetX < 30){ magnetX = 30; magnetV = 0; }
+  if(magnetX > 560){ magnetX = 560; magnetV = 0; }
+
+  // compute flux change
+  const phi = computeFlux();
+  const prevPhi = (window.__prevPhi !== undefined) ? window.__prevPhi : phi;
+  const dPhi = phi - prevPhi;
+  const emf = -dPhi * 1000 / (dt/1000 || 0.016);  // mV (rough)
+  window.__prevPhi = phi;
+
+  ctx.clearRect(0,0,cv.clientWidth, cv.clientHeight);
+  drawScene(phi, emf, dPhi);
+  updateReadout(phi, emf, dPhi);
+
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+function drawScene(phi, emf, dPhi){
+  const W = cv.clientWidth, H = cv.clientHeight;
+  // Coil (solenoid)
+  const cLeft = getCoilLeft(), cRight = getCoilRight();
+  ctx.save();
+  // Coil base box
+  ctx.fillStyle = getCss('--surface');
+  ctx.fillRect(cLeft, coilY-60, coilW, 120);
+  // Coil loops
+  ctx.strokeStyle = getCss('--coil'); ctx.lineWidth = 4;
+  for(let i=0;i<8;i++){
+    const x = cLeft + 10 + i * 15;
+    ctx.beginPath();
+    ctx.ellipse(x, coilY, 6, 50, 0, 0, Math.PI*2);
+    ctx.stroke();
+  }
+  // Coil wires to galvanometer
+  ctx.strokeStyle = getCss('--wire'); ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(cRight, coilY-40); ctx.lineTo(cRight+30, coilY-40); ctx.lineTo(cRight+30, coilY+90);
+  ctx.moveTo(cRight, coilY+40); ctx.lineTo(cRight+50, coilY+40); ctx.lineTo(cRight+50, coilY+90);
+  ctx.stroke();
+
+  // Galvanometer (dial)
+  const gx = cRight+40, gy = coilY+130;
+  ctx.fillStyle = getCss('--bg');
+  ctx.strokeStyle = getCss('--border'); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(gx, gy, 38, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  // scale
+  ctx.beginPath(); ctx.arc(gx, gy, 34, Math.PI*1.15, Math.PI*1.85); ctx.stroke();
+  // tick marks
+  for(let a=-50; a<=50; a+=10){
+    const ang = -Math.PI/2 + (a/50)*0.6;
+    const x1 = gx + Math.cos(ang)*30, y1 = gy + Math.sin(ang)*30;
+    const x2 = gx + Math.cos(ang)*34, y2 = gy + Math.sin(ang)*34;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  }
+  // 0 marker
+  ctx.fillStyle = getCss('--muted'); ctx.font = '11px Vazirmatn'; ctx.textAlign='center';
+  ctx.fillText('۰', gx, gy-2);
+  ctx.fillText('−', gx-26, gy-10); ctx.fillText('+', gx+26, gy-10);
+  // needle
+  const needleAng = -Math.PI/2 + Math.max(-1, Math.min(1, emf/300)) * 0.7;
+  ctx.strokeStyle = getCss('--N'); ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(gx, gy);
+  ctx.lineTo(gx + Math.cos(needleAng)*28, gy + Math.sin(needleAng)*28);
+  ctx.stroke();
+  // label
+  ctx.fillStyle = getCss('--text'); ctx.font='12px Vazirmatn'; ctx.textAlign='center';
+  ctx.fillText('گالوانومتر', gx, gy+52);
+
+  // Magnet
+  drawMagnet(magnetX, coilY, 110, 36);
+  ctx.restore();
+
+  // dynamic field lines if moving
+  if(Math.abs(magnetV) > 0.05){
+    drawFieldLines(magnetX + 55, coilY, dPhi > 0);
+  }
+}
+
+function drawMagnet(cx, cy, w, h){
+  // S on left (blue), N on right (red)
+  const x = cx - w/2, y = cy - h/2;
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,.10)';
+  ctx.fillRect(x+2, y+h-2, w, 4);
+  // S half
+  ctx.fillStyle = getCss('--S'); ctx.fillRect(x, y, w/2, h);
+  // N half
+  ctx.fillStyle = getCss('--N'); ctx.fillRect(x+w/2, y, w/2, h);
+  // labels
+  ctx.fillStyle = '#fff'; ctx.font='bold 18px Vazirmatn'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('S', x + w/4, cy);
+  ctx.fillText('N', x + 3*w/4, cy);
+  ctx.textBaseline='alphabetic';
+}
+
+function drawFieldLines(cx, cy, direction){
+  // direction = true means flux increasing; show animated arrows toward/away coil
+  ctx.strokeStyle = getCss('--info'); ctx.lineWidth = 1.5; ctx.globalAlpha = 0.5;
+  const dir = magnetV > 0 ? 1 : -1;
+  const t = (performance.now()/200) % 1;
+  for(let i=0;i<3;i++){
+    const off = (i/3 + t) % 1;
+    const x = cx + dir * off * 50;
+    ctx.beginPath();
+    ctx.moveTo(x, cy - 15);
+    ctx.lineTo(x + dir*8, cy - 15);
+    ctx.lineTo(x + dir*5, cy - 18);
+    ctx.moveTo(x + dir*8, cy - 15);
+    ctx.lineTo(x + dir*5, cy - 12);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function updateReadout(phi, emf, dPhi){
+  document.getElementById('rPhi').textContent = phi.toFixed(2) + ' (rel)';
+  const e = Math.round(emf);
+  document.getElementById('rEMF').textContent = (e > 0 ? '+' : '') + toFa(e) + ' mV';
+  let dirText = '—';
+  if(Math.abs(magnetV) > 0.05){
+    if(dPhi > 0){ dirText = 'پادساعت‌گرد ↺'; }
+    else if(dPhi < 0){ dirText = 'ساعت‌گرد ↻'; }
+  }
+  document.getElementById('rDir').textContent = dirText;
+}
+
+function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || '#000'; }
+function toFa(n){return (''+n).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+
+// Controls
+document.getElementById('bIn').onclick = ()=>{ magnetV = 2.5; };
+document.getElementById('bOut').onclick = ()=>{ magnetV = -2.5; };
+document.getElementById('bStop').onclick = ()=>{ magnetV = 0; };
+document.getElementById('vSlider').oninput = (e)=>{
+  speed = +e.target.value;
+  document.getElementById('vVal').textContent = toFa(speed.toFixed(1));
+};
+
+// Drag the magnet
+let dragging = false, dragOffset = 0;
+function getPos(e){
+  const r = cv.getBoundingClientRect();
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+  return x;
+}
+cv.addEventListener('pointerdown', e=>{
+  const x = getPos(e);
+  if(x > magnetX-55 && x < magnetX+55){
+    dragging = true; dragOffset = x - magnetX; magnetV = 0;
+    cv.setPointerCapture(e.pointerId);
+  }
+});
+cv.addEventListener('pointermove', e=>{
+  if(dragging){
+    const x = getPos(e);
+    const prev = magnetX;
+    magnetX = x - dragOffset;
+    magnetV = (magnetX - prev) / 2;
+  }
+});
+cv.addEventListener('pointerup', e=>{
+  dragging = false;
+  setTimeout(()=>{ if(!dragging) magnetV = 0; }, 100);
+});
+</script>
+</body>
+</html>

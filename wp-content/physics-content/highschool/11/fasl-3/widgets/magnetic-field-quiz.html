@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودتو بسنج — میدان مغناطیسی</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8;}
+  .wrap{max-width:720px; margin:0 auto;}
+  .q-item{border:1px solid var(--border); border-radius:12px; margin-bottom:10px;
+    overflow:hidden; background:var(--surface);}
+  .q-head{display:flex; align-items:center; gap:10px; cursor:pointer;
+    padding:13px 15px; font-weight:500; font-size:15px; user-select:none;}
+  .q-head:hover{background:var(--info-bg);}
+  .q-head .tog{margin-inline-start:auto; flex:0 0 auto; color:var(--info);
+    transition:transform .2s ease; font-size:18px;}
+  .q-item.open .q-head .tog{transform:rotate(45deg);}
+  .q-num{flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+    background:var(--info); color:#fff; display:flex; align-items:center;
+    justify-content:center; font-size:13px; font-weight:700;}
+  .q-body{max-height:0; overflow:hidden; transition:max-height .25s ease;
+    background:var(--ok-bg);}
+  .q-body .inner{padding:13px 15px; color:var(--text); font-size:14.5px;}
+  .q-body .inner::before{content:"پاسخ: "; color:var(--ok); font-weight:700;}
+  .hint{font-size:13px; color:var(--muted); margin:0 0 14px;}
+</style>
+<script id="mathjax-config">
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <p class="hint">روی هر سؤال بزن تا پاسخش باز شود 👇</p>
+  <div id="quiz"></div>
+</div>
+
+<script>
+  var items = [
+    { q: "میدان مغناطیسی در یک نقطه از فضا چطور تعریف می‌شه؟",
+      a: "میدان مغناطیسی یک <b>کمیت برداری</b> ـه. در هر نقطه از فضای اطراف یک آهنربا، اگه یه قطب‌نمای کوچیک بذاری، جهتی که <b>قطبِ N سوزن</b> به اون اشاره می‌کنه، جهتِ بردار میدان مغناطیسی $\\vec{B}$ توی اون نقطه‌ست. اندازه‌ی $\\vec{B}$ هم با مقدار نیرویی که میدان روی یک واحد بار متحرک وارد می‌کنه سنجیده می‌شه." },
+    { q: "یکای میدان مغناطیسی در SI چیه؟ مقایسه‌ای از مقادیر طبیعی بهم بگو.",
+      a: "یکای رسمی <b>تسلا (T)</b> ـه. یکای قدیمی‌تر گاوس (G) هم زیاد استفاده می‌شه: $1\\text{ T} = 10^4\\text{ G}$.<br>چند مقدار نمونه:<br>• میدان مغز انسان ~ $10^{-12}$ T<br>• میدان زمین در سطح ~ ۵۰ میکروتسلا (μT)<br>• آهنربای یخچال ~ ۵ میلی‌تسلا (mT)<br>• MRI پزشکی ~ ۱.۵ تا ۷ تسلا<br>• ستاره‌ی مگنتار ~ $10^{11}$ تسلا (قوی‌ترین در جهان شناخته‌شده!)" },
+    { q: "چهار ویژگی اصلی خطوط میدان مغناطیسی چیست؟",
+      a: "<ol style='margin:6px 0;padding-inline-start:20px;'><li><b>همیشه حلقهٔ بسته‌ان</b> — برخلاف میدان الکتریکی که از بار + شروع می‌شه و به بار – می‌رسه، خطوط میدان مغناطیسی بدون شروع و پایانن (چون تک‌قطبی مغناطیسی نداریم).</li><li><b>هیچ‌وقت همدیگه رو قطع نمی‌کنن</b> — چون در هر نقطه میدان فقط یه جهت داره.</li><li><b>چگالی خطوط = شدّت میدان</b> — هرجا خطوط متراکم‌ترن، میدان قوی‌تره (نزدیک قطب‌ها).</li><li><b>جهت خطوط</b> — بیرونِ آهنربا از N به S، داخل آهنربا از S به N (تا حلقه‌ها بسته بشن).</li></ol>" },
+    { q: "میدان مغناطیسی زمین چجوریه و از کجا میاد؟",
+      a: "زمین مثل یه آهنربای میله‌ای غول‌پیکر رفتار می‌کنه که محورش با محور چرخش زمین حدود <b>۱۱ درجه</b> اختلاف داره. منبع این میدان <b>هستهٔ مذابِ آهن‌نیکل</b> زمینه که چرخش و جریان همرفتی‌ش، باعث القای جریان‌های الکتریکی می‌شه — این پدیده رو <b>اثر داینامو</b> می‌گن. شدّت میدان زمین در سطح ~ ۲۵ تا ۶۵ میکروتسلا (μT) بسته به عرض جغرافیاییه." },
+    { q: "شیب مغناطیسی (Magnetic Inclination) چیه و چرا در عرض‌های جغرافیایی فرق می‌کنه؟",
+      a: "<b>شیب مغناطیسی</b>: زاویه‌ای که خطوط میدان زمین با سطحِ افق می‌سازن.<br>• <b>روی استوا</b>: خطوط افقی‌ان → شیب = ۰°<br>• <b>روی قطب‌ها</b>: خطوط عمود می‌شن → شیب = ۹۰°<br>• <b>تهران</b> حدود ۵۵° شیب داره — سوزن قطب‌نما ته‌ش پایین می‌ره.<br>این چیزیه که سوزن‌های قطب‌نمای ساخت‌شده برای ایران، با وزنه‌ی کوچیک متعادل می‌کنن." },
+    { q: "چرا میدان مغناطیسی زمین مهمه و چه نقشی برای حیات داره؟",
+      a: "میدان زمین مثل یه <b>سپر</b> در برابر بادهای خورشیدی (پروتون و الکترون پرانرژی) عمل می‌کنه. این ذرات اگه مستقیم به جوّ زمین بخورن، اتمسفر رو از بین می‌برن و حیات روی سطح زمین ناممکن می‌شه. ذرات وقتی وارد میدان می‌شن، توسطش به سمت قطب‌ها هدایت می‌شن و در اونجا با مولکول‌های جو برخورد می‌کنن — نتیجه‌ش <b>شفق قطبی (aurora)</b> ـه." },
+    { q: "میدان مغناطیسی یکنواخت چه ویژگی‌ای داره؟",
+      a: "میدان <b>یکنواخت</b> یعنی در همه‌ی نقاط یک منطقه، <b>اندازه و جهت میدان یکسانه</b>. در این حالت خطوط میدان <b>موازی، صاف، و با فاصله‌ی برابر</b> رسم می‌شن. بهترین تقریبِ میدان یکنواخت رو <b>داخل یه سیملوله‌ی بلند</b> پیدا می‌کنیم (تو زیرفصلِ ۳-۵ می‌بینیم)، یا <b>بین دو قطبِ تخت و نزدیک</b> به هم در یه آهنربای نعل‌اسبی." },
+    { q: "بعضی جانورها چطور از میدان مغناطیسی زمین برای جهت‌یابی استفاده می‌کنن؟",
+      a: "<b>قابل تعجبه که خیلی از موجودات این کار رو می‌کنن!</b> 🤯<br>• <b>پرندگانِ مهاجر</b>: پروتئین کریپتوکروم در چشم‌شون به میدان حساسه — احتمالاً شمال رو «می‌بینن».<br>• <b>لاک‌پشت‌های دریایی</b>: نوزادها بدون آموزش، مسیر مهاجرت چندهزارکیلومتری رو با میدان زمین پیدا می‌کنن.<br>• <b>باکتری‌های مگنتوتاکتیک</b>: داخلشون زنجیره‌ای از کریستال‌های آهن مغناطیسی دارن و طول خطوط میدان زمین حرکت می‌کنن.<br>• <b>گاوها در چراگاه</b>: تحقیقات نشون داده تمایل دارن در جهتِ شمال-جنوب چرا کنن!" }
+  ];
+
+  var box = document.getElementById('quiz');
+  items.forEach(function(it, i){
+    var item = document.createElement('div'); item.className='q-item';
+    var head = document.createElement('div'); head.className='q-head';
+    head.innerHTML = '<span class="q-num">'+toFa(i+1)+'</span><span>'+it.q+'</span><span class="tog">+</span>';
+    var body = document.createElement('div'); body.className='q-body';
+    var inner = document.createElement('div'); inner.className='inner'; inner.innerHTML=it.a;
+    body.appendChild(inner);
+    head.addEventListener('click', function(){
+      var open = item.classList.toggle('open');
+      body.style.maxHeight = open ? (inner.scrollHeight + 26) + 'px' : '0';
+    });
+    item.appendChild(head); item.appendChild(body); box.appendChild(item);
+  });
+  function toFa(n){return (''+n).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+</script>
+</body>
+</html>

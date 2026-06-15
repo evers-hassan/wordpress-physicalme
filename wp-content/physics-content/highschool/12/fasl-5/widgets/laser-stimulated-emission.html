@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>گسیل القایی و لیزر — شبیه‌ساز</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+<style>
+:root { --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a; --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed; }
+@media (prefers-color-scheme: dark) { :root { --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e; --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35; } }
+body { margin: 0; padding: 16px; font-family: Vazirmatn, Tahoma, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+h2 { color: var(--info); margin: 0 0 14px; font-size: 1.2em; }
+.app { max-width: 800px; margin: 0 auto; }
+.controls { background: var(--surface); border-radius: 12px; padding: 14px; border: 1px solid var(--border); margin-bottom: 14px; display: grid; gap: 10px; grid-template-columns: repeat(3, 1fr); }
+.ctrl label { font-size: 13px; color: var(--muted); }
+.ctrl input[type=range] { width: 100%; }
+.ctrl button { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: inherit; cursor: pointer; width: 100%; }
+.ctrl button.active { background: var(--info); color: white; border-color: var(--info); }
+.canvas-wrap { background: #050510; border-radius: 12px; padding: 8px; margin-bottom: 12px; }
+canvas { display: block; width: 100%; height: 360px; border-radius: 8px; }
+.stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.box { background: var(--info-bg); color: var(--info); padding: 10px; border-radius: 8px; text-align: center; font-size: 13px; }
+.box.ok { background: var(--ok-bg); color: var(--ok); }
+.box b { display: block; font-size: 16px; margin-top: 2px; }
+@media (max-width:620px){ .controls, .stats { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <h2>🔴 شبیه‌ساز گسیل القایی و لیزر</h2>
+
+  <div class="controls">
+    <div class="ctrl">
+      <label>پمپاژ:</label>
+      <input type="range" id="pump" min="0" max="100" value="60">
+      <span style="font-size:12px;color:var(--muted)" id="pumpL">60%</span>
+    </div>
+    <div class="ctrl">
+      <label>سرعت:</label>
+      <input type="range" id="speed" min="1" max="5" step="0.5" value="2">
+      <span style="font-size:12px;color:var(--muted)" id="speedL">×2</span>
+    </div>
+    <div class="ctrl">
+      <label>حالت:</label>
+      <button id="mode-normal">عادی</button>
+    </div>
+    <div class="ctrl">
+      <label>&nbsp;</label>
+      <button id="mode-laser" class="active">لیزر فعال</button>
+    </div>
+    <div class="ctrl">
+      <label>&nbsp;</label>
+      <button id="seed">💥 یه فوتون شلیک کن</button>
+    </div>
+    <div class="ctrl">
+      <label>&nbsp;</label>
+      <button id="reset">↻ ریست</button>
+    </div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="cv" width="720" height="360"></canvas>
+  </div>
+
+  <div class="stats">
+    <div class="box"><span>اتم‌های برانگیخته</span><b id="N2">0</b></div>
+    <div class="box"><span>فوتون‌های موجود</span><b id="np">0</b></div>
+    <div class="box ok"><span>فوتون‌های خروجی</span><b id="out">0</b></div>
+  </div>
+
+  <div style="background:var(--surface);padding:12px;border-radius:10px;margin-top:12px;border:1px solid var(--border);font-size:13.5px;line-height:1.7;">
+    <b>روش کار:</b> <span style="color:#5eb9ff">دایره‌ی آبی</span> = اتم در حالت پایه. <span style="color:#ff7855">دایره‌ی نارنجی</span> = اتم برانگیخته. <span style="color:#ff3366">خط قرمز</span> = فوتون. وقتی فوتون از کنار اتم برانگیخته رد می‌شه، <b>گسیل القایی</b> رخ می‌ده و یه فوتونِ هم‌فاز جدید تولید می‌شه. آینه‌ی نیمه‌بازتاب در سمت چپ، باریکه‌ی لیزر رو خارج می‌کنه.
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var DPR = Math.max(1, window.devicePixelRatio||1);
+  function fit(){ var w=cv.clientWidth,h=cv.clientHeight; cv.width=w*DPR; cv.height=h*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); }
+  window.addEventListener('resize', fit);
+
+  // setup
+  var atoms = [];
+  var photons = [];
+  var pumpRate = 60, speed = 2;
+  var mode = 'laser'; // or 'normal'
+  var outCount = 0;
+
+  function init(){
+    atoms = [];
+    photons = [];
+    outCount = 0;
+    var w = cv.clientWidth, h = cv.clientHeight;
+    var nx = 8, ny = 4;
+    var mx = w*0.15, my = h*0.25;
+    var dx = (w*0.7)/(nx-1), dy = (h*0.5)/(ny-1);
+    for(var i=0;i<nx;i++){
+      for(var j=0;j<ny;j++){
+        atoms.push({x: mx + i*dx, y: my + j*dy, excited: false, cooldown:0});
+      }
+    }
+  }
+
+  document.getElementById('pump').addEventListener('input', function(){
+    pumpRate = parseInt(this.value);
+    document.getElementById('pumpL').textContent = pumpRate + '%';
+  });
+  document.getElementById('speed').addEventListener('input', function(){
+    speed = parseFloat(this.value);
+    document.getElementById('speedL').textContent = '×'+speed;
+  });
+  document.getElementById('mode-normal').addEventListener('click', function(){
+    mode='normal'; this.classList.add('active'); document.getElementById('mode-laser').classList.remove('active');
+  });
+  document.getElementById('mode-laser').addEventListener('click', function(){
+    mode='laser'; this.classList.add('active'); document.getElementById('mode-normal').classList.remove('active');
+  });
+  document.getElementById('seed').addEventListener('click', function(){
+    var w = cv.clientWidth, h = cv.clientHeight;
+    photons.push({x: w*0.05, y: h*0.5, vx: 2.5, vy: 0});
+  });
+  document.getElementById('reset').addEventListener('click', init);
+
+  var lastT = 0;
+  function loop(t){
+    if(!lastT) lastT=t;
+    var dt = Math.min(50, t-lastT)*speed; lastT=t;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  function update(dt){
+    var w = cv.clientWidth, h = cv.clientHeight;
+
+    // pump atoms
+    atoms.forEach(function(a){
+      if(a.cooldown > 0) a.cooldown -= dt;
+      if(!a.excited && a.cooldown <= 0){
+        if(Math.random() < pumpRate/100 * dt*0.001){
+          a.excited = true;
+        }
+      } else if(a.excited){
+        // spontaneous emission (low chance)
+        if(Math.random() < 0.0002 * dt){
+          a.excited = false;
+          a.cooldown = 200;
+          // emit photon random direction
+          var ang = Math.random()*Math.PI*2;
+          photons.push({x:a.x, y:a.y, vx: Math.cos(ang)*2, vy: Math.sin(ang)*2, type:'spon'});
+        }
+      }
+    });
+
+    // photons move & trigger stimulated emission
+    photons.forEach(function(p){
+      p.x += p.vx * dt*0.06;
+      p.y += p.vy * dt*0.06;
+
+      // check stimulated emission
+      atoms.forEach(function(a){
+        if(a.excited){
+          var dx = p.x - a.x, dy = p.y - a.y;
+          var r2 = dx*dx + dy*dy;
+          if(r2 < 25*25){
+            // stimulate!
+            a.excited = false;
+            a.cooldown = 200;
+            // new photon, same direction & phase
+            photons.push({x: a.x+5, y: a.y, vx: p.vx, vy: p.vy, type:'stim'});
+          }
+        }
+      });
+
+      // mirror behavior (laser mode only)
+      if(mode === 'laser'){
+        // right mirror (full reflect)
+        if(p.x > w*0.92 && p.vx > 0){ p.vx = -p.vx; }
+        // left mirror (half-reflect: 70% reflect, 30% pass-through)
+        if(p.x < w*0.08 && p.vx < 0){
+          if(Math.random() < 0.3){
+            p.exit = true;
+          } else {
+            p.vx = -p.vx;
+          }
+        }
+      }
+    });
+
+    // remove exited photons (count them) or out of bounds
+    photons = photons.filter(function(p){
+      if(p.exit && p.x < w*0.04){
+        outCount++;
+        return false;
+      }
+      return p.x > -10 && p.x < w+10 && p.y > -10 && p.y < h+10;
+    });
+
+    // limit count for perf
+    if(photons.length > 200) photons.splice(0, photons.length-200);
+
+    // stats
+    var n2 = atoms.filter(function(a){ return a.excited; }).length;
+    document.getElementById('N2').textContent = n2;
+    document.getElementById('np').textContent = photons.length;
+    document.getElementById('out').textContent = outCount;
+  }
+
+  function draw(){
+    var w = cv.clientWidth, h = cv.clientHeight;
+    ctx.fillStyle='#050510'; ctx.fillRect(0,0,w,h);
+
+    // mirrors
+    if(mode === 'laser'){
+      // left mirror (half-reflect, shown thinner)
+      ctx.fillStyle='#aaaaff';
+      ctx.fillRect(w*0.06, h*0.15, 4, h*0.7);
+      ctx.fillStyle='#fff';
+      ctx.font='10px Vazirmatn, Tahoma'; ctx.textAlign='left';
+      ctx.fillText('آینه نیمه‌بازتاب', 6, h*0.1);
+      // right mirror (full)
+      ctx.fillStyle='#dddd55';
+      ctx.fillRect(w*0.94, h*0.15, 6, h*0.7);
+      ctx.fillText('آینه کامل', w*0.86, h*0.1);
+    }
+
+    // atoms
+    atoms.forEach(function(a){
+      if(a.excited){
+        ctx.fillStyle='#ff7855';
+        ctx.shadowColor='#ff7855'; ctx.shadowBlur=10;
+      } else {
+        ctx.fillStyle='#5eb9ff';
+        ctx.shadowBlur=0;
+      }
+      ctx.beginPath(); ctx.arc(a.x, a.y, 7, 0, Math.PI*2); ctx.fill();
+      ctx.shadowBlur=0;
+      ctx.strokeStyle = a.excited ? '#ff785544' : '#5eb9ff44';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(a.x, a.y, 11, 0, Math.PI*2); ctx.stroke();
+    });
+
+    // photons
+    photons.forEach(function(p){
+      var col = p.type === 'stim' ? '#ff3366' : '#ffaa00';
+      ctx.strokeStyle = col; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x - p.vx*5, p.y - p.vy*5);
+      ctx.stroke();
+      ctx.shadowColor = col; ctx.shadowBlur = 6;
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI*2); ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    // output beam visualization (left)
+    if(mode === 'laser' && outCount > 0){
+      var t = outCount * 0.5;
+      var beam = Math.min(40, outCount);
+      ctx.strokeStyle = 'rgba(255,50,90,'+ Math.min(0.9, beam/40) +')';
+      ctx.lineWidth = Math.min(8, 2 + beam/8);
+      ctx.beginPath();
+      ctx.moveTo(w*0.06, h*0.5);
+      ctx.lineTo(0, h*0.5);
+      ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font='10px Vazirmatn, Tahoma'; ctx.textAlign='left';
+      ctx.fillText('باریکه‌ی لیزر →', 6, h*0.45);
+    }
+  }
+
+  fit(); init(); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Hardened: disable all server-side execution + HTML rendering in this folder.
+<FilesMatch "\.(php|phtml|phar|cgi|pl|py|sh|asp|aspx|exe|js|html|htm|xhtml|svg)$">
+    Require all denied
+</FilesMatch>
+# Defang any HTML inside this folder by serving as plain text
+AddType text/plain .html .htm .xhtml
+# Belt-and-braces: don't run handlers
+RemoveHandler .php .phtml .phar .cgi .pl .py .sh .asp .aspx .exe
+RemoveType    .php .phtml .phar .cgi .pl .py .sh .asp .aspx .exe
+Options -ExecCGI -Indexes
+php_flag engine off

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌سازی بادکنک و دیوار</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --pos:#d6453c; --neg:#2f6fd0; --balloon:#e85d75; --wall:#dfe7ee; --wool:#c9a14a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --pos:#f06a60; --neg:#6aa0ee; --balloon:#d65068; --wall:#3a4048; --wool:#b8923f;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8; animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:290px;}
+  .msg{padding:10px 12px; border-top:1px solid var(--border); font-size:14px; text-align:center; color:var(--ok); font-weight:600; min-height:22px;}
+  .controls{margin-top:14px; display:grid; gap:12px;}
+  .row{display:flex; justify-content:space-between; align-items:center; font-size:14px;}
+  .val{font-weight:700;}
+  input[type=range]{width:100%; accent-color:var(--info); height:6px;}
+  .btns{display:flex; gap:10px; flex-wrap:wrap;}
+  .btn{appearance:none;border:0;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;color:#fff;
+       background:var(--info);padding:10px 16px;border-radius:10px;flex:1 1 auto;}
+  .btn.ghost{background:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🎈 شبیه‌سازی: بادکنک و دیوار</h2>
+  <p class="sub">بادکنک را به پارچه‌ی پشمی بمال تا باردار شود، بعد با لغزنده به‌سمتِ دیوار ببر و ببین چه می‌شود.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div class="controls">
+    <div class="row"><span>جای بادکنک</span><span class="val">پارچه ↔ دیوار</span></div>
+    <input type="range" id="pos" min="0" max="100" step="1" value="10">
+    <div class="btns">
+      <button class="btn" id="rub" type="button">✋ مالش بده (الکترون منتقل کن)</button>
+      <button class="btn ghost" id="reset" type="button">↺ از نو</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var posEl=document.getElementById('pos'), msg=document.getElementById('msg');
+  var rub=document.getElementById('rub'), reset=document.getElementById('reset');
+  var electrons=0; // تعداد بارِ منفیِ بادکنک
+  function toFa(s){return (''+s).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  function draw(){
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    var W=rect.width, H=rect.height; ctx.clearRect(0,0,W,H);
+    var pos=+posEl.value;
+
+    // پارچه‌ی پشمی (چپ)
+    var woolX=14, woolY=H/2-45, woolW=64, woolH=90;
+    ctx.fillStyle=cssv('--wool'); ctx.globalAlpha=0.85;
+    roundRect(woolX,woolY,woolW,woolH,10); ctx.fill(); ctx.globalAlpha=1;
+    ctx.fillStyle=cssv('--muted'); ctx.font='12px Vazirmatn, sans-serif'; ctx.textAlign='center';
+    ctx.fillText('پارچه‌ی پشمی', woolX+woolW/2, woolY+woolH+18);
+    // بارِ مثبتِ پارچه (چون الکترون از دست داده)
+    drawCharges(woolX+8, woolY+14, woolW-16, woolH-24, electrons, '+', cssv('--pos'));
+
+    // دیوار (راست)
+    var wallX=W-40, wallW=40;
+    ctx.fillStyle=cssv('--wall'); ctx.fillRect(wallX,0,wallW,H);
+    ctx.fillStyle=cssv('--muted'); ctx.save(); ctx.translate(wallX+wallW/2,H-10); ctx.fillText('دیوار',0,0); ctx.restore();
+
+    // محلِ بادکنک
+    var minX=woolX+woolW+50, maxX=wallX-34;
+    var bx=minX + (maxX-minX)*(pos/100);
+    var by=H/2;
+    var nearWall = (pos>82);
+
+    // اگر باردار و نزدیکِ دیوار → بارِ القایی روی سطحِ دیوار
+    if(electrons>0 && nearWall){
+      ctx.fillStyle=cssv('--pos'); ctx.font='bold 13px Vazirmatn, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      for(var i=0;i<Math.min(electrons,5);i++){ ctx.fillText('+', wallX-7, by-32+i*16); }
+      ctx.fillStyle=cssv('--neg');
+      for(var j=0;j<Math.min(electrons,5);j++){ ctx.fillText('−', wallX+wallW-7, by-32+j*16); }
+      ctx.textBaseline='alphabetic';
+    }
+
+    // ریسمانِ بادکنک
+    ctx.strokeStyle=cssv('--muted'); ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(bx, by+34); ctx.lineTo(bx-6, by+70); ctx.stroke();
+
+    // بادکنک
+    ctx.fillStyle=cssv('--balloon');
+    ctx.beginPath(); ctx.ellipse(bx, by, 30, 36, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(bx-5,by+34); ctx.lineTo(bx+5,by+34); ctx.lineTo(bx,by+40); ctx.closePath(); ctx.fill();
+    // برقِ سفیدِ بادکنک
+    ctx.fillStyle='rgba(255,255,255,0.35)';
+    ctx.beginPath(); ctx.ellipse(bx-9, by-12, 7, 11, -0.4, 0, Math.PI*2); ctx.fill();
+
+    // بارِ منفیِ بادکنک
+    drawCharges(bx-20, by-22, 40, 44, electrons, '−', '#ffffff');
+
+    // پیام
+    if(electrons===0){ msg.textContent='بادکنک خنثی است — مالشش بده!'; msg.style.color=cssv('--muted'); }
+    else if(nearWall){ msg.textContent='بادکنک به دیوار چسبید! 🎉 (القای بارِ ناهم‌نام روی سطحِ دیوار)'; msg.style.color=cssv('--ok'); }
+    else { msg.textContent='بادکنک '+toFa(electrons)+'تا بارِ منفی دارد — حالا به‌سمتِ دیوار ببرش.'; msg.style.color=cssv('--info'); }
+  }
+  function drawCharges(x,y,w,h,count,sym,color){
+    if(count<=0) return;
+    ctx.fillStyle=color; ctx.font='bold 12px Vazirmatn, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    var n=Math.min(count,8);
+    for(var i=0;i<n;i++){
+      var rx=x + Math.random()*0; // ثابت
+      var cols=2, col=i%cols, rowi=Math.floor(i/cols);
+      ctx.fillText(sym, x + w*(0.3+col*0.4), y + (rowi+0.5)*(h/Math.ceil(n/cols)));
+    }
+    ctx.textBaseline='alphabetic';
+  }
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath(); ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+  }
+  rub.addEventListener('click', function(){ if(electrons<8) electrons+=2; draw(); });
+  reset.addEventListener('click', function(){ electrons=0; posEl.value=10; draw(); });
+  posEl.addEventListener('input', draw);
+  window.addEventListener('resize', draw);
+  draw();
+})();
+</script>
+</body>
+</html>

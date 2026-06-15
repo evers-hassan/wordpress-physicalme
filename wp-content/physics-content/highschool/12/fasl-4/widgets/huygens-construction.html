@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>اصل هویگنس — ساخت جبهه‌ی موج</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --w1:#185fa5; --w2:#c43838;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --w1:#85b7eb; --w2:#f06a60;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:980px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .layout{display:grid; grid-template-columns:1fr 240px; gap:12px;}
+  @media(max-width:760px){.layout{grid-template-columns:1fr;}}
+  .stage{background:linear-gradient(to bottom, #f7f9fc, var(--bg)); border:1px solid var(--border); border-radius:14px; padding:8px;}
+  canvas{display:block; width:100%; height:360px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:13px; margin:8px 0 6px; color:var(--muted); text-transform:uppercase;}
+  .panel h3:first-child{margin-top:0;}
+  .slider-row{display:grid; grid-template-columns:1fr 60px; gap:6px; align-items:center; font-size:13px; margin-bottom:4px;}
+  .val{font-weight:700; color:var(--info); text-align:left; font-variant-numeric:tabular-nums;}
+  input[type=range]{width:100%; accent-color:var(--info);}
+  select{width:100%; padding:6px; font-family:inherit; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; margin-bottom:6px;}
+  .btn{background:var(--info); color:white; border:none; padding:8px 14px; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer; width:100%; margin-top:6px;}
+  .note{font-size:12px; padding:8px; background:var(--ok-bg); color:var(--ok); border-radius:8px; margin-top:8px; line-height:1.6;}
+</style>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']], processEscapes: true },
+    startup: { pageReady: function () { return MathJax.startup.defaultPageReady().then(function () {
+      var obs = new MutationObserver(function () { MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); }); });
+      obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+    }); } }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>اصل هویگنس 🌊 — هر نقطه‌ی جبهه‌ی موج، یه چشمه‌ست</h2>
+  <p class="sub">جبهه‌ی موج اولیه رو انتخاب کن. ببین چطور موج‌های ثانوی از روی هر نقطه‌اش پخش می‌شن و یه جبهه‌ی موجِ جدید می‌سازن.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <canvas id="cv"></canvas>
+    </div>
+    <div class="panel">
+      <h3>نوعِ جبهه‌ی اولیه</h3>
+      <select id="ft">
+        <option value="plane">جبهه‌ی تخت (موجِ موازی)</option>
+        <option value="circular">جبهه‌ی دایره‌ای (چشمه‌ی نقطه‌ای)</option>
+        <option value="aperture">عبور از یه شکاف</option>
+      </select>
+
+      <h3>تعداد چشمه‌های ثانوی</h3>
+      <div class="slider-row"><label>N</label><span class="val" id="vN">۹</span></div>
+      <input type="range" id="N" min="3" max="25" step="1" value="9">
+
+      <h3>زمانِ گذشته</h3>
+      <div class="slider-row"><label>$t$</label><span class="val" id="vt">۰</span></div>
+      <input type="range" id="t" min="0" max="120" step="1" value="0">
+
+      <button class="btn" id="anim">▶ پخش خودکار</button>
+
+      <div class="note">
+        💡 جبهه‌ی موجِ جدید، <b>پوش (envelope)</b> همه‌ی موج‌های دایره‌ای کوچکه. اگه دقت کنی، تو حالتِ شکاف می‌بینی <b>پراش</b> چجوری شکل می‌گیره — همون مفهوم زیرفصل بعد!
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fa=n=>n.toLocaleString('fa-IR');
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const cv=$('cv'), ctx=cv.getContext('2d');
+let DPR=window.devicePixelRatio||1;
+function fit(){const r=cv.getBoundingClientRect(); cv.width=r.width*DPR; cv.height=r.height*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); return {w:r.width, h:r.height};}
+
+let ftype='plane', N=9, T=0;
+let timer=null;
+
+function draw(){
+  const {w,h}=fit();
+  ctx.fillStyle=css('--surface'); ctx.fillRect(0,0,w,h);
+  // grid
+  ctx.strokeStyle=css('--border'); ctx.lineWidth=0.5;
+  for(let x=0; x<w; x+=24){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+  for(let y=0; y<h; y+=24){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+
+  const sources=[]; // each: {x,y}
+  let origin={x:0, y:h/2};
+
+  if(ftype==='plane'){
+    // plane wavefront vertical line at x = 80
+    ctx.strokeStyle=css('--w1'); ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(80, 40); ctx.lineTo(80, h-40); ctx.stroke();
+    const dy = (h-80)/(N-1);
+    for(let i=0;i<N;i++) sources.push({x:80, y:40+i*dy});
+  } else if(ftype==='circular'){
+    // circular wavefront — circle centered at left middle, initial radius 80
+    const cx=80, cy=h/2, R0=80;
+    ctx.strokeStyle=css('--w1'); ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.arc(cx, cy, R0, -Math.PI/2, Math.PI/2); ctx.stroke();
+    for(let i=0;i<N;i++){
+      const a = -Math.PI/2 + (Math.PI/(N-1))*i;
+      sources.push({x: cx+R0*Math.cos(a), y: cy+R0*Math.sin(a)});
+    }
+  } else { // aperture
+    // wall with a slit
+    const xWall=100;
+    ctx.fillStyle='#888';
+    ctx.fillRect(xWall-4, 20, 8, h/2-40);
+    ctx.fillRect(xWall-4, h/2+40, 8, h/2-40);
+    // sources only inside slit
+    const slitH=80;
+    const ny=Math.min(N,7);
+    const dy=slitH/(ny+1);
+    for(let i=1;i<=ny;i++) sources.push({x:xWall, y:h/2-slitH/2+i*dy});
+    // incoming plane wave indicator
+    ctx.strokeStyle=css('--muted'); ctx.lineWidth=2; ctx.setLineDash([3,4]);
+    for(let yy=30; yy<h-30; yy+=24){
+      ctx.beginPath(); ctx.moveTo(20, yy); ctx.lineTo(xWall-12, yy); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+
+  // draw secondary wavelets — circles of radius t around each source
+  const r = T * 1.6; // pixels
+  ctx.strokeStyle=css('--info'); ctx.globalAlpha=0.45; ctx.lineWidth=1;
+  sources.forEach(s=>{
+    ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, 2*Math.PI); ctx.stroke();
+  });
+  ctx.globalAlpha=1;
+  // mark each source
+  ctx.fillStyle=css('--w1');
+  sources.forEach(s=>{
+    ctx.beginPath(); ctx.arc(s.x, s.y, 3, 0, 2*Math.PI); ctx.fill();
+  });
+
+  // draw envelope = new wavefront (heavy line)
+  if(T>4){
+    ctx.strokeStyle=css('--w2'); ctx.lineWidth=2.8;
+    if(ftype==='plane'){
+      // envelope is vertical line at 80 + r
+      ctx.beginPath(); ctx.moveTo(80+r, 40); ctx.lineTo(80+r, h-40); ctx.stroke();
+    } else if(ftype==='circular'){
+      const cx=80, cy=h/2, R0=80;
+      ctx.beginPath(); ctx.arc(cx, cy, R0+r, -Math.PI/2, Math.PI/2); ctx.stroke();
+    } else {
+      // aperture — approximate envelope as arc of circle centered at slit center
+      const cx=100, cy=h/2;
+      ctx.beginPath();
+      const startA=-Math.PI*0.6, endA=Math.PI*0.6;
+      for(let a=startA; a<=endA; a+=0.05){
+        const px=cx+r*Math.cos(a), py=cy+r*Math.sin(a);
+        if(a===startA) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+      }
+      ctx.stroke();
+    }
+  }
+
+  // legend
+  ctx.fillStyle=css('--text'); ctx.font='12px Vazirmatn'; ctx.textAlign='left';
+  ctx.fillStyle=css('--w1'); ctx.fillText('— جبهه‌ی موجِ اولیه + چشمه‌های ثانوی', 12, h-26);
+  ctx.fillStyle=css('--w2'); ctx.fillText('— جبهه‌ی موجِ جدید (پوش)', 12, h-12);
+}
+
+function step(){
+  draw();
+}
+
+['N','t'].forEach(id=>{
+  $(id).addEventListener('input', e=>{
+    if(id==='N'){ N=parseInt(e.target.value); $('vN').textContent=fa(N); }
+    if(id==='t'){ T=parseFloat(e.target.value); $('vt').textContent=fa(T); }
+    draw();
+  });
+});
+$('ft').addEventListener('change', e=>{ ftype=e.target.value; draw(); });
+$('anim').addEventListener('click', ()=>{
+  if(timer){ clearInterval(timer); timer=null; $('anim').textContent='▶ پخش خودکار'; return;}
+  $('anim').textContent='⏸ مکث';
+  timer=setInterval(()=>{ T=(T+2)%120; $('t').value=T; $('vt').textContent=fa(T); draw(); }, 50);
+});
+window.addEventListener('resize', draw);
+draw();
+</script>
+</body>
+</html>

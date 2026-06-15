@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>اصل برنولی — جریان در لوله</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+           --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.7}
+  h2{margin:0 0 12px;font-size:1.05em;color:var(--info)}
+  canvas{background:var(--surface);border-radius:14px;width:100%;max-width:560px;
+         display:block;margin:0 auto;border:1px solid var(--border)}
+  .row{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .row label{min-width:90px;font-weight:600}
+  input[type=range]{flex:1;min-width:140px}
+  .readout{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  .pt{padding:10px;border-radius:10px;text-align:center;background:var(--surface);
+      border:1.5px solid var(--border)}
+  .pt h4{margin:0 0 6px;color:var(--info)}
+  .pt b{display:block;font-size:1.05em;color:var(--ok)}
+  .formula{margin-top:10px;padding:10px;background:var(--info-bg);border-radius:10px;
+           font-family:'Courier New',monospace;text-align:center;direction:ltr;
+           color:var(--info);font-size:0.95em}
+</style>
+</head>
+<body>
+<h2>🌬️ اصل برنولی — تنگ‌شدنِ لوله، شتابِ شاره</h2>
+
+<canvas id="cv" width="560" height="320"></canvas>
+
+<div class="row">
+  <label>تنگیِ گلوگاه</label>
+  <input type="range" id="narrow" min="0.25" max="0.9" step="0.05" value="0.4">
+  <span id="narrowBadge">۰.۴</span>
+</div>
+<div class="row">
+  <label>سرعتِ ورودی</label>
+  <input type="range" id="v1" min="0.5" max="4" step="0.1" value="2">
+  <span id="v1Badge">۲ m/s</span>
+</div>
+
+<div class="readout">
+  <div class="pt"><h4>نقطه ۱ (پهن)</h4>
+    سرعت: <b id="vL">۲ m/s</b>
+    فشار: <b id="pL">۱۰۱ kPa</b>
+  </div>
+  <div class="pt"><h4>نقطه ۲ (تنگ)</h4>
+    سرعت: <b id="vR">— m/s</b>
+    فشار: <b id="pR">— kPa</b>
+  </div>
+</div>
+
+<div class="formula">P + ½ρv² + ρgh = ثابت  ⇒  سرعت ↑  ⇒  فشار ↓</div>
+
+<script>
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+const rho = 1000;
+const P0 = 101000; // Pa
+let narrow = 0.4;  // ratio of narrow to wide
+let v1 = 2;        // m/s in wide section
+const faDigit = n => String(n).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+
+// pipe geometry
+function pipeY(x){
+  // x in [0..W]
+  const yMid = H/2;
+  const wideH = 80;
+  const narrowH = wideH * narrow;
+  // smooth transition centered at W/2
+  const t = Math.min(1, Math.max(0, (x - W*0.3) / (W*0.4)));
+  // smoothstep
+  const s = t<0?0:t>1?1: t*t*(3-2*t);
+  const halfH = (wideH/2) - s*((wideH-narrowH)/2);
+  return [yMid - halfH, yMid + halfH];
+}
+
+let particles = [];
+function addParticle(){
+  particles.push({x: 0, y: H/2 + (Math.random()-.5)*60, vx: 0});
+}
+for (let i=0; i<60; i++){
+  particles.push({x: Math.random()*W, y: H/2 + (Math.random()-.5)*60, vx: 0});
+}
+
+function step(){
+  ctx.clearRect(0,0,W,H);
+  // draw pipe with gradient
+  ctx.fillStyle = 'rgba(60,140,200,0.12)';
+  ctx.beginPath();
+  ctx.moveTo(0, pipeY(0)[0]);
+  for (let x=0; x<=W; x+=5){ ctx.lineTo(x, pipeY(x)[0]); }
+  for (let x=W; x>=0; x-=5){ ctx.lineTo(x, pipeY(x)[1]); }
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#185fa5'; ctx.lineWidth = 3;
+  ctx.beginPath();
+  for (let x=0; x<=W; x+=5){
+    const [yT,yB] = pipeY(x);
+    if (x===0){ ctx.moveTo(x,yT); } else ctx.lineTo(x,yT);
+  }
+  ctx.stroke();
+  ctx.beginPath();
+  for (let x=0; x<=W; x+=5){
+    const [yT,yB] = pipeY(x);
+    if (x===0){ ctx.moveTo(x,yB); } else ctx.lineTo(x,yB);
+  }
+  ctx.stroke();
+
+  // animate particles. velocity ∝ inverse area
+  const wideArea = 80;
+  for (const p of particles){
+    const [yT, yB] = pipeY(p.x);
+    const localH = yB - yT;
+    const ratio = wideArea / localH; // higher in narrow
+    const localV = v1 * ratio;
+    p.vx = localV * 30; // scale
+    p.x += p.vx * 0.016; // dt
+    // clamp y inside pipe
+    if (p.y < yT+3) p.y = yT+3;
+    if (p.y > yB-3) p.y = yB-3;
+    if (p.x > W){ p.x = -5; p.y = H/2 + (Math.random()-.5)*60; }
+  }
+  // draw particles
+  for (const p of particles){
+    ctx.fillStyle = '#1d9e75';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+    ctx.fill();
+  }
+  // labels: P1 P2
+  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text');
+  ctx.font = 'bold 14px Vazirmatn';
+  ctx.textAlign = 'center';
+  ctx.fillText('۱', W*0.15, H/2);
+  ctx.fillText('۲', W*0.5, H/2);
+
+  requestAnimationFrame(step);
+}
+
+function updateReadouts(){
+  const v2 = v1 / narrow;
+  const dP = 0.5*rho*(v2*v2 - v1*v1);
+  const P1 = P0;
+  const P2 = P0 - dP;
+  document.getElementById('vL').textContent = faDigit(v1.toFixed(1)) + ' m/s';
+  document.getElementById('pL').textContent = faDigit((P1/1000).toFixed(1)) + ' kPa';
+  document.getElementById('vR').textContent = faDigit(v2.toFixed(1)) + ' m/s';
+  document.getElementById('pR').textContent = faDigit((P2/1000).toFixed(1)) + ' kPa';
+}
+
+const nEl = document.getElementById('narrow');
+nEl.oninput = ()=>{ narrow = +nEl.value;
+  document.getElementById('narrowBadge').textContent = faDigit(narrow.toFixed(2));
+  updateReadouts();
+};
+const vEl = document.getElementById('v1');
+vEl.oninput = ()=>{ v1 = +vEl.value;
+  document.getElementById('v1Badge').textContent = faDigit(v1.toFixed(1)) + ' m/s';
+  updateReadouts();
+};
+
+updateReadouts();
+step();
+</script>
+</body>
+</html>

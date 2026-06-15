@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تلویزیون CRT — انحرافِ پرتو الکترون با میدان مغناطیسی</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --hint-c:#a87800; --hint-bg:#fef6e0;
+    --beam:#5ed8d8; --beam-glow:rgba(94,216,216,0.45);
+    --B:#7a4dbd; --F:#c43838;
+    --gun:#3a3835; --screen:#0a3a2a; --phosphor:#5dcaa5;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --hint-c:#e0b860; --hint-bg:#4a3a15;
+      --beam:#7ce8e8; --beam-glow:rgba(124,232,232,0.55);
+      --B:#b08be8; --F:#f0807d;
+      --gun:#76746d; --screen:#06281d; --phosphor:#7ddeaa;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;
+  }
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:340px; touch-action:none; cursor:crosshair;}
+  .readout{padding:12px; border-top:1px solid var(--border); display:flex; gap:10px; flex-wrap:wrap;}
+  .chip{flex:1 1 130px; background:var(--info-bg); color:var(--info); border-radius:10px; padding:8px 12px; text-align:center; font-size:14px;}
+  .chip b{display:block; font-size:16px; font-weight:700; margin-top:2px;}
+  .chip.ok{background:var(--ok-bg); color:var(--ok);}
+
+  .controls{margin-top:14px; display:grid; gap:10px;}
+  .slider-row{display:grid; grid-template-columns:130px 1fr 70px; gap:10px; align-items:center; font-size:14px;}
+  .slider-row span:first-child{color:var(--muted);}
+  .slider-row .val{font-weight:700; color:var(--text); text-align:left;}
+  input[type=range]{accent-color:var(--info); height:6px;}
+
+  .btn-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;}
+  .btn{
+    font-family:inherit; font-size:13.5px; padding:8px 14px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text); cursor:pointer;
+    transition:.12s; flex:1 1 130px;
+  }
+  .btn:hover{background:var(--info-bg); border-color:var(--info); color:var(--info);}
+  .btn.on{background:var(--info); color:#fff; border-color:var(--info);}
+
+  .hint{
+    margin-top:12px; background:var(--hint-bg); color:var(--hint-c);
+    border-radius:10px; padding:10px 14px; font-size:13.5px;
+    border-right:3px solid var(--hint-c);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>📺 تلویزیون CRT — انحراف الکترون با میدان مغناطیسی</h2>
+  <p class="sub">پرتو الکترون از تفنگِ سمت چپ شلیک می‌شه. وقتی از منطقهٔ میدان مغناطیسی رد می‌شه، منحرف می‌شه و به یه نقطه‌ی خاص از صفحه می‌خوره. اسلایدرها رو تغییر بده یا روی صفحه کلیک کن.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">انحراف عمودی <b id="yDef">۰</b></div>
+      <div class="chip">انحراف افقی <b id="xDef">۰</b></div>
+      <div class="chip ok">نقطه برخورد <b id="hitVal">مرکز</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="slider-row">
+      <span>میدان عمودی Bᵥ</span>
+      <input type="range" id="bvSlider" min="-1" max="1" step="0.05" value="0">
+      <span class="val" id="bvSliderVal">۰</span>
+    </div>
+    <div class="slider-row">
+      <span>میدان افقی Bₕ</span>
+      <input type="range" id="bhSlider" min="-1" max="1" step="0.05" value="0">
+      <span class="val" id="bhSliderVal">۰</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="scanBtn">🔄 جاروب خودکار (شبیه‌سازی تصویرسازی)</button>
+      <button class="btn" id="resetBtn">↺ بازنشانی</button>
+    </div>
+  </div>
+
+  <div class="hint">
+    💡 <b>چجوری کار می‌کنه:</b> تفنگِ الکترونی، یک پرتو الکترون به سمتِ راست شلیک می‌کنه. توی منطقهٔ سبزرنگ، میدانِ مغناطیسی <b>Bᵥ</b> الکترون رو بالا/پایین می‌فرسته، و میدان <b>Bₕ</b> اون رو چپ/راست. با تنظیمِ این دو، می‌تونی پرتو رو روی هر <b>پیکسلِ</b> صفحه بفرستی. تلویزیون‌های CRT دقیقاً این کار رو ۲۵٬۰۰۰ بار در ثانیه می‌کردن تا تصویر بسازن. روی صفحه کلیک کن — برنامه میدان لازم رو محاسبه می‌کنه.
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var W,H;
+  var Bv=0, Bh=0;
+  var scanning=false, scanAng=0;
+  // CRT geometry (in canvas px)
+  var gunX, gunY;        // electron gun position
+  var deflectX, deflectW;// magnetic deflection region x and width
+  var screenX, screenH;  // screen position
+  var beamTrail = [];
+
+  function toFa(s){return (''+s).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];}).replace('.','٫');}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  function layout(){
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=rect.width; H=rect.height;
+    gunX = 60; gunY = H/2;
+    deflectX = 170; deflectW = 110;
+    screenX = W - 60; screenH = H - 80;
+  }
+
+  function drawGun(){
+    ctx.save();
+    // Cathode-anode assembly (left side)
+    ctx.fillStyle = cssv('--gun');
+    ctx.fillRect(20, gunY-22, 80, 44);
+    // Anode aperture (small slit on right)
+    ctx.fillStyle = cssv('--bg');
+    ctx.fillRect(96, gunY-3, 8, 6);
+    // Label
+    ctx.fillStyle = cssv('--muted'); ctx.font='11px Vazirmatn';
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.fillText('تفنگ الکترونی', 60, gunY+25);
+    ctx.fillText('Electron Gun', 60, gunY+38);
+    // Cathode symbol
+    ctx.fillStyle='#fff'; ctx.font='bold 13px Vazirmatn'; ctx.textBaseline='middle';
+    ctx.fillText('−', 35, gunY);
+    ctx.fillText('+', 80, gunY);
+    ctx.restore();
+  }
+
+  function drawDeflectionRegion(){
+    var x=deflectX, w=deflectW;
+    ctx.save();
+    // Soft purple background indicating B field region
+    var grad = ctx.createLinearGradient(x,0,x+w,0);
+    grad.addColorStop(0, 'rgba(122,77,189,0.05)');
+    grad.addColorStop(0.5, 'rgba(122,77,189,0.18)');
+    grad.addColorStop(1, 'rgba(122,77,189,0.05)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, 30, w, H-80);
+    // Border
+    ctx.strokeStyle = cssv('--B'); ctx.lineWidth = 1.5; ctx.globalAlpha = 0.45;
+    ctx.setLineDash([5,4]);
+    ctx.strokeRect(x, 30, w, H-80);
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+
+    // Show fields in the region. The deflection coils produce two perpendicular B fields:
+    //   Bv → vertical-pointing field (visible as ↑/↓ arrows in side view) → deflects beam up/down
+    //   Bh → out-of-plane field (visible as ⊙/⊗ symbols)                    → deflects beam left/right on screen
+    var midY = H/2;
+    ctx.fillStyle = cssv('--B'); ctx.strokeStyle = cssv('--B'); ctx.lineWidth = 2; ctx.lineCap='round';
+    ctx.globalAlpha = 0.7;
+    if (Math.abs(Bv) > 0.05){
+      // Vertical arrows for Bv: point in the same direction as the beam deflection.
+      // Canvas y is inverted; "up" on screen means negative canvas-y.
+      // For Bv > 0 we deflect beam upward, so arrowhead should land at midY - amp (above).
+      //   The arrow is drawn from (midY + sign*amp) to (midY - sign*amp).
+      //   With sign = +1: head ends at midY-amp = ABOVE = UP arrow ✓
+      var sign = Math.sign(Bv);
+      var amp = Math.min(36, Math.abs(Bv)*40);
+      [x+w*0.25, x+w*0.55].forEach(function(ax){
+        ctx.beginPath();
+        ctx.moveTo(ax, midY + sign*amp);
+        ctx.lineTo(ax, midY - sign*amp);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(ax, midY - sign*amp);
+        ctx.lineTo(ax-5, midY - sign*amp + sign*8);
+        ctx.lineTo(ax+5, midY - sign*amp + sign*8);
+        ctx.closePath(); ctx.fill();
+      });
+    }
+    if (Math.abs(Bh) > 0.05){
+      // ⊙ or ⊗ symbols indicating out-of-plane field for Bh
+      var sym = (Bh > 0) ? '⊙' : '⊗';
+      ctx.font='18px Vazirmatn'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      var alpha = Math.min(0.95, 0.35 + Math.abs(Bh)*0.7);
+      ctx.globalAlpha = alpha;
+      [x+w*0.40, x+w*0.75].forEach(function(ax){
+        [midY-20, midY+20].forEach(function(ay){
+          ctx.fillText(sym, ax, ay);
+        });
+      });
+    }
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = cssv('--B'); ctx.font='bold 12px Vazirmatn';
+    ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+    ctx.fillText('سیم‌پیچ‌های انحراف‌دهنده', x+w/2, 22);
+    ctx.restore();
+  }
+
+  function drawScreen(){
+    // Phosphor screen on the right
+    ctx.save();
+    ctx.fillStyle = cssv('--screen');
+    ctx.fillRect(screenX-10, 30, 30, H-80);
+    // Glowing center indicating phosphor
+    ctx.fillStyle = cssv('--phosphor');
+    ctx.globalAlpha = 0.15;
+    ctx.fillRect(screenX-7, 33, 24, H-86);
+    ctx.globalAlpha = 1;
+    // Label
+    ctx.fillStyle = cssv('--muted'); ctx.font='11px Vazirmatn';
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.fillText('صفحه فسفری', screenX+5, H-45);
+    ctx.fillText('Screen', screenX+5, H-32);
+    ctx.restore();
+  }
+
+  // Clean kinematic simulation of the beam:
+  //   - Before deflection region: straight horizontal line
+  //   - Inside region: parabolic curve (constant transverse acceleration from Bv)
+  //   - After region: straight line tangent to parabola exit
+  // The total deflection at the screen is bounded so the beam can't leave the screen at slider extremes.
+  function simulateBeam(){
+    var pts = [];
+    var regStart = deflectX, regEnd = deflectX + deflectW;
+    var w = regEnd - regStart;
+    var afterDist = screenX - regEnd;
+
+    // Maximum on-screen deflection (px from gunY) when |Bv|=1. Tuned so that at Bv=±1
+    // the beam hits ~80% of the way to the top/bottom of the visible screen area.
+    var screenHalfHeight = (H - 80 - 30) / 2;     // visible screen region's half-height
+    var maxDeflect = screenHalfHeight * 0.85;
+
+    var totalDeflectY = -Bv * maxDeflect;          // positive Bv pushes electron UP (canvas -y direction)
+    // Solve for the constant acceleration `a` such that the trajectory hits y = gunY + totalDeflectY at screen.
+    //   y(x) = gunY + 0.5 a (x-regStart)^2     for regStart <= x <= regEnd
+    //   y(x) = gunY + 0.5 a w^2 + a w (x-regEnd)  for x > regEnd
+    //   y(screenX) = gunY + a w (0.5 w + afterDist) = gunY + totalDeflectY
+    var a = totalDeflectY / (w * (0.5*w + afterDist));
+
+    var dx = 2;
+    var x = gunX + 50;
+    while (x <= screenX){
+      var y;
+      if (x < regStart){
+        y = gunY;
+      } else if (x <= regEnd){
+        var dxIn = x - regStart;
+        y = gunY + 0.5 * a * dxIn * dxIn;
+      } else {
+        var yExit = gunY + 0.5 * a * w * w;
+        var slope = a * w;
+        y = yExit + slope * (x - regEnd);
+      }
+      pts.push({x:x, y:y});
+      x += dx;
+    }
+    // Horizontal deflection (Bh) maps to a hit-point offset on the screen front-view inset.
+    var horizScreenOffset = Bh * maxDeflect;
+    return {
+      pts: pts,
+      finalY: gunY + totalDeflectY,
+      horizOffset: horizScreenOffset,
+      maxDeflect: maxDeflect
+    };
+  }
+
+  function drawBeam(){
+    var sim = simulateBeam();
+    var pts = sim.pts;
+    // Glow halo
+    ctx.save();
+    ctx.strokeStyle = cssv('--beam-glow');
+    ctx.lineWidth = 9; ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.globalAlpha = 0.55;
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    for (var i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+    // Bright core
+    ctx.strokeStyle = cssv('--beam');
+    ctx.lineWidth = 3; ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    for (var i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+    ctx.restore();
+
+    // Hit point on side-view screen
+    var hitY = sim.finalY;
+    var hitX = screenX + 3;
+    ctx.save();
+    var grd = ctx.createRadialGradient(hitX, hitY, 1, hitX, hitY, 16);
+    grd.addColorStop(0, cssv('--phosphor'));
+    grd.addColorStop(1, 'rgba(93,202,165,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(hitX, hitY, 16, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(hitX, hitY, 2.5, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    // Screen front-view inset (bottom-left): shows the 2D hit point combining both Bv and Bh.
+    drawScreenInset(sim);
+
+    // Update readouts
+    var maxPx = sim.maxDeflect;
+    var pct = (gunY - hitY) / maxPx * 100;
+    document.getElementById('yDef').textContent = toFa(Math.abs(pct).toFixed(0))+'٪ '+(pct>0?'بالا':'پایین');
+    document.getElementById('xDef').textContent = toFa(Math.abs(Bh*100).toFixed(0))+'٪ '+(Bh>0?'راست':'چپ');
+    var hitText;
+    if (Math.abs(pct)<8 && Math.abs(Bh)<0.08) hitText = 'مرکز';
+    else if (pct>15 && Bh>0.15) hitText = 'بالا-راست';
+    else if (pct>15 && Bh<-0.15) hitText = 'بالا-چپ';
+    else if (pct<-15 && Bh>0.15) hitText = 'پایین-راست';
+    else if (pct<-15 && Bh<-0.15) hitText = 'پایین-چپ';
+    else if (pct>15) hitText = 'بالا';
+    else if (pct<-15) hitText = 'پایین';
+    else if (Bh>0.15) hitText = 'راست';
+    else if (Bh<-0.15) hitText = 'چپ';
+    else hitText = 'نزدیک مرکز';
+    document.getElementById('hitVal').textContent = hitText;
+  }
+
+  function drawScreenInset(sim){
+    // A small front-view of the phosphor screen at the bottom-left corner of the canvas.
+    var pad = 12, w = 110, h = 78;
+    var x = pad, y = H - h - pad;
+    ctx.save();
+    // Frame
+    ctx.fillStyle = cssv('--screen'); ctx.strokeStyle = cssv('--border'); ctx.lineWidth = 1.5;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeRect(x, y, w, h);
+    // Crosshair
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, y+h/2); ctx.lineTo(x+w, y+h/2);
+    ctx.moveTo(x+w/2, y); ctx.lineTo(x+w/2, y+h);
+    ctx.stroke();
+    // Title
+    ctx.fillStyle = cssv('--muted'); ctx.font='10px Vazirmatn'; ctx.textAlign='center';
+    ctx.fillText('نمای جلوی صفحه', x+w/2, y-3);
+    // Hit point (from front, the user sees the screen as a 2D plane)
+    // Vertical axis = Bv (up/down), horizontal axis = Bh (right/left)
+    // Note: in the inset, positive Bv means UP on screen (matches the side view).
+    var dotX = x + w/2 + Bh * (w/2 - 6);
+    var dotY = y + h/2 - Bv * (h/2 - 6);      // +Bv → up in inset (smaller canvas y)
+    // Clamp to inside frame
+    dotX = Math.max(x+4, Math.min(x+w-4, dotX));
+    dotY = Math.max(y+4, Math.min(y+h-4, dotY));
+    // Glow
+    var grd = ctx.createRadialGradient(dotX, dotY, 1, dotX, dotY, 10);
+    grd.addColorStop(0, cssv('--phosphor'));
+    grd.addColorStop(1, 'rgba(93,202,165,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(dotX, dotY, 10, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(dotX, dotY, 2, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  function draw(){
+    layout();
+    ctx.clearRect(0,0,W,H);
+    drawGun();
+    drawDeflectionRegion();
+    drawScreen();
+    drawBeam();
+  }
+
+  // Slider bindings
+  function setBv(v){
+    Bv = v;
+    document.getElementById('bvSlider').value = v;
+    document.getElementById('bvSliderVal').textContent = toFa(v.toFixed(2));
+    draw();
+  }
+  function setBh(v){
+    Bh = v;
+    document.getElementById('bhSlider').value = v;
+    document.getElementById('bhSliderVal').textContent = toFa(v.toFixed(2));
+    draw();
+  }
+  document.getElementById('bvSlider').addEventListener('input', function(e){ setBv(+e.target.value); });
+  document.getElementById('bhSlider').addEventListener('input', function(e){ setBh(+e.target.value); });
+
+  // Click on canvas → set target.
+  //   - Click on the main screen (side view): sets Bv only based on y position.
+  //   - Click on the front-view inset (bottom-left): sets BOTH Bv and Bh based on 2D position.
+  cv.addEventListener('click', function(e){
+    var rect=cv.getBoundingClientRect();
+    var px = e.clientX-rect.left, py = e.clientY-rect.top;
+
+    // Check inset hit (bottom-left small screen)
+    var pad = 12, insetW = 110, insetH = 78;
+    var insetX = pad, insetY = H - insetH - pad;
+    if (px >= insetX && px <= insetX+insetW && py >= insetY && py <= insetY+insetH){
+      // Map click within inset to (Bh, Bv)
+      var fracX = (px - (insetX + insetW/2)) / (insetW/2 - 6);
+      var fracY = (py - (insetY + insetH/2)) / (insetH/2 - 6);
+      // Up on screen = positive Bv
+      var newBh = Math.max(-1, Math.min(1, fracX));
+      var newBv = Math.max(-1, Math.min(1, -fracY));
+      setBv(newBv); setBh(newBh);
+      return;
+    }
+
+    // Click on the side-view screen region: set Bv only (Bh unchanged)
+    if (px > deflectX + 20){
+      // Final beam y at screen = gunY - Bv * maxDeflect (per our kinematic model).
+      // Solve for Bv: Bv = (gunY - py) / maxDeflect, clamped to [-1, 1].
+      var screenHalfHeight = (H - 80 - 30) / 2;
+      var maxDeflect = screenHalfHeight * 0.85;
+      var newBv = Math.max(-1, Math.min(1, (gunY - py) / maxDeflect));
+      setBv(newBv);
+    }
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    scanning = false;
+    document.getElementById('scanBtn').textContent = '🔄 جاروب خودکار (شبیه‌سازی تصویرسازی)';
+    document.getElementById('scanBtn').classList.remove('on');
+    setBv(0); setBh(0);
+  });
+  document.getElementById('scanBtn').addEventListener('click', function(){
+    scanning = !scanning;
+    this.textContent = scanning ? '⏸ توقف جاروب' : '🔄 جاروب خودکار (شبیه‌سازی تصویرسازی)';
+    this.classList.toggle('on', scanning);
+  });
+
+  function tick(){
+    if (scanning){
+      scanAng += 0.05;
+      setBv(0.6 * Math.sin(scanAng));
+      setBh(0.6 * Math.cos(scanAng * 0.7));
+    }
+    requestAnimationFrame(tick);
+  }
+  window.addEventListener('resize', draw);
+  setTimeout(function(){ draw(); requestAnimationFrame(tick); }, 50);
+})();
+</script>
+</body>
+</html>

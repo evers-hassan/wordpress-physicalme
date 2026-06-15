@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌سازی مقاومت ویژه</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --wire:#c98a3a; --cur:#d6453c; --hot:#e8633f;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --wire:#c98a3a; --cur:#f06a60; --hot:#f0764f;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8; animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:200px;}
+  .readout{display:flex; gap:8px; flex-wrap:wrap; padding:12px; border-top:1px solid var(--border);}
+  .chip{flex:1 1 90px; background:var(--info-bg); color:var(--info); border-radius:10px; padding:8px 10px; text-align:center; font-weight:500; font-size:13px;}
+  .chip b{display:block; font-size:15px; font-weight:700; margin-top:2px; direction:ltr;}
+  .controls{margin-top:14px; display:grid; gap:11px;}
+  .row{display:flex; justify-content:space-between; align-items:center; font-size:14px;}
+  .val{font-weight:700;}
+  input[type=range]{width:100%; accent-color:var(--info); height:6px;}
+  select{font-family:inherit; font-size:14px; padding:6px 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text);}
+  .selrow{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .formula{margin-top:12px; background:var(--ok-bg); color:var(--ok); border-radius:10px; padding:9px 14px; font-size:13px; text-align:center;}
+  .formula code{direction:ltr;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🧵 شبیه‌سازی: مقاومت ویژه (R = ρL/A)</h2>
+  <p class="sub">طول، سطحِ مقطع، جنس و دمای سیم را تغییر بده و ببین مقاومت و جریان (تحتِ ۱۲ ولتِ ثابت) چطور عوض می‌شوند.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">مقاومت ویژه ρ <b id="rhoVal">—</b></div>
+      <div class="chip">مقاومت R <b id="rVal">—</b></div>
+      <div class="chip">جریان I (۱۲V) <b id="iVal">—</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="selrow"><span>جنسِ سیم</span>
+      <select id="mat">
+        <option value="1.6e-8|4.1e-3">نقره</option>
+        <option value="1.7e-8|4.3e-3" selected>مس</option>
+        <option value="2.8e-8|4.4e-3">آلومینیم</option>
+        <option value="5.5e-8|4.5e-3">تنگستن</option>
+        <option value="100e-8|4.0e-4">نیکروم</option>
+      </select>
+    </div>
+    <div class="row"><span>طول L</span><span class="val"><span id="lSet"></span> m</span></div>
+    <input type="range" id="L" min="0.5" max="5" step="0.5" value="1">
+    <div class="row"><span>سطحِ مقطع A</span><span class="val"><span id="aSet"></span> mm²</span></div>
+    <input type="range" id="A" min="0.5" max="5" step="0.5" value="2">
+    <div class="row"><span>دما T</span><span class="val"><span id="tSet"></span> °C</span></div>
+    <input type="range" id="T" min="-100" max="500" step="20" value="20">
+  </div>
+
+  <div class="formula"><code>ρ(T) = ρ₀ [ 1 + α(T − ۲۰°C) ]</code> &nbsp;،&nbsp; <code>R = ρL/A</code></div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var matEl=document.getElementById('mat'), LEl=document.getElementById('L'), AEl=document.getElementById('A'), TEl=document.getElementById('T');
+  var lSet=document.getElementById('lSet'), aSet=document.getElementById('aSet'), tSet=document.getElementById('tSet');
+  var rhoVal=document.getElementById('rhoVal'), rVal=document.getElementById('rVal'), iVal=document.getElementById('iVal');
+  var t=0;
+  function toFa(s){return (''+s).replace(/[0-9.\-]/g,function(d){return d==='.'?'٫':(d==='-'?'−':'۰۱۲۳۴۵۶۷۸۹'[+d]);});}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+  function sci(x){ // نمایشِ علمیِ فارسی
+    var e=Math.floor(Math.log10(x)); var m=x/Math.pow(10,e);
+    return toFa(m.toFixed(1))+'×۱۰'+sup(e);
+  }
+  function sup(e){ var s=(''+e).replace('-','−'); return s.replace(/[0-9−]/g,function(d){return ({'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','−':'⁻'})[d];}); }
+
+  function calc(){
+    var parts=matEl.value.split('|'); var rho0=parseFloat(parts[0]), alpha=parseFloat(parts[1]);
+    var L=+LEl.value, Amm=+AEl.value, T=+TEl.value;
+    var A=Amm*1e-6; // m²
+    var rho=rho0*(1+alpha*(T-20));
+    if(rho<1e-12) rho=1e-12;
+    var R=rho*L/A;
+    var I=12/R;
+    return {rho:rho,R:R,I:I,L:L,Amm:Amm,T:T};
+  }
+  function draw(){
+    var d=calc();
+    lSet.textContent=toFa(d.L); aSet.textContent=toFa(d.Amm); tSet.textContent=toFa(d.T);
+    rhoVal.textContent=sci(d.rho)+' Ω·m';
+    rVal.textContent=(d.R>=1?toFa(d.R.toFixed(2)):toFa(d.R.toFixed(3)))+' Ω';
+    iVal.textContent=(d.I>=1?toFa(d.I.toFixed(1))+' A':toFa((d.I*1000).toFixed(0))+' mA');
+
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    var W=rect.width, H=rect.height; ctx.clearRect(0,0,W,H);
+
+    // طولِ نمایشی ∝ L، ضخامت ∝ A
+    var wlen = 110 + (d.L-0.5)/4.5*(W-150);
+    var thick = 12 + (d.Amm-0.5)/4.5*48;
+    var x0=(W-wlen)/2, y=H/2;
+
+    // رنگِ سیم بر اساسِ دما (داغ‌تر → قرمزتر)
+    var hotMix=Math.max(0,Math.min(1,(d.T-20)/480));
+    ctx.fillStyle=cssv('--wire');
+    roundRect(x0, y-thick/2, wlen, thick, thick/2); ctx.fill();
+    if(hotMix>0.02){ ctx.globalAlpha=hotMix*0.6; ctx.fillStyle=cssv('--hot'); roundRect(x0,y-thick/2,wlen,thick,thick/2); ctx.fill(); ctx.globalAlpha=1; }
+
+    // پایانه‌های ولتاژ
+    ctx.fillStyle=cssv('--muted'); ctx.font='13px Vazirmatn, sans-serif'; ctx.textAlign='center';
+    ctx.fillText('۱۲V', x0-22, y+5); ctx.fillText('۱۲V', x0+wlen+22, y+5);
+    ctx.strokeStyle=cssv('--muted'); ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(x0-40,y); ctx.lineTo(x0,y); ctx.moveTo(x0+wlen,y); ctx.lineTo(x0+wlen+40,y); ctx.stroke();
+
+    // جریانِ متحرک (سرعت ∝ I)
+    var speed=Math.min(6, d.I*0.04+0.3);
+    t += speed;
+    var n=Math.max(3, Math.round(wlen/30));
+    ctx.fillStyle=cssv('--cur');
+    for(var i=0;i<n;i++){
+      var dx=((t + i*wlen/n)%wlen);
+      ctx.beginPath(); ctx.arc(x0+dx, y, 3.5, 0, Math.PI*2); ctx.fill();
+    }
+    // برچسب طول و ضخامت
+    ctx.fillStyle=cssv('--muted'); ctx.font='11px Vazirmatn, sans-serif';
+    ctx.fillText('L = '+toFa(d.L)+' m', x0+wlen/2, y-thick/2-8);
+
+    requestAnimationFrame(draw);
+  }
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath(); ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+  }
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودتو بسنج — ویژگی‌های مغناطیسی مواد</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8;}
+  .wrap{max-width:720px; margin:0 auto;}
+  .q-item{border:1px solid var(--border); border-radius:12px; margin-bottom:10px;
+    overflow:hidden; background:var(--surface);}
+  .q-head{display:flex; align-items:center; gap:10px; cursor:pointer;
+    padding:13px 15px; font-weight:500; font-size:15px; user-select:none;}
+  .q-head:hover{background:var(--info-bg);}
+  .q-head .tog{margin-inline-start:auto; flex:0 0 auto; color:var(--info);
+    transition:transform .2s ease; font-size:18px;}
+  .q-item.open .q-head .tog{transform:rotate(45deg);}
+  .q-num{flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+    background:var(--info); color:#fff; display:flex; align-items:center;
+    justify-content:center; font-size:13px; font-weight:700;}
+  .q-body{max-height:0; overflow:hidden; transition:max-height .25s ease;
+    background:var(--ok-bg);}
+  .q-body .inner{padding:13px 15px; color:var(--text); font-size:14.5px;}
+  .q-body .inner::before{content:"پاسخ: "; color:var(--ok); font-weight:700;}
+  .hint{font-size:13px; color:var(--muted); margin:0 0 14px;}
+</style>
+  <script id="mathjax-config">
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+           displayMath: [['$$','$$'], ['\\[','\\]']],
+           processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <p class="hint">روی هر سؤال بزن تا پاسخش باز شود 👇</p>
+  <div id="quiz"></div>
+</div>
+
+<script>
+  var items = [
+    { q: "چرا بعضی مواد آهنربا می‌شن و بعضی نه؟",
+      a: "<b>در سطح اتمی</b>، هر اتم می‌تونه یه آهنربای میکروسکوپی باشه — به‌خاطر چرخش الکترون‌ها دور هسته و چرخش خودشون (اسپین). در بیشتر مواد، این اتم‌های مغناطیسیِ کوچیک <b>به‌طور آشفته</b> در جهات مختلف قرار می‌گیرن و میدان‌هاشون همدیگه رو خنثی می‌کنن. در آهن، نیکل، و کبالت، اتم‌های همسایه به‌طور <b>طبیعی</b> هم‌جهت می‌شن و گروه‌های بزرگی به اسم <b>دامنه‌ی مغناطیسی</b> تشکیل می‌دن. وقتی این دامنه‌ها هم‌جهت بشن، ماده می‌شه یه آهنربا." },
+    { q: "دامنهٔ مغناطیسی (Magnetic Domain) چیه؟",
+      a: "ناحیه‌ی میکروسکوپی کوچیکی توی یه ماده‌ی فرومغناطیسی که توش <b>تمامِ اتم‌ها هم‌جهت‌ان</b>. اندازه‌ی هر دامنه حدود $10^{-4}$ تا $10^{-1}$ میلی‌متره. توی یه تکّه آهن خام، دامنه‌ها در جهات مختلف قرار گرفتن و اثرشون همدیگه رو خنثی می‌کنه — به‌همین خاطر آهن خام ظاهراً غیرمغناطیسیه. ولی توی میدان قوی، دامنه‌های هم‌جهت با میدان <b>رشد می‌کنن</b> و دامنه‌های دیگه کوچیک می‌شن." },
+    { q: "سه گروه اصلی مواد در پاسخ به میدان مغناطیسی چیه؟",
+      a: "<b>۱) فرومغناطیس (Ferromagnetic)</b>: آهن، نیکل، کبالت، گادولینیوم. <b>جذب قوی</b>، می‌تونن آهنربای دائمی بسازن.<br><b>۲) پارامغناطیس (Paramagnetic)</b>: آلومینیوم، پلاتین، تنگستن، اکسیژن مایع. <b>جذب ضعیف</b> — فقط در میدان‌های خیلی قوی قابل مشاهده.<br><b>۳) دیامغناطیس (Diamagnetic)</b>: مس، طلا، نقره، بیسموت، آب، گرافیت. <b>دفع ضعیف</b> — بله، می‌تونی آب و طلا رو با یه آهنربای فوق‌قوی <b>هل بدی</b>!" },
+    { q: "فرق آهنربای دائمی با آهن نرم چیه؟",
+      a: "<b>آهن نرم (مثل آهن خالص)</b>: وقتی توی میدان قرار می‌گیره، دامنه‌هاش هم‌جهت می‌شن و آهنربا می‌شه. <b>ولی</b> وقتی میدان رو برمی‌داری، دامنه‌ها برمی‌گردن به حالت آشفته — خاصیتش رو از دست می‌ده. این برای <b>الکترومغناطیس</b> ـه خوبه (روشن/خاموش‌شدنی).<br><br><b>فولاد سخت (یا آلیاژهای خاص مثل نئودیمیوم-آهن-بور)</b>: ساختار بلوریش طوریه که بعد از هم‌جهت‌شدن، دامنه‌ها <b>قفل می‌شن</b> و حتی بعد از قطع میدان حفظ می‌شه. این می‌شه <b>آهنربای دائمی</b>." },
+    { q: "دمای کوری (Curie Temperature) چیه و چرا مهمه؟",
+      a: "<b>دمایی</b> که بالاتر از اون، یه ماده‌ی فرومغناطیسی <b>خاصیت مغناطیسی‌ش رو از دست می‌ده</b>. در دمای بالا، انرژی حرارتی اتم‌ها زیاد می‌شه و هم‌جهت‌مونی دامنه‌ها به‌هم می‌ریزه — ماده موقتاً پارامغناطیس می‌شه.<br>چند مقدار نمونه:<br>• <b>آهن</b>: ۷۷۰°C<br>• <b>نیکل</b>: ۳۵۸°C<br>• <b>کبالت</b>: ۱۱۲۷°C (بالاترین)<br>• <b>گادولینیوم</b>: ۱۹°C (نزدیک دمای اتاق!)<br>به همین خاطر هستهٔ زمین (با دمای ~۵۰۰۰°C) آهن مذابِ <b>پارامغناطیس</b> ـه، نه آهنربای دائمی." },
+    { q: "چرا اگه یه آهنربای دائمی رو بشدت ضربه بزنی، خاصیتش ضعیف می‌شه؟",
+      a: "ضربه‌ی شدید، انرژی مکانیکی به اتم‌ها منتقل می‌کنه که می‌تونه بعضی از دامنه‌ها رو <b>بی‌نظم</b> کنه. وقتی دامنه‌های هم‌جهت کمتر بشن، خاصیت مغناطیسیِ کلی کم می‌شه. هم گرم کردن، هم ضربه زدن، هم میدان مغناطیسی مخالف می‌تونن این کار رو بکنن. به‌همین دلیل آهنربای فولادی رو معمولاً توی محفظه‌های نرم نگه می‌دارن." },
+    { q: "نمونه‌ای از کاربرد دیامغناطیس در فناوریِ مدرن بهم بگو.",
+      a: "<b>شناوری دیامغناطیسی!</b> 🤯 با یه آهنربای فوق‌قوی (میدان ~۱۶ تسلا)، می‌شه یه <b>قورباغهٔ زنده</b> رو به‌خاطر دیامغناطیس آب بدنش، در هوا <b>شناور</b> کرد (آزمایش معروف Andre Geim که بعداً جایزه نوبل گرفت). نمونه‌ی دیگه: لِویتاسیون پایروگرافیت روی آهنربا — یه نوار گرافیت می‌تونه روی چند آهنربای دائمی شناور بمونه! این چیزها نشون می‌ده دیامغناطیس واقعیه، فقط خیلی ضعیفه." },
+    { q: "چرا هاردِ کامپیوتر اطلاعات رو با مغناطیس ذخیره می‌کنه؟",
+      a: "صفحات هارد از یه لایه‌ی نازکِ فرومغناطیسی پوشش داده شدن. اطلاعات به‌صورت دامنه‌های میکروسکوپی ذخیره می‌شه: هر دامنه که شمالش <b>به یه طرف</b> باشه = ۰، طرف دیگه = ۱. هد هارد می‌تونه با یه میدان مغناطیسیِ ریز این دامنه‌ها رو بسازه (نوشتن) یا با حسگرِ مغناطیسی، جهتشون رو بخونه (خواندن). یه هاردِ ۱ ترابایتی، حدود $10^{13}$ دامنه‌ی مغناطیسیِ مستقل داره — همه‌شون فقط چند صد نانومتر اندازه." },
+    { q: "چرا توی MRI همه‌ی فلزات رو باید درآریم، ولی طلا و مس فرق نمی‌کنن خیلی؟",
+      a: "MRI آهن‌ربای فوق‌قویه (~۳ تسلا). موادِ <b>فرومغناطیسی</b> (آهن، نیکل، کبالت) با نیروی <b>خیلی شدید</b> به‌سمت دستگاه پرتاب می‌شن — کشنده! ولی <b>طلا، مس، نقره</b> (دیامغناطیس) و آلومینیوم (پارامغناطیس) <b>برهم‌کنشِ خیلی ضعیفی</b> دارن و خطر فیزیکی ندارن. ولی نکته: همین فلزات غیرمغناطیسی <b>سیگنال MRI رو خراب می‌کنن</b> (هندسه‌ی میدان رو تغییر می‌دن)، پس از این جهت بهتره دربیارن." }
+  ];
+
+  var box = document.getElementById('quiz');
+  items.forEach(function(it, i){
+    var item = document.createElement('div'); item.className='q-item';
+    var head = document.createElement('div'); head.className='q-head';
+    head.innerHTML = '<span class="q-num">'+toFa(i+1)+'</span><span>'+it.q+'</span><span class="tog">+</span>';
+    var body = document.createElement('div'); body.className='q-body';
+    var inner = document.createElement('div'); inner.className='inner'; inner.innerHTML=it.a;
+    body.appendChild(inner);
+    head.addEventListener('click', function(){
+      var open = item.classList.toggle('open');
+      body.style.maxHeight = open ? (inner.scrollHeight + 26) + 'px' : '0';
+    });
+    item.appendChild(head); item.appendChild(body); box.appendChild(item);
+  });
+  function toFa(n){return (''+n).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+</script>
+</body>
+</html>

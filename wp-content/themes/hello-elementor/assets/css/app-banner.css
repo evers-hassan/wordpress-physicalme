@@ -1,0 +1,118 @@
+/* App Download Banner */
+.pm-app-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+  padding: 40px;
+  background: linear-gradient(135deg, #5B6E32 0%, #7a8e42 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(91, 110, 50, 0.2);
+  max-width: 100%;
+  width: 100%;
+}
+
+.pm-app-banner > div {
+  flex: 1;
+  color: #ffffff;
+}
+
+.pm-app-banner h3 {
+  margin: 0 0 12px 0;
+  font-size: 28px;
+  font-weight: 700;
+  font-family: "Vazirmatn", Sans-serif;
+  color: #ffffff;
+}
+
+.pm-app-banner p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.95);
+  font-family: "Vazirmatn", Sans-serif;
+}
+
+.pm-app-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px 32px;
+  background-color: #ffffff;
+  color: #5B6E32;
+  text-decoration: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 16px;
+  font-family: "Vazirmatn", Sans-serif;
+  transition: all 0.3s ease;
+  border: 2px solid #ffffff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.pm-app-btn:hover {
+  background-color: #f0f0f0;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.pm-app-btn:active {
+  transform: translateY(0);
+}
+
+.pm-app-btn svg {
+  width: 24px;
+  height: 24px;
+  fill: #5B6E32;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .pm-app-banner {
+    flex-direction: column;
+    text-align: center;
+    gap: 24px;
+    padding: 32px 24px;
+  }
+
+  .pm-app-banner h3 {
+    font-size: 24px;
+  }
+
+  .pm-app-banner p {
+    font-size: 14px;
+  }
+
+  .pm-app-btn {
+    width: 100%;
+    padding: 16px 24px;
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pm-app-banner {
+    padding: 24px 16px;
+    gap: 16px;
+  }
+
+  .pm-app-banner h3 {
+    font-size: 20px;
+  }
+
+  .pm-app-banner p {
+    font-size: 13px;
+  }
+
+  .pm-app-btn {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+
+  .pm-app-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+}

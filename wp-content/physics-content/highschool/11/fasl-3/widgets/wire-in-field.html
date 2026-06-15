@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نیرو بر سیم حامل جریان در میدان مغناطیسی</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --hint-c:#a87800; --hint-bg:#fef6e0;
+    --I:#c2410c; --B:#7a4dbd; --F:#c43838;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --hint-c:#e0b860; --hint-bg:#4a3a15;
+      --I:#fb923c; --B:#b08be8; --F:#f0807d;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;
+  }
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:320px; touch-action:none;}
+  .readout{padding:11px 12px; border-top:1px solid var(--border); display:flex; gap:8px; flex-wrap:wrap;}
+  .chip{flex:1 1 130px; background:var(--info-bg); color:var(--info); border-radius:8px; padding:8px 10px; text-align:center; font-size:13.5px;}
+  .chip b{display:block; font-size:16px; font-weight:700; margin-top:1px;}
+  .chip.ok{background:var(--ok-bg); color:var(--ok);}
+  .chip.accent{background:#fef6e0; color:#a87800;}
+  @media (prefers-color-scheme: dark){ .chip.accent{background:#4a3a15; color:#e0b860;} }
+
+  .controls{margin-top:14px; display:grid; gap:10px;}
+  .slider-row{display:grid; grid-template-columns:100px 1fr 70px; gap:10px; align-items:center; font-size:14px;}
+  .slider-row span:first-child{color:var(--muted);}
+  .slider-row .val{font-weight:700; color:var(--text); text-align:left;}
+  input[type=range]{accent-color:var(--info); height:6px;}
+
+  .row{display:flex; gap:8px; flex-wrap:wrap;}
+  .btn{
+    font-family:inherit; font-size:14px; padding:9px 12px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text); cursor:pointer;
+    transition:.12s; flex:1 1 100px;
+  }
+  .btn:hover{background:var(--info-bg); border-color:var(--info); color:var(--info);}
+  .btn.on{background:var(--info); color:#fff; border-color:var(--info);}
+
+  .hint{
+    margin-top:12px; background:var(--hint-bg); color:var(--hint-c);
+    border-radius:10px; padding:10px 14px; font-size:13.5px;
+    border-right:3px solid var(--hint-c);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>⚡ نیرو بر سیم حامل جریان در میدان مغناطیسی</h2>
+  <p class="sub">یه سیم با جریان I در میدانِ یکنواخت B قرار می‌گیره. زاویه، جریان، و میدان رو تغییر بده و ببین نیرو چجوری عوض میشه.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">زاویه θ <b id="thetaVal">۹۰°</b></div>
+      <div class="chip">sin θ <b id="sinVal">۱٫۰۰</b></div>
+      <div class="chip ok">نیرو F = BIL sinθ <b id="FVal">—</b></div>
+      <div class="chip accent">جهت نیرو <b id="fDirVal">—</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="slider-row">
+      <span>زاویه θ</span>
+      <input type="range" id="thetaSlider" min="0" max="180" step="5" value="90">
+      <span class="val" id="thetaSliderVal">۹۰°</span>
+    </div>
+    <div class="slider-row">
+      <span>جریان I</span>
+      <input type="range" id="iSlider" min="0.5" max="5" step="0.1" value="2">
+      <span class="val" id="iSliderVal">۲٫۰ A</span>
+    </div>
+    <div class="slider-row">
+      <span>میدان B</span>
+      <input type="range" id="bSlider" min="0.1" max="2" step="0.1" value="1">
+      <span class="val" id="bSliderVal">۱٫۰ T</span>
+    </div>
+    <div class="slider-row">
+      <span>طول سیم L</span>
+      <input type="range" id="lSlider" min="0.1" max="1" step="0.05" value="0.5">
+      <span class="val" id="lSliderVal">۰٫۵ m</span>
+    </div>
+    <div class="row">
+      <button class="btn on" id="bOut">⊙ B خارج صفحه</button>
+      <button class="btn" id="bIn">⊗ B داخل صفحه</button>
+      <button class="btn" id="reverseI">↺ معکوس‌کردنِ جریان</button>
+    </div>
+  </div>
+
+  <div class="hint">
+    💡 <b>مهم:</b> وقتی سیم <b>موازی</b> با میدان قرار می‌گیره (θ=۰°)، نیرو <b>صفره</b>. وقتی <b>عمود</b> (θ=۹۰°)، نیرو <b>حداکثره</b>. برای پیداکردنِ جهت: انگشت <b>اشاره</b> در جهت جریان، <b>میانی</b> در جهت B، شَست در جهت <b>نیرو</b>.
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var W,H;
+  var theta=90, I=2, B=1, L=0.5;
+  var bOut=true, iSign=+1;  // +1 means current flows in default direction (let's say "right" when wire is horizontal)
+
+  function toFa(s){return (''+s).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];}).replace('.','٫');}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  function drawBackgroundField(){
+    // Density and intensity of ⊙/⊗ symbols scale with B magnitude so the user SEES the field
+    // strength changing as the slider moves.
+    //   At low B: sparse, faded symbols.
+    //   At high B: dense grid, fully opaque, slightly larger.
+    var sym = bOut ? '⊙' : '⊗';
+    // Map B (slider range 0.1 — 2) to step (60 — 22) and alpha (0.18 — 0.85) and font size (15 — 23)
+    var s = Math.min(1.5, Math.max(0.2, B / 1));
+    var step  = 60 - s * 22;
+    var alpha = 0.15 + s * 0.5;
+    var fsz   = 15 + s * 6;
+    ctx.save();
+    ctx.fillStyle = cssv('--B');
+    ctx.globalAlpha = alpha;
+    ctx.font = fsz + 'px Vazirmatn, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    for (var x=step/2; x<W; x+=step){
+      for (var y=step/2; y<H; y+=step){
+        ctx.fillText(sym, x, y);
+      }
+    }
+    ctx.restore();
+    ctx.fillStyle = cssv('--B');
+    ctx.font='bold 12.5px Vazirmatn';
+    ctx.textAlign='right'; ctx.textBaseline='top';
+    ctx.fillText('میدان B '+(bOut?'⊙ خارج':'⊗ داخل'), W-12, 8);
+  }
+
+  function arrow(x1,y1, x2,y2, color, width){
+    width=width||3.5;
+    var dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy);
+    if(len<2) return;
+    var ux=dx/len, uy=dy/len, hs=10;
+    ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=width; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2-ux*hs*0.5, y2-uy*hs*0.5); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-ux*hs - uy*hs*0.55, y2-uy*hs + ux*hs*0.55);
+    ctx.lineTo(x2-ux*hs + uy*hs*0.55, y2-uy*hs - ux*hs*0.55);
+    ctx.closePath(); ctx.fill();
+  }
+
+  function draw(){
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=rect.width; H=rect.height;
+    var cx=W/2, cy=H/2;
+    ctx.clearRect(0,0,W,H);
+    drawBackgroundField();
+
+    // Wire: at angle theta from horizontal. theta=90° → wire along x axis (perpendicular to anything we'd consider "field axis")
+    // The wire is drawn at angle θ from a reference line.
+    // Convention: θ=0 means wire along "B direction" (in plane). Since B is ⊙ (out of page), there's no clear horizontal reference,
+    //   so let's use a different convention: θ = angle between wire direction and the "x axis (right)".
+    //   F = BIL sin(angle between I and B). When B is out-of-page (z axis), the angle between any in-plane wire and z is 90°
+    //   regardless of orientation — so sin θ = 1 always for in-plane wire vs out-of-plane B.
+    //
+    // To make this meaningful, treat θ as the angle between wire and B in 3D.
+    //   For out-of-plane B: we'll INTERPRET θ as how much the wire is tilted out of the page toward B direction.
+    //   When θ=90°, wire is fully in page (perpendicular to B) → maximum force.
+    //   When θ=0°, wire is along B (out of page) → zero force.
+    // Visualization choice: draw the in-page projection of the wire shrinking as θ→0 (foreshortening), and show z-component as ⊙ chip.
+    var sinT = Math.sin(theta * Math.PI/180);
+    var cosT = Math.cos(theta * Math.PI/180);
+    var wireLenPx = 230 * sinT;  // in-page projection
+    // Wire orientation in page: keep it horizontal for simplicity, just scaled
+    var wx1 = cx - wireLenPx/2 * iSign, wy1 = cy;
+    var wx2 = cx + wireLenPx/2 * iSign, wy2 = cy;
+    if (wireLenPx < 6 && Math.abs(cosT) > 0.001){
+      // Wire is mostly out of page — draw as a circle/dot on screen
+      ctx.fillStyle = cssv('--I');
+      ctx.beginPath(); ctx.arc(cx, cy, 13, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth=2;
+      // Show ⊙ or ⊗ depending on whether current is "out" of page (bOut sign matters? no, sign of cosT plus iSign)
+      var currentOut = (cosT * iSign) > 0;
+      if (currentOut){
+        ctx.beginPath(); ctx.arc(cx, cy, 4.5, 0, Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.moveTo(cx-7, cy-7); ctx.lineTo(cx+7, cy+7); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx+7, cy-7); ctx.lineTo(cx-7, cy+7); ctx.stroke();
+      }
+    } else {
+      // Draw the wire as a thick line + arrow showing current direction
+      ctx.strokeStyle = cssv('--I'); ctx.lineWidth = 7; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(wx1, wy1); ctx.lineTo(wx2, wy2); ctx.stroke();
+      // Arrows along the wire showing current direction
+      var arrowSpacing = 50;
+      ctx.strokeStyle = '#fff'; ctx.lineWidth=2.4; ctx.lineCap='round';
+      for (var x = Math.min(wx1,wx2)+arrowSpacing/2; x < Math.max(wx1,wx2); x += arrowSpacing){
+        // arrow points in +iSign direction
+        ctx.beginPath();
+        ctx.moveTo(x-7*iSign, cy-5);
+        ctx.lineTo(x+iSign*6, cy);
+        ctx.lineTo(x-7*iSign, cy+5);
+        ctx.stroke();
+      }
+      // Label
+      ctx.fillStyle = cssv('--I'); ctx.font='bold 16px Vazirmatn';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('I', cx, cy - 22);
+    }
+
+    // Compute force direction.
+    // Out-of-page B  AND wire in-page (in +x direction):
+    //   I (along x), B (along +z), F = IL × B = I L (x̂×ẑ) = -I L ŷ → force in -y direction (physics) = +y on canvas (down)
+    // For reversal of I or B: just flip sign.
+    var fSign = iSign * (bOut ? 1 : -1);  // +1 → force down on screen, -1 → up
+    var Fmag = B * I * L * Math.abs(sinT);
+
+    if (wireLenPx > 6){
+      var fLen = 40 + Math.min(100, Fmag * 30);
+      // Draw force arrow from center of wire pointing up or down
+      arrow(cx, cy, cx, cy + fSign*fLen, cssv('--F'), 4);
+      ctx.fillStyle = cssv('--F'); ctx.font='bold 14px Vazirmatn';
+      ctx.textAlign='center';
+      ctx.fillText('F', cx + 14, cy + fSign*fLen*0.5);
+    }
+
+    // Readouts
+    document.getElementById('thetaVal').textContent = toFa(theta) + '°';
+    document.getElementById('sinVal').textContent = toFa(sinT.toFixed(2));
+    document.getElementById('FVal').textContent = toFa(Fmag.toFixed(2)) + ' N';
+    var dir;
+    if (Fmag < 0.01) dir = 'صفر';
+    else dir = fSign>0 ? '↓ پایین' : '↑ بالا';
+    document.getElementById('fDirVal').textContent = dir;
+  }
+
+  document.getElementById('thetaSlider').addEventListener('input', function(e){
+    theta=+e.target.value;
+    document.getElementById('thetaSliderVal').textContent = toFa(theta)+'°';
+    draw();
+  });
+  document.getElementById('iSlider').addEventListener('input', function(e){
+    I=+e.target.value;
+    document.getElementById('iSliderVal').textContent = toFa(I.toFixed(1))+' A';
+    draw();
+  });
+  document.getElementById('bSlider').addEventListener('input', function(e){
+    B=+e.target.value;
+    document.getElementById('bSliderVal').textContent = toFa(B.toFixed(1))+' T';
+    draw();
+  });
+  document.getElementById('lSlider').addEventListener('input', function(e){
+    L=+e.target.value;
+    document.getElementById('lSliderVal').textContent = toFa(L.toFixed(2))+' m';
+    draw();
+  });
+  document.getElementById('bOut').addEventListener('click', function(){
+    bOut=true;
+    document.getElementById('bOut').classList.add('on');
+    document.getElementById('bIn').classList.remove('on');
+    draw();
+  });
+  document.getElementById('bIn').addEventListener('click', function(){
+    bOut=false;
+    document.getElementById('bIn').classList.add('on');
+    document.getElementById('bOut').classList.remove('on');
+    draw();
+  });
+  document.getElementById('reverseI').addEventListener('click', function(){
+    iSign *= -1;
+    draw();
+  });
+  window.addEventListener('resize', draw);
+  draw();
+})();
+</script>
+</body>
+</html>

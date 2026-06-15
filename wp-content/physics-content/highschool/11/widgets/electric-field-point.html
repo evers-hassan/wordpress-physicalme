@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌سازی میدان یک بار نقطه‌ای</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --pos:#d6453c; --neg:#2f6fd0; --field:#6f8fb5; --probe:#1d9e75;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --pos:#f06a60; --neg:#6aa0ee; --field:#7f97b8; --probe:#5dcaa5;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8; animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:320px; touch-action:none; cursor:crosshair;}
+  .readout{display:flex; gap:10px; flex-wrap:wrap; padding:12px; border-top:1px solid var(--border);}
+  .chip{flex:1 1 130px; background:var(--ok-bg); color:var(--ok); border-radius:10px; padding:8px 12px; text-align:center; font-weight:500;}
+  .chip b{display:block; font-size:17px; font-weight:700; margin-top:2px; direction:ltr;}
+  .controls{margin-top:14px; display:grid; gap:10px;}
+  .row{display:flex; justify-content:space-between; align-items:center; font-size:14px;}
+  .val{font-weight:700;}
+  input[type=range]{width:100%; accent-color:var(--info); height:6px;}
+  .formula{margin-top:12px; background:var(--info-bg); color:var(--info); border-radius:10px; padding:9px 14px; font-size:14px; text-align:center;}
+  .formula code{direction:ltr; display:inline-block;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>⚡ شبیه‌سازی: میدان یک بار نقطه‌ای</h2>
+  <p class="sub">بار را مثبت/منفی و کم/زیاد کن. نقطه‌ی سبز (حسگر) را بکش تا میدان را در فاصله‌های مختلف ببینی.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">فاصله‌ی حسگر r <b id="rVal">—</b></div>
+      <div class="chip">میدان در حسگر E <b id="eVal">—</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="row"><span>بارِ مرکزی q</span><span class="val"><span id="qVal"></span> µC</span></div>
+    <input type="range" id="q" min="-10" max="10" step="1" value="5">
+  </div>
+
+  <div class="formula"><code>E = k·|q| / r²</code></div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var qEl=document.getElementById('q'), qVal=document.getElementById('qVal');
+  var rVal=document.getElementById('rVal'), eVal=document.getElementById('eVal');
+  var k=9e9, PXPM=60; // پیکسل به ازای هر متر
+  var probe={x:null,y:null}, dragging=false, W=0,H=0,cx=0,cy=0;
+  function toFa(s){return (''+s).replace(/[0-9.]/g,function(d){return d==='.'?'٫':'۰۱۲۳۴۵۶۷۸۹'[+d];});}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+  function fmtE(E){
+    if(!isFinite(E)) return '∞';
+    if(E>=1e4){var e=Math.floor(Math.log10(E)); return toFa((E/Math.pow(10,e)).toFixed(1))+'×۱۰'+sup(e);}
+    if(E>=1) return toFa(Math.round(E).toLocaleString('en-US').replace(/,/g,'٬'));
+    return toFa(E.toFixed(2));
+  }
+  function sup(n){var m={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};return (''+n).split('').map(function(c){return m[c]||c;}).join('');}
+  function arrow(x,y,ux,uy,len,color,alpha){
+    var ex=x+ux*len, ey=y+uy*len, hs=6;
+    ctx.globalAlpha=alpha; ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=2; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(ex,ey); ctx.stroke();
+    var ang=Math.atan2(uy,ux);
+    ctx.beginPath(); ctx.moveTo(ex,ey);
+    ctx.lineTo(ex-hs*Math.cos(ang-0.4), ey-hs*Math.sin(ang-0.4));
+    ctx.lineTo(ex-hs*Math.cos(ang+0.4), ey-hs*Math.sin(ang+0.4));
+    ctx.closePath(); ctx.fill(); ctx.globalAlpha=1;
+  }
+  function draw(){
+    var q=+qEl.value; qVal.textContent=(q>0?'+':'')+toFa(q);
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=rect.width; H=rect.height; cx=W/2; cy=H/2;
+    if(probe.x===null){probe.x=cx+110; probe.y=cy-40;}
+    ctx.clearRect(0,0,W,H);
+
+    // میدان برداری
+    var step=46, gridCap=step*0.8, fc=cssv('--field');
+    for(var gx=step/2; gx<W; gx+=step){
+      for(var gy=step/2; gy<H; gy+=step){
+        var dx=gx-cx, dy=gy-cy, d=Math.hypot(dx,dy);
+        if(d<24) continue;
+        var len=Math.min(gridCap, 9000*Math.abs(q)/(d*d));
+        if(len<3) continue;
+        var ux=dx/d, uy=dy/d; if(q<0){ux=-ux; uy=-uy;}
+        arrow(gx,gy,ux,uy,len,fc, Math.min(0.9, 0.25+len/gridCap*0.7));
+      }
+    }
+
+    // بار مرکزی
+    var rad=14+Math.abs(q)/10*10;
+    ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2);
+    ctx.fillStyle= q>0?cssv('--pos'): q<0?cssv('--neg'):cssv('--muted'); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='bold '+rad+'px Vazirmatn, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(q>0?'+':q<0?'−':'0', cx, cy+1); ctx.textBaseline='alphabetic';
+
+    // حسگر
+    var pdx=probe.x-cx, pdy=probe.y-cy, pd=Math.hypot(pdx,pdy);
+    if(pd<rad+6){pd=rad+6;}
+    var r_m=pd/PXPM;
+    var E=k*Math.abs(q)*1e-6/(r_m*r_m);
+    // فلش میدان روی حسگر
+    if(q!==0 && pd>0){
+      var pux=pdx/pd, puy=pdy/pd; if(q<0){pux=-pux; puy=-puy;}
+      arrow(probe.x, probe.y, pux, puy, 26, cssv('--probe'), 1);
+    }
+    ctx.beginPath(); ctx.arc(probe.x,probe.y,8,0,Math.PI*2);
+    ctx.fillStyle=cssv('--probe'); ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+
+    rVal.textContent=toFa(r_m.toFixed(2))+' m';
+    eVal.textContent= q===0 ? '۰' : fmtE(E)+' N/C';
+  }
+  function pos(e){var r=cv.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top};}
+  cv.addEventListener('pointerdown', function(e){var p=pos(e); if(Math.hypot(p.x-probe.x,p.y-probe.y)<22){dragging=true; cv.setPointerCapture(e.pointerId);}});
+  cv.addEventListener('pointermove', function(e){if(!dragging)return; var p=pos(e); probe.x=Math.max(6,Math.min(W-6,p.x)); probe.y=Math.max(6,Math.min(H-6,p.y)); draw();});
+  cv.addEventListener('pointerup', function(){dragging=false;});
+  qEl.addEventListener('input', draw);
+  window.addEventListener('resize', function(){probe.x=null; draw();});
+  draw();
+})();
+</script>
+</body>
+</html>

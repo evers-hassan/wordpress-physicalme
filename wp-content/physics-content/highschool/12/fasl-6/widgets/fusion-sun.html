@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>گداخت در خورشید — زنجیره پروتون-پروتون</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+<style>
+:root {
+  --bg: #ffffff; --surface: #f4f3ef; --text: #1a1a18; --muted: #5f5e5a;
+  --border: #e0ded7; --info: #185fa5; --info-bg: #e6f1fb;
+  --proton: #d4a847; --neutron: #5b6e8f; --positron: #c92a2a;
+  --neutrino: #1d9e75; --gamma: #b22; --sun: #ff8c00;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+          --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+          --proton:#e0b860; --neutron:#7e94b8; --positron:#e58b88;
+          --neutrino:#5dcaa5; --gamma:#e94a4a; --sun:#ffaa3a; }
+}
+body { margin: 0; padding: 16px; font-family: Vazirmatn, Tahoma, system-ui, sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.7; }
+h2 { color: var(--info); margin: 0 0 12px; font-size: 1.15em; }
+.app { max-width: 780px; margin: 0 auto; }
+.controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 12px; flex-wrap: wrap; }
+.btn { padding: 9px 14px; border: 0; border-radius: 8px;
+  background: var(--info); color: #fff; font-family: inherit; cursor: pointer; font-size: 14px; }
+.btn.alt { background: var(--proton); color: #1a1a18; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.canvas-wrap { background: var(--surface); border-radius: 12px; padding: 12px;
+  border: 1px solid var(--border); position: relative; }
+canvas { display: block; width: 100%; height: 360px; }
+.stage { position: absolute; top: 18px; right: 18px; background: var(--info-bg); color: var(--info);
+  padding: 6px 12px; border-radius: 8px; font-size: 13px; }
+.legend { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px;
+  font-size: 12px; text-align: center; }
+.legend > div { padding: 6px 8px; border-radius: 6px; background: var(--surface);
+  border: 1px solid var(--border); }
+.legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+  vertical-align: middle; margin-left: 4px; }
+.reaction { background: var(--surface); border-radius: 10px; padding: 12px;
+  border: 1px solid var(--border); margin-top: 12px; }
+.reaction h3 { margin: 0 0 6px; color: var(--info); font-size: 14px; }
+.reaction .eq { font-family: Vazirmatn; font-size: 15px; text-align: center; }
+@media (max-width: 620px) { .legend { grid-template-columns: 1fr 1fr; } canvas { height: 320px; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <h2>☀️ گداخت در خورشید — $4p \to {}^{4}\text{He} + 2e^+ + 2\nu_e + 26.7\,\text{MeV}$</h2>
+
+  <div class="controls">
+    <button class="btn" id="next">▶ گام بعدی</button>
+    <button class="btn alt" id="auto">▶▶ اجرای خودکار</button>
+    <button class="btn" id="reset" style="background:var(--muted)">↻ ریست</button>
+  </div>
+
+  <div class="canvas-wrap">
+    <div class="stage" id="stage">گام ۰ از ۳ — آماده</div>
+    <canvas id="cv"></canvas>
+  </div>
+
+  <div class="legend">
+    <div><span class="dot" style="background:var(--proton)"></span> پروتون (p)</div>
+    <div><span class="dot" style="background:var(--neutron)"></span> نوترون (n)</div>
+    <div><span class="dot" style="background:var(--positron)"></span> پوزیترون ($e^+$)</div>
+    <div><span class="dot" style="background:var(--neutrino)"></span> نوترینو ($\nu_e$)</div>
+  </div>
+
+  <div class="reaction" id="info">
+    <h3>قبل از شروع</h3>
+    <p>چهار پروتون داریم در پلاسمای خورشید با دمای $\sim 1.5\times10^7\,K$.</p>
+    <p class="eq">روی «گام بعدی» کلیک کن تا زنجیره‌ی p-p شروع بشه.</p>
+  </div>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const dpr = window.devicePixelRatio || 1;
+const $ = id => document.getElementById(id);
+
+let stage = 0;
+let entities = [];   // ذراتِ روی صحنه
+let particles = [];  // ذراتِ متحرک (پوزیترون، نوترینو، گاما)
+let auto = false;
+
+function getCSS(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function resize() {
+  const r = cv.getBoundingClientRect();
+  cv.width = r.width * dpr;
+  cv.height = r.height * dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  layout();
+}
+window.addEventListener('resize', resize);
+
+const STAGES = [
+  {
+    name: 'مرحله ۰',
+    desc: 'چهار پروتون در پلاسمای داغ',
+    eq: '4 پروتون آماده',
+    energy: 0
+  },
+  {
+    name: 'مرحله ۱: $p + p \\to {}^{2}\\text{D} + e^+ + \\nu_e$',
+    desc: 'دو پروتون به دوتریوم می‌چسبن: یکی به نوترون تبدیل می‌شه (با پوزیترون و نوترینو).',
+    eq: '$p + p \\to {}^{2}\\text{D} + e^+ + \\nu_e + 0.42\\,\\text{MeV}$ — این آرام‌ترین مرحله است.',
+    energy: 0.42 * 2
+  },
+  {
+    name: 'مرحله ۲: $p + {}^{2}\\text{D} \\to {}^{3}\\text{He} + \\gamma$',
+    desc: 'دوتریوم یه پروتون می‌گیره، می‌شه هلیوم-۳ و یه فوتون گاما می‌ده.',
+    eq: '$p + {}^{2}\\text{D} \\to {}^{3}\\text{He} + \\gamma + 5.5\\,\\text{MeV}$',
+    energy: 5.5 * 2
+  },
+  {
+    name: 'مرحله ۳: $2\\,{}^{3}\\text{He} \\to {}^{4}\\text{He} + 2p$',
+    desc: 'دو هلیوم-۳ ادغام می‌شن. نتیجه: یه هلیوم-۴ و دو پروتون که برمی‌گردن به شروع.',
+    eq: '$2\\,{}^{3}\\text{He} \\to {}^{4}\\text{He} + 2p + 12.9\\,\\text{MeV}$',
+    energy: 12.9
+  },
+  {
+    name: 'مجموع: $4p \\to {}^{4}\\text{He} + 2e^+ + 2\\nu_e + \\gamma + 26.7\\,\\text{MeV}$',
+    desc: '🎉 یه هلیوم-۴ ساخته شد، ۲۶.۷ MeV انرژی آزاد شد.',
+    eq: 'این فرآیند در خورشید هر ثانیه ~$10^{38}$ بار تکرار می‌شه.',
+    energy: 0
+  }
+];
+
+function layout() {
+  const r = cv.getBoundingClientRect();
+  if (stage === 0) {
+    entities = [
+      // ۴ پروتون در حالت اولیه
+      { type:'p', x: r.width*0.20, y: r.height*0.35, group:'A' },
+      { type:'p', x: r.width*0.35, y: r.height*0.35, group:'A' },
+      { type:'p', x: r.width*0.20, y: r.height*0.65, group:'B' },
+      { type:'p', x: r.width*0.35, y: r.height*0.65, group:'B' },
+      { type:'p', x: r.width*0.60, y: r.height*0.20, group:'C' },
+      { type:'p', x: r.width*0.60, y: r.height*0.80, group:'D' },
+    ];
+  }
+}
+
+function setStage(s) {
+  stage = s;
+  const r = cv.getBoundingClientRect();
+  if (s === 0) {
+    entities = [
+      { type:'p', x: r.width*0.20, y: r.height*0.35 },
+      { type:'p', x: r.width*0.35, y: r.height*0.35 },
+      { type:'p', x: r.width*0.20, y: r.height*0.65 },
+      { type:'p', x: r.width*0.35, y: r.height*0.65 },
+      { type:'p', x: r.width*0.60, y: r.height*0.20 },
+      { type:'p', x: r.width*0.60, y: r.height*0.80 },
+    ];
+    particles = [];
+  } else if (s === 1) {
+    // دوتا p به دو دوتریوم تبدیل می‌شن
+    entities = [
+      { type:'D', x: r.width*0.28, y: r.height*0.35 },
+      { type:'D', x: r.width*0.28, y: r.height*0.65 },
+      { type:'p', x: r.width*0.60, y: r.height*0.20 },
+      { type:'p', x: r.width*0.60, y: r.height*0.80 },
+    ];
+    // ۲ پوزیترون و ۲ نوترینو خروج می‌کنن
+    particles = [
+      { type:'e+', x: r.width*0.28, y: r.height*0.35, vx: -2, vy: -1 },
+      { type:'nu', x: r.width*0.28, y: r.height*0.35, vx: -2, vy:  1 },
+      { type:'e+', x: r.width*0.28, y: r.height*0.65, vx: -2, vy: -1 },
+      { type:'nu', x: r.width*0.28, y: r.height*0.65, vx: -2, vy:  1 },
+    ];
+  } else if (s === 2) {
+    // دوتریوم‌ها با پروتون‌ها ادغام: ۲ هلیوم-۳
+    entities = [
+      { type:'He3', x: r.width*0.42, y: r.height*0.35 },
+      { type:'He3', x: r.width*0.42, y: r.height*0.65 },
+    ];
+    particles = [
+      { type:'g', x: r.width*0.42, y: r.height*0.35, vx: 2, vy: -2 },
+      { type:'g', x: r.width*0.42, y: r.height*0.65, vx: 2, vy:  2 },
+    ];
+  } else if (s === 3) {
+    // دو هلیوم-۳ به هلیوم-۴ + دو پروتون
+    entities = [
+      { type:'He4', x: r.width*0.50, y: r.height*0.50 },
+      { type:'p', x: r.width*0.75, y: r.height*0.30 },
+      { type:'p', x: r.width*0.75, y: r.height*0.70 },
+    ];
+    particles = [];
+  } else if (s === 4) {
+    // نهایی
+    entities = [ { type:'He4', x: r.width*0.50, y: r.height*0.50, big:true } ];
+    particles = [];
+  }
+  // متن
+  const st = STAGES[s];
+  $('stage').textContent = st.name;
+  let html = `<h3>${st.name}</h3><p>${st.desc}</p><p class="eq">${st.eq}</p>`;
+  if (s === 4) html += `<p class="eq" style="color:var(--sun);font-weight:bold">⚡ مجموع: ۲۶.۷ MeV انرژی آزاد شد!</p>`;
+  $('info').innerHTML = html;
+  if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([$('info'), $('stage')]);
+}
+
+function drawNuc(x, y, type, big) {
+  let r = big ? 26 : 18;
+  let fill, label;
+  if (type === 'p') { fill = getCSS('--proton'); label = 'p'; r=14;}
+  else if (type === 'n') { fill = getCSS('--neutron'); label = 'n'; r=14;}
+  else if (type === 'D') { fill = getCSS('--proton'); label = '²D'; }
+  else if (type === 'He3') { fill = getCSS('--positron'); label = '³He'; r=20;}
+  else if (type === 'He4') { fill = getCSS('--positron'); label = '⁴He'; r= big?28:22;}
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, 2*Math.PI);
+  ctx.fill();
+  // برای D و He: نمایش نوکلئون‌ها
+  if (type === 'D') {
+    ctx.fillStyle = getCSS('--neutron');
+    ctx.beginPath(); ctx.arc(x + 5, y, 8, 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = getCSS('--proton');
+    ctx.beginPath(); ctx.arc(x - 5, y, 8, 0, 2*Math.PI); ctx.fill();
+  } else if (type === 'He3') {
+    ctx.fillStyle = getCSS('--proton');
+    ctx.beginPath(); ctx.arc(x - 7, y - 3, 8, 0, 2*Math.PI);
+    ctx.arc(x + 6, y - 3, 8, 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = getCSS('--neutron');
+    ctx.beginPath(); ctx.arc(x, y + 7, 8, 0, 2*Math.PI); ctx.fill();
+  } else if (type === 'He4') {
+    ctx.fillStyle = getCSS('--proton');
+    ctx.beginPath(); ctx.arc(x - 7, y - 5, 9, 0, 2*Math.PI);
+    ctx.arc(x + 7, y - 5, 9, 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = getCSS('--neutron');
+    ctx.beginPath(); ctx.arc(x - 7, y + 7, 9, 0, 2*Math.PI);
+    ctx.arc(x + 7, y + 7, 9, 0, 2*Math.PI); ctx.fill();
+  }
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, x, y + 3);
+}
+
+function update() {
+  for (const p of particles) {
+    p.x += p.vx;
+    p.y += p.vy;
+  }
+}
+
+function draw() {
+  const r = cv.getBoundingClientRect();
+  ctx.clearRect(0, 0, r.width, r.height);
+  // پس‌زمینه‌ی خورشید
+  const grad = ctx.createRadialGradient(r.width/2, r.height/2, 20, r.width/2, r.height/2, r.width/2);
+  grad.addColorStop(0, getCSS('--sun') + '33');
+  grad.addColorStop(1, getCSS('--bg'));
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, r.width, r.height);
+
+  for (const e of entities) drawNuc(e.x, e.y, e.type, e.big);
+
+  for (const p of particles) {
+    let c = '#fff';
+    if (p.type === 'e+') c = getCSS('--positron');
+    else if (p.type === 'nu') c = getCSS('--neutrino');
+    else if (p.type === 'g') c = getCSS('--gamma');
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.type === 'g' ? 5 : 4, 0, 2*Math.PI);
+    ctx.fill();
+    if (p.type === 'g') {
+      // یه موج کوچک
+      ctx.strokeStyle = c;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i=0; i<3; i++) {
+        ctx.moveTo(p.x + i*6 - 10, p.y + Math.sin(i)*3);
+        ctx.lineTo(p.x + i*6 - 5, p.y - Math.sin(i)*3);
+      }
+      ctx.stroke();
+    }
+  }
+}
+
+$('next').addEventListener('click', () => {
+  if (stage < 4) setStage(stage + 1);
+  else setStage(0);
+});
+$('reset').addEventListener('click', () => { auto = false; $('auto').textContent = '▶▶ اجرای خودکار'; setStage(0); });
+$('auto').addEventListener('click', () => {
+  auto = !auto;
+  $('auto').textContent = auto ? '⏸ توقف' : '▶▶ اجرای خودکار';
+});
+
+resize();
+setStage(0);
+
+let autoTimer = 0;
+function loop() {
+  if (auto) {
+    autoTimer++;
+    if (autoTimer > 90) {
+      autoTimer = 0;
+      if (stage < 4) setStage(stage + 1);
+      else setStage(0);
+    }
+  } else autoTimer = 0;
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

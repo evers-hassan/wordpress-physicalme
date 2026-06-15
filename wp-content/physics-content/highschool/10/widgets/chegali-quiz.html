@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودت را بسنج — چگالی</title>
+<style>
+  :root{ --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a; --border:#e0ded7; }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e; --border:#3a3835; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; font-family:Vazirmatn,Tahoma,system-ui,sans-serif; background:var(--bg); color:var(--text);}
+  .qa-item{border:1px solid var(--border); border-radius:12px; margin-bottom:10px; overflow:hidden; background:var(--bg);}
+  .qa-q{width:100%; text-align:right; border:none; background:transparent; padding:14px 16px; font-size:15px;
+    font-weight:600; color:var(--text); cursor:pointer; display:flex; justify-content:space-between;
+    align-items:center; gap:10px; line-height:1.6; font-family:inherit;}
+  .qa-q .arrow{flex-shrink:0; transition:transform .2s; font-size:13px;}
+  .qa-a{max-height:0; overflow:hidden; transition:max-height .25s ease;}
+  .qa-a p{margin:0; padding:0 16px 16px; font-size:15px; line-height:1.8; color:var(--muted);
+    border-top:1px solid var(--border); padding-top:12px;}
+</style>
+</head>
+<body>
+  <div id="qa"></div>
+<script>
+  var items=[{"q": "۱. چگالی دقیقاً یعنی چی و فرمولش چیه؟", "a": "چگالی یعنی چقدر جرم در یه حجمِ معین فشرده شده. فرمولش ρ = m/V (جرم تقسیم بر حجم) ـه. یکاش در SI کیلوگرم بر متر مکعب (kg/m³) ـه، و یکای پرکاربردِ دیگه‌ش گرم بر سانتی‌متر مکعب (g/cm³)."}, {"q": "۲. یه کیلو پَر سنگین‌تره یا یه کیلو آهن؟", "a": "هر دو دقیقاً یه کیلوئن، پس هم‌وزنن! ولی آهن چگالیِ خیلی بیشتری داره، برای همین یه کیلو آهن تو حجمِ خیلی کمتری جا می‌شه. حسِ «سنگین‌تر بودن»ِ آهن به‌خاطرِ چگالیشه، نه وزنش."}, {"q": "۳. چرا یخ روی آب شناوره ولی سنگ ته می‌ره؟", "a": "چون شناوری به چگالی بستگی داره: هر چیزی که چگالیش از مایع کمتر باشه شناور می‌مونه، بیشتر باشه غرق می‌شه. چگالیِ یخ از آب کمتره (آب موقعِ یخ‌زدن منبسط و سبک‌تر می‌شه) پس شناوره؛ سنگ چگالیش بیشتره پس ته می‌ره."}, {"q": "۴. چرا یه کشتیِ فولادیِ سنگین شناوره ولی یه سکه‌ی کوچیک غرق می‌شه؟", "a": "چون مهم وزنِ کل نیست، چگالیِ کلیه. کشتی با اینکه فولادیه، داخلش پر از هوای خالیه، پس چگالیِ کلیش از آب کمتر می‌شه و شناور می‌مونه. سکه چگالیش از آب بیشتره، پس غرق می‌شه. سنگین بودن دلیلِ غرق شدن نیست!"}, {"q": "۵. چطوری حجمِ یه جسمِ نامنظم (مثلِ یه سنگ) رو اندازه می‌گیریم؟", "a": "با روشِ جابه‌جاییِ آب (که به ارشمیدس برمی‌گرده): جسمو می‌ندازی تو یه استوانه‌ی مدرّجِ پر از آب و می‌بینی سطحِ آب چقدر بالا میاد. اون اختلافِ حجم دقیقاً برابرِ حجمِ جسمه. بعد جرمشو با ترازو می‌گیری و چگالی رو حساب می‌کنی."}];
+  var box=document.getElementById("qa");
+  items.forEach(function(it){
+    var wrap=document.createElement("div");wrap.className="qa-item";
+    var btn=document.createElement("button");btn.className="qa-q";
+    btn.innerHTML="<span>"+it.q+"</span><span class='arrow'>▼</span>";
+    var ans=document.createElement("div");ans.className="qa-a";
+    var p=document.createElement("p");p.textContent=it.a;ans.appendChild(p);
+    var open=false;
+    btn.addEventListener("click",function(){open=!open;
+      ans.style.maxHeight=open?ans.scrollHeight+"px":"0";
+      btn.querySelector(".arrow").style.transform=open?"rotate(180deg)":"rotate(0deg)";});
+    wrap.appendChild(btn);wrap.appendChild(ans);box.appendChild(wrap);
+  });
+</script>
+</body>
+</html>

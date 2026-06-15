@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>کار با نیرو در زاویه</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75;
+    --danger:#c0392b; --warn:#a87800;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+           --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.7}
+  h2{margin:0 0 12px;font-size:1.05em;color:var(--info)}
+  canvas{background:var(--surface);border-radius:14px;width:100%;max-width:560px;
+         display:block;margin:0 auto;border:1px solid var(--border)}
+  .row{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .row label{min-width:120px;font-weight:600}
+  input[type=range]{flex:1;min-width:140px}
+  .readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+           gap:10px;margin-top:14px}
+  .card{padding:12px;border-radius:10px;text-align:center}
+  .card.f{background:#fde6e0;color:#a83215}
+  .card.w{background:var(--info-bg);color:var(--info)}
+  .card.s{background:#e3f5ed;color:#0d6b48}
+  @media (prefers-color-scheme: dark){
+    .card.f{background:#5a2820;color:#ffb39c}
+    .card.s{background:#1a4a35;color:#7fdcb6}
+  }
+  .card b{display:block;color:var(--text);font-size:1.3em;margin-bottom:2px}
+  .formula{margin-top:10px;padding:10px;background:var(--surface);border-radius:10px;
+           font-family:'Courier New',monospace;text-align:center;direction:ltr;
+           color:var(--ok);font-size:1.05em;font-weight:600}
+  .verdict{margin-top:8px;padding:8px;border-radius:8px;text-align:center;font-weight:700}
+  .verdict.pos{background:#e3f5ed;color:#0d6b48}
+  .verdict.zero{background:#f4f3ef;color:#5f5e5a}
+  .verdict.neg{background:#fde6e0;color:#a83215}
+</style>
+</head>
+<body>
+<h2>🏋️ کار با نیرو در زاویه θ</h2>
+
+<canvas id="cv" width="560" height="260"></canvas>
+
+<div class="row">
+  <label>نیرو (F)</label>
+  <input type="range" id="force" min="0" max="200" value="50" step="1">
+  <span id="forceBadge">۵۰ N</span>
+</div>
+<div class="row">
+  <label>زاویه (θ)</label>
+  <input type="range" id="angle" min="0" max="180" value="30" step="1">
+  <span id="angleBadge">۳۰°</span>
+</div>
+<div class="row">
+  <label>جابه‌جایی (d)</label>
+  <input type="range" id="dist" min="0" max="20" value="5" step="0.5">
+  <span id="distBadge">۵ m</span>
+</div>
+
+<div class="formula">W = F · d · cos(θ)</div>
+
+<div class="readout">
+  <div class="card f"><b id="Fx">— N</b>مولفه‌ی موازی (F·cosθ)</div>
+  <div class="card w"><b id="W">— J</b>کار (W)</div>
+</div>
+<div class="verdict" id="verdict">—</div>
+
+<script>
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+let F = 50, theta = 30, d = 5;
+const faDigit = n => String(n).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // ground
+  ctx.fillStyle = 'rgba(120,120,120,0.2)';
+  ctx.fillRect(0, H-40, W, 40);
+  // object
+  const cx = 150, cy = H-60;
+  ctx.fillStyle = '#5f5e5a';
+  ctx.fillRect(cx-25, cy-25, 50, 50);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+  ctx.strokeRect(cx-25, cy-25, 50, 50);
+  // displacement vector (rightward — note RTL)
+  const dPx = d * 14;
+  ctx.strokeStyle = '#1d9e75'; ctx.lineWidth = 2.5;
+  ctx.setLineDash([6,4]);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy+30);
+  ctx.lineTo(cx + dPx, cy+30);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // arrow head
+  ctx.beginPath();
+  ctx.moveTo(cx+dPx-8, cy+24);
+  ctx.lineTo(cx+dPx, cy+30);
+  ctx.lineTo(cx+dPx-8, cy+36);
+  ctx.stroke();
+  ctx.fillStyle = '#1d9e75'; ctx.font = 'bold 13px Vazirmatn';
+  ctx.fillText('d=' + faDigit(d) + 'm', cx + dPx/2 - 24, cy+50);
+  // force vector at angle θ
+  const fLen = Math.min(110, F * 1.5);
+  const rad = theta * Math.PI / 180;
+  const fx = Math.cos(rad) * fLen;
+  const fy = -Math.sin(rad) * fLen;
+  ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + fx, cy + fy);
+  ctx.stroke();
+  // arrow head
+  const ang2 = Math.atan2(fy, fx);
+  ctx.beginPath();
+  ctx.moveTo(cx + fx - Math.cos(ang2-0.4)*10, cy + fy - Math.sin(ang2-0.4)*10);
+  ctx.lineTo(cx + fx, cy + fy);
+  ctx.lineTo(cx + fx - Math.cos(ang2+0.4)*10, cy + fy - Math.sin(ang2+0.4)*10);
+  ctx.stroke();
+  ctx.fillStyle = '#c0392b';
+  ctx.fillText('F=' + faDigit(F) + 'N', cx + fx + 5, cy + fy - 5);
+  // angle arc
+  ctx.strokeStyle = '#a87800'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 25, -rad, 0);
+  ctx.stroke();
+  ctx.fillStyle = '#a87800';
+  ctx.fillText('θ=' + faDigit(theta) + '°', cx + 30, cy - 5);
+  // F||  component (Fcos θ) projected along d
+  ctx.strokeStyle = '#185fa5'; ctx.lineWidth = 2;
+  ctx.setLineDash([3,3]);
+  const fPar = F * Math.cos(rad);
+  const fParLen = (fPar / 200) * 100;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + 5);
+  ctx.lineTo(cx + fParLen, cy + 5);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#185fa5';
+  ctx.fillText('F·cosθ', cx + 5, cy + 18);
+}
+
+function compute(){
+  const rad = theta * Math.PI / 180;
+  const Fx = F * Math.cos(rad);
+  const W = Fx * d;
+  document.getElementById('Fx').textContent = faDigit(Fx.toFixed(1)) + ' N';
+  document.getElementById('W').textContent = faDigit(W.toFixed(1)) + ' J';
+  const v = document.getElementById('verdict');
+  if (theta === 90) {
+    v.className = 'verdict zero';
+    v.textContent = '⚪ θ=۹۰° → cos(۹۰)=۰ → W=۰ — نیرو عمود بر جابه‌جایی';
+  } else if (W > 0) {
+    v.className = 'verdict pos';
+    v.textContent = '🟢 W>0 — نیرو دارد روی جسم کارِ مثبت می‌کنه (انرژی می‌ده)';
+  } else if (W < 0) {
+    v.className = 'verdict neg';
+    v.textContent = '🔴 W<0 — کارِ منفی (مثل اصطکاک: انرژی می‌گیره)';
+  } else {
+    v.className = 'verdict zero';
+    v.textContent = '⚪ W=۰ — هیچ کاری انجام نشده';
+  }
+  draw();
+}
+
+document.getElementById('force').oninput = e=>{ F = +e.target.value;
+  document.getElementById('forceBadge').textContent = faDigit(F) + ' N'; compute(); };
+document.getElementById('angle').oninput = e=>{ theta = +e.target.value;
+  document.getElementById('angleBadge').textContent = faDigit(theta) + '°'; compute(); };
+document.getElementById('dist').oninput = e=>{ d = +e.target.value;
+  document.getElementById('distBadge').textContent = faDigit(d) + ' m'; compute(); };
+compute();
+</script>
+</body>
+</html>

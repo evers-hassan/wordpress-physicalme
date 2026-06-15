@@ -1,0 +1,56 @@
+# WordPress
+wp-config.php
+.env
+.env.local
+*.log
+
+# Cache
+wp-content/cache/
+wp-cache-config.php
+
+# Generated CSS/Cache from Elementor
+wp-content/uploads/elementor/css/
+
+# Auto-generated thumbnails (can be regenerated)
+wp-content/uploads/auto-thumbs/
+
+# Node modules and build artifacts
+node_modules/
+build/
+dist/
+*.tgz
+
+# Gradle/Mobile build artifacts
+mobile/android/.gradle/
+mobile/android/app/build/
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/ios/Flutter/Flutter.podspec
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+Thumbs.db
+.env.*.local
+
+# Temporary files
+*.tmp
+*.bak
+temp/
+tmp/
+
+# Laravel/other framework cruft
+storage/
+bootstrap/cache/
+
+# Backups
+wp-content/backup-*
+*.backup

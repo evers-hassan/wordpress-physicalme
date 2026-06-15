@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شبیه‌سازی خازن صفحه‌ای</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --pos:#d6453c; --neg:#2f6fd0; --field:#185fa5; --plate:#9aa3ad; --diel:#c9a14a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --pos:#f06a60; --neg:#6aa0ee; --field:#85b7eb; --plate:#6b7480; --diel:#caa14a;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8; animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:280px;}
+  .readout{display:flex; gap:8px; flex-wrap:wrap; padding:12px; border-top:1px solid var(--border);}
+  .chip{flex:1 1 100px; background:var(--info-bg); color:var(--info); border-radius:10px; padding:8px 10px; text-align:center; font-weight:500; font-size:13px;}
+  .chip b{display:block; font-size:16px; font-weight:700; margin-top:2px; direction:ltr;}
+  .controls{margin-top:14px; display:grid; gap:11px;}
+  .row{display:flex; justify-content:space-between; align-items:center; font-size:14px;}
+  .val{font-weight:700;}
+  input[type=range]{width:100%; accent-color:var(--info); height:6px;}
+  select{font-family:inherit; font-size:14px; padding:6px 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text);}
+  .selrow{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .formula{margin-top:12px; background:var(--ok-bg); color:var(--ok); border-radius:10px; padding:9px 14px; font-size:14px; text-align:center;}
+  .formula code{direction:ltr; display:inline-block;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🔋 شبیه‌سازی: خازن صفحه‌ای</h2>
+  <p class="sub">مساحت، فاصله، ولتاژ و دی‌الکتریک را تغییر بده و ببین ظرفیت، بار و میدان چطور عوض می‌شوند.</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">ظرفیت C <b id="cVal">—</b></div>
+      <div class="chip">بار Q <b id="qVal">—</b></div>
+      <div class="chip">میدان E <b id="eeVal">—</b></div>
+      <div class="chip">انرژی U <b id="uVal">—</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="row"><span>مساحتِ صفحه‌ها A</span><span class="val"><span id="aV"></span> cm²</span></div>
+    <input type="range" id="A" min="1" max="10" step="1" value="5">
+    <div class="row"><span>فاصله d</span><span class="val"><span id="dV"></span> mm</span></div>
+    <input type="range" id="d" min="1" max="10" step="1" value="2">
+    <div class="row"><span>ولتاژ V</span><span class="val"><span id="vV"></span> V</span></div>
+    <input type="range" id="V" min="0" max="12" step="1" value="9">
+    <div class="selrow"><span>دی‌الکتریک</span>
+      <select id="k">
+        <option value="1">خلأ / هوا (κ=۱)</option>
+        <option value="3.5">کاغذ (κ=۳٫۵)</option>
+        <option value="7">میکا (κ=۷)</option>
+        <option value="80">آب خالص (κ=۸۰)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="formula"><code>C = κ·ε₀·A / d</code> &nbsp;،&nbsp; ε₀ = ۸٫۸۵×۱۰⁻¹² F/m</div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var AEl=document.getElementById('A'), dEl=document.getElementById('d'), VEl=document.getElementById('V'), kEl=document.getElementById('k');
+  var aV=document.getElementById('aV'), dV=document.getElementById('dV'), vV=document.getElementById('vV');
+  var cVal=document.getElementById('cVal'), qVal=document.getElementById('qVal'), eeVal=document.getElementById('eeVal'), uVal=document.getElementById('uVal');
+  var E0=8.85e-12;
+  function toFa(s){return (''+s).replace(/[0-9.]/g,function(d){return d==='.'?'٫':'۰۱۲۳۴۵۶۷۸۹'[+d];});}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+  function fmt(x,unit){
+    if(x===0) return '۰';
+    if(x>=1000) return toFa((x/1000).toFixed(1))+'k'+unit;
+    if(x>=1) return toFa(x.toFixed(x<10?1:0))+unit;
+    return toFa(x.toFixed(2))+unit;
+  }
+  function draw(){
+    var Acm=+AEl.value, dmm=+dEl.value, V=+VEl.value, k=+kEl.value;
+    aV.textContent=toFa(Acm*10); dV.textContent=toFa(dmm); vV.textContent=toFa(V);
+    // فیزیک: A به m^2 (هر واحد اسلایدر = ۱۰ cm² = ۱e-3 m²)، d به m
+    var A=Acm*1e-3, d=dmm*1e-3;
+    var C=k*E0*A/d;              // فاراد
+    var Q=C*V;                  // کولن
+    var Efield = d>0 ? V/d : 0; // V/m
+    cVal.textContent=fmt(C*1e12,' pF');
+    qVal.textContent= V===0? '۰' : fmt(Q*1e9,' nC');
+    eeVal.textContent= V===0? '۰' : fmt(Efield/1000,' kV/m');
+    var U=0.5*C*V*V; // ژول
+    uVal.textContent= V===0? '۰' : fmt(U*1e9,' nJ');
+
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    var W=rect.width, H=rect.height, cx=W/2, cy=H/2; ctx.clearRect(0,0,W,H);
+
+    var pw=110+Acm*13;            // عرض صفحه ∝ مساحت
+    var gap=26+dmm*11;            // فاصله ∝ d
+    var pt=4;                     // ضخامت صفحه
+    var x0=cx-pw/2;
+    var topY=cy-gap/2, botY=cy+gap/2;
+
+    // دی‌الکتریک (پُرشدنِ فاصله)
+    if(k>1){
+      ctx.fillStyle=cssv('--diel'); ctx.globalAlpha=0.18;
+      ctx.fillRect(x0, topY, pw, gap); ctx.globalAlpha=1;
+      ctx.fillStyle=cssv('--diel'); ctx.font='12px Vazirmatn, sans-serif'; ctx.textAlign='center';
+      ctx.fillText('دی‌الکتریک κ='+toFa(k), cx, cy+3);
+    }
+
+    // میدان بین صفحه‌ها
+    if(V>0){
+      var fc=cssv('--field'); var n=Math.max(3, Math.round(pw/26));
+      var alpha=Math.min(0.9,0.3+ (Efield/ (12/1e-3))*0.6);
+      for(var i=0;i<n;i++){
+        var x=x0+ (i+0.5)*(pw/n);
+        ctx.strokeStyle=fc; ctx.fillStyle=fc; ctx.globalAlpha=alpha; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(x,topY+pt+2); ctx.lineTo(x,botY-4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x,botY-4); ctx.lineTo(x-4,botY-11); ctx.lineTo(x+4,botY-11); ctx.closePath(); ctx.fill();
+        ctx.globalAlpha=1;
+      }
+    }
+
+    // صفحه‌ی بالا (+) و پایین (−)
+    ctx.fillStyle=cssv('--plate');
+    ctx.fillRect(x0, topY-pt, pw, pt);
+    ctx.fillRect(x0, botY, pw, pt);
+
+    // بارها روی صفحه‌ها ∝ Q
+    var qpc=Q*1e9; // nC
+    var nq= V===0?0:Math.min(12, Math.max(1, Math.round(qpc/2)));
+    ctx.font='bold 14px Vazirmatn, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    for(var j=0;j<nq;j++){
+      var xx=x0+ (j+0.5)*(pw/nq);
+      ctx.fillStyle=cssv('--pos'); ctx.fillText('+', xx, topY-pt-9);
+      ctx.fillStyle=cssv('--neg'); ctx.fillText('−', xx, botY+pt+10);
+    }
+    ctx.textBaseline='alphabetic';
+
+    // برچسب صفحه‌ها
+    ctx.fillStyle=cssv('--muted'); ctx.font='12px Vazirmatn, sans-serif'; ctx.textAlign='right';
+    ctx.fillText('صفحه‌ی +', x0+pw, topY-pt-22);
+    ctx.fillText('صفحه‌ی −', x0+pw, botY+pt+26);
+  }
+  [AEl,dEl,VEl].forEach(function(el){el.addEventListener('input',draw);});
+  kEl.addEventListener('change',draw);
+  window.addEventListener('resize',draw);
+  draw();
+})();
+</script>
+</body>
+</html>

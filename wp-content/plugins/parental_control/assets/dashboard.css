@@ -1,0 +1,220 @@
+/* Parental Control Dashboard Styles */
+
+.pcpc-dashboard {
+    background: #fff;
+}
+
+.pcpc-dashboard h1 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.pcpc-dashboard h2 {
+    color: #444;
+    font-size: 18px;
+    margin-top: 25px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #0073aa;
+    padding-bottom: 10px;
+}
+
+/* Statistics Cards */
+.pcpc-stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.pcpc-stat-card {
+    background: linear-gradient(135deg, #0073aa 0%, #005a87 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.pcpc-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.pcpc-stat-number {
+    font-size: 32px;
+    font-weight: bold;
+    margin: 10px 0;
+    line-height: 1;
+}
+
+.pcpc-stat-label {
+    font-size: 14px;
+    opacity: 0.95;
+    margin-top: 8px;
+}
+
+.pcpc-stat-icon {
+    font-size: 28px;
+    margin-top: 10px;
+}
+
+/* Quick Actions */
+.pcpc-quick-actions {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.pcpc-quick-actions ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.pcpc-quick-actions li {
+    margin: 0;
+}
+
+.pcpc-quick-actions a {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    text-align: center;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.pcpc-quick-actions .button-secondary {
+    border-color: #8c8f94;
+    color: #32373c;
+}
+
+.pcpc-quick-actions .button-secondary:hover {
+    background: #f5f5f5;
+    border-color: #32373c;
+}
+
+/* Dashboard Grid */
+.pcpc-dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+@media (max-width: 768px) {
+    .pcpc-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.pcpc-recent-section {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 20px;
+}
+
+.pcpc-recent-section table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.pcpc-recent-section thead {
+    background: #f0f0f0;
+    font-weight: bold;
+}
+
+.pcpc-recent-section th,
+.pcpc-recent-section td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.pcpc-recent-section tbody tr:hover {
+    background: #fafafa;
+}
+
+.pcpc-recent-section tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* System Status */
+.pcpc-system-status {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 20px;
+    margin-top: 30px;
+}
+
+.pcpc-system-status .widefat {
+    background: white;
+    margin-top: 15px;
+}
+
+.pcpc-system-status .widefat tbody tr:nth-child(odd) {
+    background: #f9f9f9;
+}
+
+.pcpc-system-status td:first-child {
+    font-weight: 500;
+    width: 40%;
+}
+
+.pcpc-system-status td:last-child {
+    text-align: right;
+}
+
+.pcpc-system-status td:last-child strong {
+    color: #28a745;
+}
+
+/* Status indicators */
+.pcpc-system-status .status-active {
+    color: #28a745;
+}
+
+.pcpc-system-status .status-missing {
+    color: #dc3545;
+}
+
+/* Navigation tabs (legacy) */
+.nav-tab-wrapper {
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 15px;
+}
+
+.nav-tabs {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+}
+
+.nav-tabs li {
+    margin-right: 15px;
+}
+
+.nav-tabs li a {
+    text-decoration: none;
+    color: #0073aa;
+    padding: 8px 15px;
+    border-radius: 3px 3px 0 0;
+    display: block;
+}
+
+.nav-tabs li.active a,
+.nav-tabs li a:hover {
+    background-color: #fff;
+    border-bottom: 2px solid #0073aa;
+    color: #333;
+}

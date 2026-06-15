@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>طیف نشری عناصر — شبیه‌ساز</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+<style>
+:root { --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a; --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; }
+@media (prefers-color-scheme: dark) { :root { --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e; --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; } }
+body { margin: 0; padding: 16px; font-family: Vazirmatn, Tahoma, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+h2 { color: var(--info); margin: 0 0 14px; font-size: 1.2em; }
+.app { max-width: 760px; margin: 0 auto; }
+.controls { background: var(--surface); border-radius: 12px; padding: 14px; border: 1px solid var(--border); margin-bottom: 14px; }
+.controls .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.controls label { font-size: 13px; color: var(--muted); }
+.controls select, .controls button { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: inherit; cursor: pointer; }
+.controls button.active { background: var(--info); color: white; border-color: var(--info); }
+.specwrap { background: #000; border-radius: 12px; padding: 12px; margin-bottom: 14px; }
+canvas { display: block; width: 100%; }
+#cont { height: 60px; }
+#emis { height: 70px; }
+#scale { height: 28px; }
+.label { color: white; font-size: 12px; padding: 4px 0; text-align: center; }
+.legend { background: var(--surface); padding: 12px; border-radius: 10px; border: 1px solid var(--border); }
+.legend h3 { margin: 0 0 8px; font-size: 14px; color: var(--info); }
+.lines-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; font-size: 13px; }
+.lline { background: var(--bg); padding: 8px; border-radius: 6px; border: 1px solid var(--border); }
+.lline .sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: middle; margin-left: 6px; }
+.formula { background: var(--info-bg); color: var(--info); padding: 10px 14px; border-radius: 8px; margin-top: 12px; font-size: 14px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h2>🌈 شبیه‌ساز طیف نشری عناصر</h2>
+
+  <div class="controls">
+    <div class="row">
+      <label>عنصر:</label>
+      <button data-el="H" class="active">هیدروژن</button>
+      <button data-el="He">هلیوم</button>
+      <button data-el="Ne">نئون</button>
+      <button data-el="Na">سدیم</button>
+      <button data-el="Hg">جیوه</button>
+      <button data-el="Cont">طیف پیوسته</button>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <label>سری هیدروژن:</label>
+      <select id="series">
+        <option value="all">همه</option>
+        <option value="lyman">لیمان (UV)</option>
+        <option value="balmer" selected>بالمر (مرئی)</option>
+        <option value="paschen">پاشن (IR)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="specwrap">
+    <div class="label">طیف پیوسته (برای مقایسه)</div>
+    <canvas id="cont"></canvas>
+    <div class="label" id="emisLabel" style="margin-top:8px;">طیف نشری — هیدروژن</div>
+    <canvas id="emis"></canvas>
+    <canvas id="scale"></canvas>
+  </div>
+
+  <div class="legend">
+    <h3 id="legendTitle">خطوط هیدروژن — سری بالمر</h3>
+    <div id="linesList" class="lines-list"></div>
+  </div>
+
+  <div class="formula">
+    فرمول ریدبرگ: $\;\dfrac{1}{\lambda} = R\left(\dfrac{1}{n_1^2} - \dfrac{1}{n_2^2}\right)~,~ R = 1.097 \times 10^7~\text{m}^{-1}$
+  </div>
+</div>
+
+<script>
+(function(){
+  var R = 1.0974e7;
+  var λMIN = 200, λMAX = 800;
+
+  function wlToRGB(lam){
+    var R=0,G=0,B=0;
+    if(lam<200) return [40,0,80];
+    if(lam>=200 && lam<380){ R=0.6; G=0; B=0.9; }
+    else if(lam<440){ R=-(lam-440)/60; G=0; B=1; }
+    else if(lam<490){ R=0; G=(lam-440)/50; B=1; }
+    else if(lam<510){ R=0; G=1; B=-(lam-510)/20; }
+    else if(lam<580){ R=(lam-510)/70; G=1; B=0; }
+    else if(lam<645){ R=1; G=-(lam-645)/65; B=0; }
+    else if(lam<=780){ R=1; G=0; B=0; }
+    else { R=0.6; G=0.1; B=0; }
+    return [Math.round(R*255), Math.round(G*255), Math.round(B*255)];
+  }
+
+  // Pre-defined element data
+  function hydrogenLines(series){
+    var lines = [];
+    var ranges = {
+      lyman:   {n1:1, n2s:[2,3,4,5,6]},
+      balmer:  {n1:2, n2s:[3,4,5,6,7]},
+      paschen: {n1:3, n2s:[4,5,6,7]}
+    };
+    var which = series === 'all' ? ['lyman','balmer','paschen'] : [series];
+    which.forEach(function(s){
+      var r = ranges[s];
+      r.n2s.forEach(function(n2){
+        var inv = R*(1/(r.n1*r.n1) - 1/(n2*n2));
+        var lam = 1/inv * 1e9; // nm
+        lines.push({lam:lam, label:'n='+n2+'→'+r.n1, series:s, intensity:1.0/(n2-r.n1)});
+      });
+    });
+    return lines;
+  }
+
+  var ELEMENTS = {
+    He: [
+      {lam:447.1, intensity:0.6, label:'He I 447'},
+      {lam:471.3, intensity:0.4, label:'He I 471'},
+      {lam:492.2, intensity:0.5, label:'He I 492'},
+      {lam:501.6, intensity:0.7, label:'He I 502'},
+      {lam:587.6, intensity:1.0, label:'He I 588 (D3)'},
+      {lam:667.8, intensity:0.7, label:'He I 668'},
+      {lam:706.5, intensity:0.5, label:'He I 706'}
+    ],
+    Ne: [
+      {lam:540.1, intensity:0.4, label:'Ne 540'},
+      {lam:585.2, intensity:0.7, label:'Ne 585'},
+      {lam:594.5, intensity:0.6, label:'Ne 594'},
+      {lam:614.3, intensity:0.8, label:'Ne 614'},
+      {lam:626.6, intensity:0.8, label:'Ne 626'},
+      {lam:633.4, intensity:0.7, label:'Ne 633'},
+      {lam:640.2, intensity:1.0, label:'Ne 640'},
+      {lam:650.6, intensity:0.7, label:'Ne 650'},
+      {lam:692.9, intensity:0.6, label:'Ne 693'},
+      {lam:703.2, intensity:0.6, label:'Ne 703'}
+    ],
+    Na: [
+      {lam:330.2, intensity:0.4, label:'Na 330'},
+      {lam:498.3, intensity:0.3, label:'Na 498'},
+      {lam:568.8, intensity:0.5, label:'Na 569'},
+      {lam:589.0, intensity:1.0, label:'Na D₂ 589'},
+      {lam:589.6, intensity:1.0, label:'Na D₁ 590'},
+      {lam:615.4, intensity:0.4, label:'Na 615'}
+    ],
+    Hg: [
+      {lam:404.7, intensity:0.6, label:'Hg 405 (UV)'},
+      {lam:435.8, intensity:1.0, label:'Hg 436 (آبی)'},
+      {lam:491.6, intensity:0.5, label:'Hg 492'},
+      {lam:546.1, intensity:1.0, label:'Hg 546 (سبز)'},
+      {lam:577.0, intensity:0.7, label:'Hg 577 (زرد)'},
+      {lam:579.1, intensity:0.7, label:'Hg 579 (زرد)'},
+      {lam:615.0, intensity:0.4, label:'Hg 615'}
+    ]
+  };
+
+  var currentEl = 'H';
+  var currentSeries = 'balmer';
+
+  function fitCanvas(c, h){
+    var DPR = Math.max(1, window.devicePixelRatio||1);
+    var w = c.clientWidth;
+    c.width = w*DPR; c.height = h*DPR;
+    var ctx = c.getContext('2d');
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    return ctx;
+  }
+
+  function drawContinuous(){
+    var c = document.getElementById('cont');
+    var ctx = fitCanvas(c, 60);
+    var w = c.clientWidth;
+    for(var x=0;x<w;x++){
+      var lam = λMIN + (x/w)*(λMAX-λMIN);
+      var rgb = wlToRGB(lam);
+      ctx.fillStyle = 'rgb('+rgb[0]+','+rgb[1]+','+rgb[2]+')';
+      ctx.fillRect(x,0,1,60);
+    }
+  }
+
+  function drawScale(){
+    var c = document.getElementById('scale');
+    var ctx = fitCanvas(c, 28);
+    var w = c.clientWidth;
+    ctx.fillStyle = '#fff';
+    ctx.font = '11px Vazirmatn, Tahoma';
+    ctx.textAlign = 'center';
+    for(var lam=200; lam<=800; lam+=50){
+      var x = (lam-λMIN)/(λMAX-λMIN)*w;
+      ctx.fillRect(x,0,1,5);
+      ctx.fillText(lam+'nm', x, 18);
+    }
+  }
+
+  function drawEmission(){
+    var c = document.getElementById('emis');
+    var ctx = fitCanvas(c, 70);
+    var w = c.clientWidth;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0,0,w,70);
+
+    var lines;
+    if(currentEl === 'H'){
+      lines = hydrogenLines(currentSeries);
+    } else if(currentEl === 'Cont'){
+      // draw continuous in emission box too
+      for(var x=0;x<w;x++){
+        var lam = λMIN + (x/w)*(λMAX-λMIN);
+        var rgb = wlToRGB(lam);
+        ctx.fillStyle = 'rgb('+rgb[0]+','+rgb[1]+','+rgb[2]+')';
+        ctx.fillRect(x,0,1,70);
+      }
+      updateLegend([], 'طیف پیوسته');
+      return;
+    } else {
+      lines = ELEMENTS[currentEl];
+    }
+
+    lines.forEach(function(l){
+      if(l.lam < λMIN || l.lam > λMAX) return;
+      var x = (l.lam - λMIN)/(λMAX-λMIN)*w;
+      var rgb = wlToRGB(l.lam);
+      var alpha = Math.min(1, l.intensity);
+      ctx.strokeStyle = 'rgba('+rgb[0]+','+rgb[1]+','+rgb[2]+','+alpha+')';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(x, 5);
+      ctx.lineTo(x, 65);
+      ctx.stroke();
+    });
+
+    var title = ({H:'هیدروژن', He:'هلیوم', Ne:'نئون', Na:'سدیم', Hg:'جیوه'})[currentEl];
+    if(currentEl==='H') title += ' — سری ' + ({all:'همه', lyman:'لیمان', balmer:'بالمر', paschen:'پاشن'})[currentSeries];
+    document.getElementById('emisLabel').textContent = 'طیف نشری — ' + title;
+    updateLegend(lines, title);
+  }
+
+  function updateLegend(lines, title){
+    document.getElementById('legendTitle').textContent = 'خطوط ' + title;
+    var html = '';
+    lines.forEach(function(l){
+      var rgb = wlToRGB(l.lam);
+      var c = 'rgb('+rgb[0]+','+rgb[1]+','+rgb[2]+')';
+      var Δ = '';
+      if(l.label && l.label.indexOf('→')>=0) Δ = ' ('+l.label+')';
+      html += '<div class="lline"><span class="sw" style="background:'+c+'"></span>'+
+              'λ = '+l.lam.toFixed(1)+' nm'+Δ+'</div>';
+    });
+    if(!lines.length) html = '<div class="lline">طیف پیوسته‌ست — همه‌ی رنگ‌ها هستن</div>';
+    document.getElementById('linesList').innerHTML = html;
+  }
+
+  function redraw(){ drawContinuous(); drawEmission(); drawScale(); }
+
+  document.querySelectorAll('button[data-el]').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('button[data-el]').forEach(function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      currentEl = b.getAttribute('data-el');
+      redraw();
+    });
+  });
+  document.getElementById('series').addEventListener('change', function(){
+    currentSeries = this.value;
+    redraw();
+  });
+
+  window.addEventListener('resize', redraw);
+  redraw();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دامنه‌های مغناطیسی و آهنرباهای دائمی</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --hint-c:#a87800; --hint-bg:#fef6e0;
+    --domain1:#d6453c; --domain2:#2f6fd0; --domain3:#a87800; --domain4:#7a4dbd;
+    --domain5:#1d9e75; --domain6:#c2410c; --aligned:#5B6E32;
+    --field:#7a4dbd;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --hint-c:#e0b860; --hint-bg:#4a3a15;
+      --domain1:#f06a60; --domain2:#6aa0ee; --domain3:#e0b860; --domain4:#b08be8;
+      --domain5:#5dcaa5; --domain6:#fb923c; --aligned:#9CAB52;
+      --field:#b08be8;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:340px; touch-action:none;}
+  .readout{padding:12px; border-top:1px solid var(--border); display:flex; gap:10px; flex-wrap:wrap;}
+  .chip{flex:1 1 130px; background:var(--info-bg); color:var(--info); border-radius:10px; padding:8px 12px; text-align:center; font-size:14px;}
+  .chip b{display:block; font-size:16px; font-weight:700; margin-top:2px;}
+  .chip.ok{background:var(--ok-bg); color:var(--ok);}
+  .chip.accent{background:#fef6e0; color:#a87800;}
+  @media (prefers-color-scheme: dark){ .chip.accent{background:#4a3a15; color:#e0b860;} }
+
+  .controls{margin-top:14px; display:grid; gap:10px;}
+  .slider-row{display:grid; grid-template-columns:130px 1fr 70px; gap:10px; align-items:center; font-size:14px;}
+  .slider-row span:first-child{color:var(--muted);}
+  .slider-row .val{font-weight:700; color:var(--text); text-align:left;}
+  input[type=range]{accent-color:var(--info); height:6px;}
+
+  .row{display:flex; gap:8px; flex-wrap:wrap;}
+  .btn{font-family:inherit; font-size:14px; padding:9px 14px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text); cursor:pointer; transition:.12s; flex:1 1 140px;}
+  .btn:hover{background:var(--info-bg); border-color:var(--info); color:var(--info);}
+  .btn.on{background:var(--info); color:#fff; border-color:var(--info);}
+
+  .hint{margin-top:12px; background:var(--hint-bg); color:var(--hint-c);
+    border-radius:10px; padding:10px 14px; font-size:13.5px;
+    border-right:3px solid var(--hint-c);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>🧲 دامنه‌های مغناطیسی — رازِ آهنربا در سطح اتمی</h2>
+  <p class="sub">هر تکّه‌ی آهن از <b>دامنه‌های مغناطیسی</b> (Magnetic Domains) تشکیل شده — مناطق کوچیکی که توشون اتم‌ها هم‌جهت‌ان. وقتی همه‌ی دامنه‌ها هم‌جهت بشن، آهن می‌شه آهنربا!</p>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="readout">
+      <div class="chip">میدان خارجی B <b id="extVal">۰</b></div>
+      <div class="chip ok">درصد هم‌جهتی دامنه‌ها <b id="alignVal">—</b></div>
+      <div class="chip accent">حالت ماده <b id="modeVal">آهن خام (آشفته)</b></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="slider-row">
+      <span>میدان خارجی</span>
+      <input type="range" id="bSlider" min="0" max="1" step="0.02" value="0">
+      <span class="val" id="bSliderVal">۰</span>
+    </div>
+    <div class="row">
+      <button class="btn on" id="modeSoft">آهن نرم (Iron)</button>
+      <button class="btn" id="modeHard">فولاد سخت (Steel)</button>
+    </div>
+    <div class="row">
+      <button class="btn" id="heatBtn">🔥 گرم کردن (بالای دمای کوری)</button>
+      <button class="btn" id="resetBtn">↺ بازنشانی</button>
+    </div>
+  </div>
+
+  <div class="hint">
+    💡 <b>چجوری کار می‌کنه:</b> با افزایش میدان خارجی، دامنه‌های هم‌جهت با اون <b>رشد می‌کنن</b> و دامنه‌های دیگه کوچیک می‌شن. در <b>آهن نرم</b> بعد از قطع میدان، دامنه‌ها برمی‌گردن به حالت آشفته. در <b>فولاد سخت</b> هم‌جهت‌مونی <b>حفظ می‌شه</b> — این می‌شه <b>آهنربای دائمی</b>! اگه آهنربای دائمی رو از دمای کوری گرم کنی، دامنه‌ها از انرژی حرارتی به‌هم می‌ریزن و خاصیتش رو از دست می‌ده.
+  </div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var W, H;
+  var Bext = 0;           // 0..1 strength of external field
+  var isHard = false;     // true = steel (retains magnetization), false = soft iron
+  var heated = false;     // true if heated above Curie temp
+  var lastTs = 0;
+
+  // Each domain: position, target angle (where dynamics drive it), current angle, size, color
+  // Initial state: random angles (representing disordered iron)
+  var domains = [];
+  function initDomains(){
+    domains = [];
+    var cols = 9, rows = 5;
+    var W_local = 740, H_local = 340;
+    // Approximate cell size
+    var sample = isHard ? null : null;
+    for (var r = 0; r < rows; r++){
+      for (var c = 0; c < cols; c++){
+        var jitter = (Math.random() - 0.5) * 4;
+        // We use placeholder positions; real positions are computed at draw time based on canvas size
+        domains.push({
+          col: c, row: r,
+          gridX: (c + 0.5) / cols,    // normalized x position
+          gridY: (r + 0.5) / rows,    // normalized y position
+          angle: Math.random() * Math.PI * 2,           // current angle
+          target: Math.random() * Math.PI * 2,          // target angle (set per frame based on field)
+          size: 0.85 + Math.random() * 0.3,             // domain size factor
+          color: pickColor(c, r)
+        });
+      }
+    }
+  }
+  function pickColor(c, r){
+    // Pick from palette, mostly randomly so neighbors don't always look the same
+    var palette = ['--domain1','--domain2','--domain3','--domain4','--domain5','--domain6'];
+    return palette[(c * 7 + r * 13) % palette.length];
+  }
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+  function toFa(s){return (''+s).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];}).replace('.','٫');}
+
+  function update(dt){
+    if (heated){
+      // Above Curie temp: domains randomize rapidly (thermal agitation)
+      domains.forEach(function(d){
+        d.target = Math.random() * Math.PI * 2;
+        d.angle += (d.target - d.angle) * Math.min(1, dt * 8);
+      });
+      return;
+    }
+    domains.forEach(function(d){
+      // Each domain has a "preferred" random easy-axis (its initial orientation jitter).
+      // External field B tries to align all to angle = 0 (rightward).
+      // For soft iron: relaxation is fast both ways (alignment ramps up with B, returns to disorder when B=0).
+      // For steel: relaxation toward aligned is fast, but relaxation back to disorder is slow.
+      var alignedAngle = 0;
+      // Smooth interpolation toward alignedAngle weighted by B,
+      // toward random preferred angle weighted by (1 - B)
+      var weight = Math.pow(Bext, 0.6);
+      var targetA = alignedAngle * weight + d.preferred * (1 - weight);
+      // For soft iron, "preferred" is the random initial angle (drifts back).
+      // For steel, "preferred" follows the latched angle (stays).
+      if (!d.preferred) d.preferred = d.angle;
+      if (isHard){
+        // Steel: once aligned by strong B, the "preferred" updates to stay aligned
+        if (Bext > 0.55){
+          d.preferred = d.preferred * (1 - dt*1.2) + alignedAngle * dt*1.2;
+        }
+        // Otherwise, preferred stays.
+      } else {
+        // Soft iron: preferred relaxes back to its initial random angle when B drops
+        if (Bext < 0.15){
+          d.preferred = d.preferred * (1 - dt*0.7) + d.initial * dt*0.7;
+        }
+      }
+      if (!('initial' in d)) d.initial = d.preferred;
+      var k = 5.5;     // relaxation speed
+      var diff = targetA - d.angle;
+      // Wrap diff to [-π, π] for shortest rotation
+      while (diff > Math.PI) diff -= 2*Math.PI;
+      while (diff < -Math.PI) diff += 2*Math.PI;
+      d.angle += diff * Math.min(1, dt * k);
+    });
+  }
+
+  function alignmentPercent(){
+    // Mean cos(angle) — if all aligned to 0, this is 1; if random, near 0
+    var sum = 0;
+    domains.forEach(function(d){ sum += Math.cos(d.angle); });
+    return sum / domains.length;
+  }
+
+  function draw(){
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=rect.width; H=rect.height;
+    ctx.clearRect(0,0,W,H);
+
+    // Background: iron block boundary
+    var pad = 18;
+    var blockX = pad, blockY = pad + 22, blockW = W - 2*pad, blockH = H - 2*pad - 22;
+    ctx.save();
+    ctx.fillStyle = cssv('--bg');
+    ctx.fillRect(blockX, blockY, blockW, blockH);
+    ctx.strokeStyle = cssv('--border');
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(blockX, blockY, blockW, blockH);
+    ctx.restore();
+
+    // Label
+    ctx.save();
+    ctx.fillStyle = cssv('--muted'); ctx.font = '12px Vazirmatn';
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.fillText('یک تکّه ' + (isHard ? 'فولاد' : 'آهن') + ' در سطح میکروسکوپی — هر فلش، یک دامنهٔ مغناطیسی', W/2, 6);
+    ctx.restore();
+
+    // External field arrows (above the block, when B > 0)
+    if (Bext > 0.02 && !heated){
+      ctx.save();
+      ctx.fillStyle = cssv('--field'); ctx.strokeStyle = cssv('--field');
+      ctx.globalAlpha = 0.2 + Bext * 0.5;
+      ctx.lineWidth = 2 + Bext * 2;
+      ctx.lineCap = 'round';
+      // Draw 3 horizontal arrows pointing right
+      var positions = [blockY - 10, blockY + blockH/2, blockY + blockH + 10];
+      // Show arrows on the SIDES (outside the block) so they don't interfere
+      var arrLen = 50 + Bext * 100;
+      ctx.beginPath();
+      ctx.moveTo(blockX - arrLen - 5, blockY + blockH/2);
+      ctx.lineTo(blockX - 12, blockY + blockH/2);
+      ctx.stroke();
+      // Arrowhead at end
+      ctx.beginPath();
+      ctx.moveTo(blockX - 5, blockY + blockH/2);
+      ctx.lineTo(blockX - 14, blockY + blockH/2 - 6);
+      ctx.lineTo(blockX - 14, blockY + blockH/2 + 6);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = cssv('--field'); ctx.font = 'bold 13px Vazirmatn';
+      ctx.textAlign='right'; ctx.globalAlpha = 0.95;
+      ctx.fillText('B خارجی →', blockX - arrLen - 10, blockY + blockH/2 + 4);
+      ctx.restore();
+    }
+
+    // Heating overlay
+    if (heated){
+      ctx.save();
+      ctx.fillStyle = 'rgba(220, 60, 30, 0.10)';
+      ctx.fillRect(blockX, blockY, blockW, blockH);
+      ctx.fillStyle = '#c2410c'; ctx.font='bold 14px Vazirmatn';
+      ctx.textAlign='center'; ctx.textBaseline='top';
+      ctx.fillText('🔥 بالای دمای کوری: انرژی حرارتی، هم‌جهتی رو به‌هم می‌ریزه', W/2, blockY + 6);
+      ctx.restore();
+    }
+
+    // Draw domains
+    var cols = 9, rows = 5;
+    var cellW = blockW / cols;
+    var cellH = blockH / rows;
+    domains.forEach(function(d){
+      var cx = blockX + d.gridX * blockW;
+      var cy = blockY + d.gridY * blockH;
+      var size = Math.min(cellW, cellH) * 0.42 * d.size;
+      ctx.save();
+      ctx.translate(cx, cy); ctx.rotate(d.angle);
+      // Domain background ellipse (subtle color, hints at the domain shape)
+      var col = cssv(d.color);
+      // Compute color match factor — how aligned to right (0 angle) — for brightness/darkness
+      var alignFactor = (Math.cos(d.angle) + 1) / 2;  // 0 = pointing left, 1 = pointing right
+      ctx.globalAlpha = 0.15 + alignFactor * 0.10;
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.ellipse(0, 0, size, size*0.7, 0, 0, Math.PI*2); ctx.fill();
+      // Arrow
+      ctx.globalAlpha = 0.92;
+      ctx.strokeStyle = col;
+      ctx.fillStyle = col;
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-size*0.55, 0); ctx.lineTo(size*0.35, 0);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(size*0.55, 0);
+      ctx.lineTo(size*0.30, -size*0.22);
+      ctx.lineTo(size*0.30, size*0.22);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    });
+
+    // Update readouts
+    var pct = alignmentPercent();
+    document.getElementById('extVal').textContent = toFa(Bext.toFixed(2));
+    document.getElementById('alignVal').textContent = toFa((pct * 100).toFixed(0)) + '٪';
+    var state;
+    if (heated) state = '🔥 بالای دمای کوری (هیچ آهنربایی)';
+    else if (pct > 0.85) state = '🧲 کاملاً مغناطیده (آهنربا)';
+    else if (pct > 0.5) state = 'در حال هم‌جهت شدن';
+    else if (pct > 0.15) state = 'تا حدی منظم';
+    else state = (isHard ? 'فولاد' : 'آهن') + ' خام (آشفته)';
+    document.getElementById('modeVal').textContent = state;
+  }
+
+  function tick(ts){
+    if (!lastTs) lastTs = ts;
+    var dt = Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
+    update(dt);
+    draw();
+    requestAnimationFrame(tick);
+  }
+
+  // Bindings
+  document.getElementById('bSlider').addEventListener('input', function(e){
+    Bext = +e.target.value;
+    document.getElementById('bSliderVal').textContent = toFa(Bext.toFixed(2));
+    if (heated && Bext > 0){
+      // Disable heating if user starts applying field again
+      heated = false;
+    }
+  });
+  document.getElementById('modeSoft').addEventListener('click', function(){
+    isHard = false;
+    this.classList.add('on');
+    document.getElementById('modeHard').classList.remove('on');
+    initDomains();
+  });
+  document.getElementById('modeHard').addEventListener('click', function(){
+    isHard = true;
+    this.classList.add('on');
+    document.getElementById('modeSoft').classList.remove('on');
+    initDomains();
+  });
+  document.getElementById('heatBtn').addEventListener('click', function(){
+    heated = true;
+    Bext = 0;
+    document.getElementById('bSlider').value = 0;
+    document.getElementById('bSliderVal').textContent = '۰';
+    // Trigger domain re-randomization
+    domains.forEach(function(d){ d.preferred = Math.random() * Math.PI * 2; d.initial = d.preferred; });
+  });
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    heated = false;
+    Bext = 0;
+    document.getElementById('bSlider').value = 0;
+    document.getElementById('bSliderVal').textContent = '۰';
+    initDomains();
+  });
+
+  window.addEventListener('resize', draw);
+  initDomains();
+  // Initialize 'preferred' and 'initial' fields
+  domains.forEach(function(d){ d.preferred = d.angle; d.initial = d.angle; });
+  setTimeout(function(){ requestAnimationFrame(tick); }, 50);
+})();
+</script>
+</body>
+</html>

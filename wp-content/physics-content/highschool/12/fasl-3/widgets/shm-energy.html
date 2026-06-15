@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>انرژی در SHM — رقص جنبشی و پتانسیل</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed; --warn:#a87800; --warn-bg:#fef6e0;
+    --ke:#1d9e75; --pe:#c43838; --total:#5f5e5a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e0b860; --warn-bg:#4a3a15;
+      --ke:#5dcaa5; --pe:#f06a60; --total:#a8a69e;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:980px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .layout{display:grid; grid-template-columns:1fr 230px; gap:12px;}
+  @media(max-width:760px){.layout{grid-template-columns:1fr;}}
+  .stage{background:linear-gradient(to bottom, #f7f9fc, var(--bg)); border:1px solid var(--border); border-radius:14px; padding:8px;}
+  @media(prefers-color-scheme:dark){.stage{background:linear-gradient(to bottom, #2a3040, var(--bg));}}
+  canvas{display:block; width:100%;}
+  #cvSim{height:200px;}
+  #cvBars{height:120px;}
+  #cvGraph{height:170px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:13px; margin:8px 0 6px; color:var(--muted); text-transform:uppercase;}
+  .panel h3:first-child{margin-top:0;}
+  .slider-row{display:grid; grid-template-columns:1fr 60px; gap:6px; align-items:center; font-size:13px; margin-bottom:4px;}
+  .val{font-weight:700; color:var(--info); text-align:left; font-variant-numeric:tabular-nums;}
+  input[type=range]{width:100%; accent-color:var(--info);}
+  .btn{background:var(--info); color:white; border:none; padding:8px 14px;
+       border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer; width:100%; margin-top:6px;}
+  .btn.alt{background:#c43838;}
+  .btn:hover{filter:brightness(1.08);}
+  .readout{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px;}
+  .read{padding:6px 8px; border-radius:6px; text-align:center; font-size:12px;}
+  .read b{display:block; font-size:13px; margin-top:2px;}
+  .read.ke{background:var(--ok-bg); color:var(--ok);}
+  .read.pe{background:#f7e1e0; color:var(--pe);}
+  @media(prefers-color-scheme:dark){.read.pe{background:#4a1c1a; color:var(--pe);}}
+  .read.total{background:var(--info-bg); color:var(--info); grid-column:1/-1;}
+  .legend{font-size:11px; color:var(--muted); display:flex; gap:10px; justify-content:center; margin:6px 0;}
+  .legend span::before{content:'■ '; }
+  .leg-ke{color:var(--ke);} .leg-pe{color:var(--pe);} .leg-tot{color:var(--total);}
+  .note{font-size:12px; padding:8px; background:var(--warn-bg); color:var(--warn); border-radius:8px; margin-top:8px; line-height:1.6;}
+</style>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']], processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>رقص جنبشی و پتانسیل در SHM 💚❤️</h2>
+  <p class="sub">انرژی کل ثابت می‌مونه، ولی بین $K$ و $U$ تبادل می‌کنه. تو دو نقطه‌ی انتها همه‌ش پتانسیله، تو مرکز همه‌ش جنبشی.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <canvas id="cvSim"></canvas>
+      <div class="legend"><span class="leg-ke">انرژی جنبشی $K$</span><span class="leg-pe">انرژی پتانسیل $U$</span><span class="leg-tot">انرژی کل $E$</span></div>
+      <canvas id="cvBars"></canvas>
+      <canvas id="cvGraph"></canvas>
+    </div>
+
+    <div class="panel">
+      <h3>پارامترها</h3>
+      <div class="slider-row"><label>جرم $m$ (kg)</label><span class="val" id="vm">۰٫۵</span></div>
+      <input type="range" id="m" min="0.1" max="2" step="0.1" value="0.5">
+      <div class="slider-row"><label>ثابت فنر $k$ (N/m)</label><span class="val" id="vk">۲۰</span></div>
+      <input type="range" id="k" min="5" max="80" step="1" value="20">
+      <div class="slider-row"><label>دامنه $A$ (cm)</label><span class="val" id="vA">۱۰</span></div>
+      <input type="range" id="A" min="2" max="20" step="1" value="10">
+
+      <h3>وضعیت لحظه‌ای</h3>
+      <div class="readout">
+        <div class="read ke">$K$<b id="rK">۰ mJ</b></div>
+        <div class="read pe">$U$<b id="rU">۰ mJ</b></div>
+        <div class="read total">$E = K + U$<b id="rE">۰ mJ</b></div>
+      </div>
+      <div class="readout" style="margin-top:6px;">
+        <div class="read ke">سرعت $v$<b id="rv">۰ m/s</b></div>
+        <div class="read pe">جابه‌جایی $x$<b id="rx">۰ cm</b></div>
+      </div>
+
+      <button class="btn" id="play">⏸ توقف</button>
+      <button class="btn alt" id="reset">⟲ ریست</button>
+
+      <div class="note">
+        🎯 <b>درس کلیدی:</b> $E = \dfrac{1}{2}kA^2$ — انرژی کل فقط به دامنه و فنر بستگی داره، نه به جرم!
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fa=n=>n.toLocaleString('fa-IR');
+const cvS=$('cvSim'), cvB=$('cvBars'), cvG=$('cvGraph');
+const cS=cvS.getContext('2d'), cB=cvB.getContext('2d'), cG=cvG.getContext('2d');
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+let DPR=window.devicePixelRatio||1;
+function fit(cv,c){const r=cv.getBoundingClientRect(); cv.width=r.width*DPR; cv.height=r.height*DPR; c.setTransform(DPR,0,0,DPR,0,0);}
+
+let m=0.5, k=20, A=0.10; // SI
+let t=0, running=true, last=null;
+const hist=[]; const HMAX=300;
+
+function E(){return 0.5*k*A*A;}
+function omega(){return Math.sqrt(k/m);}
+
+function drawSim(){
+  fit(cvS, cS);
+  const W=cvS.clientWidth, H=cvS.clientHeight;
+  const cy=H*0.55;
+  const eq=W*0.55;
+  // wall right
+  cS.fillStyle=css('--muted'); cS.fillRect(W-12, cy-50, 8, 100);
+  // spring
+  const omg=omega();
+  const x = eq - (A*100*2)*Math.cos(omg*t);   // visual amp pixels = 2x cm
+  // (limit so the box stays in canvas)
+  const px = Math.max(50, Math.min(W-60, x));
+  drawCoil(cS, W-16, cy, px+24, cy, 12, 11);
+  cS.fillStyle=css('--info'); cS.fillRect(px-22, cy-22, 44, 44);
+  cS.strokeStyle=css('--text'); cS.lineWidth=1.4; cS.strokeRect(px-22, cy-22, 44, 44);
+  // equilibrium dotted
+  cS.strokeStyle=css('--muted'); cS.setLineDash([3,3]);
+  cS.beginPath(); cS.moveTo(eq, cy-50); cS.lineTo(eq, cy+50); cS.stroke();
+  cS.setLineDash([]);
+  cS.fillStyle=css('--muted'); cS.font='11px Vazirmatn'; cS.textAlign='center';
+  cS.fillText('تعادل', eq, cy+60);
+  // amplitude bounds
+  cS.strokeStyle=css('--info-bg'); cS.setLineDash([2,4]);
+  cS.beginPath(); cS.moveTo(eq-(A*100*2), cy-44); cS.lineTo(eq-(A*100*2), cy+44); cS.stroke();
+  cS.beginPath(); cS.moveTo(eq+(A*100*2), cy-44); cS.lineTo(eq+(A*100*2), cy+44); cS.stroke();
+  cS.setLineDash([]);
+  cS.fillStyle=css('--info'); cS.font='11px Vazirmatn';
+  cS.fillText('+A', eq+(A*100*2), cy+60);
+  cS.fillText('−A', eq-(A*100*2), cy+60);
+}
+
+function drawCoil(c, x1, y1, x2, y2, amp, coils){
+  c.strokeStyle=css('--info'); c.lineWidth=2;
+  c.beginPath();
+  const dx=(x2-x1)/(coils*2);
+  let xx=x1;
+  c.moveTo(xx,y1);
+  for(let i=0;i<coils*2;i++){ xx+=dx; c.lineTo(xx, y1 + ((i%2)?-amp:amp));}
+  c.lineTo(x2,y2);
+  c.stroke();
+}
+
+function drawBars(){
+  fit(cvB, cB);
+  const W=cvB.clientWidth, H=cvB.clientHeight;
+  cB.fillStyle=css('--surface'); cB.fillRect(0,0,W,H);
+  const omg=omega();
+  const x = A*Math.cos(omg*t);
+  const v = -A*omg*Math.sin(omg*t);
+  const K=0.5*m*v*v, U=0.5*k*x*x, Et=E();
+  const barH=22, gap=10, pad=80;
+  // K bar
+  const maxW=W-pad-20;
+  cB.fillStyle=css('--ke'); cB.fillRect(pad, 12, (K/Et)*maxW, barH);
+  cB.fillStyle=css('--text'); cB.font='12px Vazirmatn'; cB.textAlign='right';
+  cB.fillText('K', pad-6, 28);
+  cB.fillText(fa((K*1000).toFixed(1))+' mJ', W-6, 28);
+  // U bar
+  cB.fillStyle=css('--pe'); cB.fillRect(pad, 12+barH+gap, (U/Et)*maxW, barH);
+  cB.fillStyle=css('--text');
+  cB.fillText('U', pad-6, 28+barH+gap);
+  cB.fillText(fa((U*1000).toFixed(1))+' mJ', W-6, 28+barH+gap);
+  // E bar
+  cB.fillStyle=css('--total'); cB.fillRect(pad, 12+2*(barH+gap), maxW, barH);
+  cB.fillStyle=css('white'); cB.fillText('E (ثابت)', pad+maxW-6, 28+2*(barH+gap));
+  cB.fillStyle=css('--text'); cB.textAlign='right';
+  cB.fillText(fa((Et*1000).toFixed(1))+' mJ', W-6, 28+2*(barH+gap));
+  // store
+  $('rK').textContent = fa((K*1000).toFixed(1))+' mJ';
+  $('rU').textContent = fa((U*1000).toFixed(1))+' mJ';
+  $('rE').textContent = fa((Et*1000).toFixed(1))+' mJ';
+  $('rv').textContent = fa(v.toFixed(2))+' m/s';
+  $('rx').textContent = fa((x*100).toFixed(1))+' cm';
+  hist.push({t, K, U, Et});
+  while(hist.length>HMAX) hist.shift();
+}
+
+function drawGraph(){
+  fit(cvG, cG);
+  const W=cvG.clientWidth, H=cvG.clientHeight;
+  cG.fillStyle=css('--surface'); cG.fillRect(0,0,W,H);
+  // axes labels
+  cG.strokeStyle=css('--border'); cG.lineWidth=1;
+  cG.beginPath(); cG.moveTo(30, H-20); cG.lineTo(W-6, H-20); cG.stroke();
+  cG.beginPath(); cG.moveTo(30, 8); cG.lineTo(30, H-20); cG.stroke();
+  cG.fillStyle=css('--muted'); cG.font='10px Vazirmatn'; cG.textAlign='center';
+  cG.fillText('زمان', W/2, H-4);
+  cG.save(); cG.translate(8, H/2); cG.rotate(-Math.PI/2); cG.fillText('انرژی', 0,0); cG.restore();
+  if(hist.length<2) return;
+  const Emax = E();
+  const t0=hist[0].t, t1=hist[hist.length-1].t;
+  const dt=Math.max(t1-t0, 0.01);
+  function plot(field, color){
+    cG.strokeStyle=color; cG.lineWidth=2;
+    cG.beginPath();
+    hist.forEach((p,i)=>{
+      const x=30 + ((p.t-t0)/dt)*(W-36);
+      const y=(H-20) - (p[field]/Emax)*(H-28);
+      if(i===0) cG.moveTo(x,y); else cG.lineTo(x,y);
+    });
+    cG.stroke();
+  }
+  plot('K', css('--ke'));
+  plot('U', css('--pe'));
+  plot('Et', css('--total'));
+}
+
+function step(now){
+  if(!last) last=now;
+  const dt=Math.min((now-last)/1000, 0.05);
+  last=now;
+  if(running) t+=dt;
+  $('vm').textContent=fa(m.toFixed(1));
+  $('vk').textContent=fa(k.toFixed(0));
+  $('vA').textContent=fa((A*100).toFixed(0));
+  drawSim(); drawBars(); drawGraph();
+  requestAnimationFrame(step);
+}
+
+['m','k','A'].forEach(id=>{
+  $(id).addEventListener('input', e=>{
+    if(id==='m') m=parseFloat(e.target.value);
+    if(id==='k') k=parseFloat(e.target.value);
+    if(id==='A') A=parseFloat(e.target.value)/100;
+    t=0; hist.length=0;
+  });
+});
+$('play').addEventListener('click', ()=>{ running=!running; last=null; $('play').textContent=running?'⏸ توقف':'▶ شروع'; });
+$('reset').addEventListener('click', ()=>{ t=0; hist.length=0; });
+requestAnimationFrame(step);
+</script>
+</body>
+</html>

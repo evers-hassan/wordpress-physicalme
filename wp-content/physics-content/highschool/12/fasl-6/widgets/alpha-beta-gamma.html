@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نفوذ پرتوهای آلفا، بتا و گاما</title>
+<style>
+:root {
+  --bg: #ffffff; --surface: #f4f3ef; --text: #1a1a18; --muted: #5f5e5a;
+  --border: #e0ded7; --info: #185fa5;
+  --alpha: #c92a2a; --beta: #1d9e75; --gamma: #6a4c93;
+  --paper: #f6e7c3; --alum: #b8b8c4; --lead: #4a4a55;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+          --border:#3a3835; --info:#85b7eb;
+          --alpha:#e58b88; --beta:#5dcaa5; --gamma:#a78bcc;
+          --paper:#b5a780; --alum:#777789; --lead:#2a2a32; }
+}
+body { margin: 0; padding: 16px; font-family: Vazirmatn, Tahoma, system-ui, sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.7; }
+h2 { color: var(--info); margin: 0 0 12px; font-size: 1.15em; }
+.app { max-width: 780px; margin: 0 auto; }
+.canvas-wrap { background: var(--surface); border-radius: 12px; padding: 12px;
+  border: 1px solid var(--border); }
+canvas { display: block; width: 100%; height: 400px; }
+.controls { display: flex; gap: 10px; justify-content: center; margin: 14px 0; flex-wrap: wrap; }
+.btn { padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--text); font-family: inherit; cursor: pointer;
+  display: flex; align-items: center; gap: 6px; font-size: 14px; transition: all 0.15s; }
+.btn.active { background: var(--info); color: #fff; border-color: var(--info); }
+.btn .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.info { background: var(--surface); border-radius: 10px; padding: 12px;
+  border: 1px solid var(--border); margin-top: 12px; }
+.info h3 { margin: 0 0 6px; font-size: 15px; color: var(--info); }
+.info p { margin: 4px 0; font-size: 14px; }
+.legend { display: flex; gap: 14px; justify-content: center; margin-top: 8px;
+  font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.legend-item { display: inline-flex; align-items: center; gap: 4px; }
+.legend-color { width: 12px; height: 12px; border-radius: 2px; }
+</style>
+  <script id="mathjax-config">
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+           displayMath: [['$$','$$'], ['\\[','\\]']],
+           processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="app">
+  <h2>🛡️ نفوذ پرتوهای α، β، γ — کاغذ، آلومینیوم، سرب</h2>
+
+  <div class="controls">
+    <button class="btn active" data-rad="alpha"><span class="dot" style="background:var(--alpha)"></span> α (آلفا)</button>
+    <button class="btn" data-rad="beta"><span class="dot" style="background:var(--beta)"></span> β (بتا)</button>
+    <button class="btn" data-rad="gamma"><span class="dot" style="background:var(--gamma)"></span> γ (گاما)</button>
+    <button class="btn" data-rad="all" style="background:var(--info);color:#fff">همه با هم</button>
+  </div>
+
+  <div class="canvas-wrap"><canvas id="cv"></canvas></div>
+
+  <div class="legend">
+    <span class="legend-item"><span class="legend-color" style="background:var(--paper)"></span>کاغذ</span>
+    <span class="legend-item"><span class="legend-color" style="background:var(--alum)"></span>آلومینیوم چند mm</span>
+    <span class="legend-item"><span class="legend-color" style="background:var(--lead)"></span>سرب چند cm</span>
+  </div>
+
+  <div class="info" id="info">
+    <h3>α (ذره‌ی آلفا)</h3>
+    <p><b>ماهیت:</b> هسته‌ی هلیوم-۴ (۲ پروتون + ۲ نوترون). بار: +۲e، جرم: ~۴u</p>
+    <p><b>نفوذ:</b> 💥 <b>کم‌ترین</b> — یه ورقه‌ی کاغذ یا چند سانتی‌متر هوا متوقفش می‌کنه.</p>
+    <p><b>خطر:</b> اگه استنشاق یا بلعیده بشه (مثل رادون)، چون انرژی زیادی در فاصله‌ی کم می‌ده، آسیبِ بزرگی به DNA می‌زنه.</p>
+  </div>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const dpr = window.devicePixelRatio || 1;
+const info = document.getElementById('info');
+
+let mode = 'alpha';
+let particles = [];
+
+function getCSS(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function resize() {
+  const r = cv.getBoundingClientRect();
+  cv.width = r.width * dpr;
+  cv.height = r.height * dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize', resize);
+
+// رادیویی‌های مختلف با نفوذ مختلف
+// مسیرها رو در مختصاتِ نسبی [0..1] حفظ می‌کنیم، در draw به px تبدیل
+function spawn() {
+  const r = cv.getBoundingClientRect();
+  const types = mode === 'all' ? ['alpha', 'beta', 'gamma'] : [mode];
+  for (const t of types) {
+    particles.push({
+      type: t,
+      x: 0.02,  // شروع از سمت چپ (چشمه)
+      y: 0.5 + (Math.random() - 0.5) * 0.4,
+      vx: 0.008 + Math.random() * 0.003,
+      vy: (Math.random() - 0.5) * 0.001,
+      alive: true,
+      trail: []
+    });
+  }
+}
+
+const BARRIERS = [
+  { name: 'کاغذ', x: 0.30, w: 0.025, color: 'paper', stops: ['alpha'] },
+  { name: 'آلومینیوم', x: 0.55, w: 0.040, color: 'alum', stops: ['beta'] },
+  { name: 'سرب', x: 0.80, w: 0.060, color: 'lead', stops: ['gamma'] }
+];
+
+function update() {
+  for (const p of particles) {
+    if (!p.alive) continue;
+    p.trail.push({x: p.x, y: p.y});
+    if (p.trail.length > 40) p.trail.shift();
+    p.x += p.vx;
+    p.y += p.vy;
+    // برخورد با مرز
+    for (const b of BARRIERS) {
+      if (p.x >= b.x && p.x <= b.x + b.w) {
+        if (b.stops.includes(p.type)) {
+          p.alive = false;
+          // یک نقطه‌ی پایان اضافه کن
+          p.stoppedAt = { x: p.x, y: p.y, barrier: b.name };
+        }
+      }
+    }
+    if (p.x > 1.05 || p.y < 0 || p.y > 1) p.alive = false;
+  }
+  // حذف ذراتِ خیلی قدیمی
+  particles = particles.filter(p => p.alive || (p.trail && p.trail.length > 0));
+  for (const p of particles) {
+    if (!p.alive && p.trail) p.trail.shift();
+  }
+}
+
+function draw() {
+  const r = cv.getBoundingClientRect();
+  const W = r.width, H = r.height;
+  ctx.clearRect(0,0,W,H);
+
+  // پس‌زمینه
+  const grad = ctx.createLinearGradient(0,0,W,0);
+  grad.addColorStop(0, getCSS('--bg'));
+  grad.addColorStop(1, getCSS('--surface'));
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,H);
+
+  // چشمه‌ی پرتوزا
+  ctx.fillStyle = '#888';
+  ctx.fillRect(0, H*0.35, W*0.02, H*0.3);
+  ctx.fillStyle = getCSS('--text');
+  ctx.font = '12px Vazirmatn, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('چشمه', W*0.01 + 12, H*0.32);
+
+  // موانع
+  for (const b of BARRIERS) {
+    ctx.fillStyle = getCSS('--' + b.color);
+    ctx.fillRect(b.x*W, H*0.1, b.w*W, H*0.8);
+    ctx.fillStyle = getCSS('--text');
+    ctx.font = '13px Vazirmatn, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(b.name, (b.x + b.w/2)*W, H*0.05);
+  }
+
+  // برچسبِ مقصد
+  ctx.fillStyle = getCSS('--muted');
+  ctx.font = '11px Vazirmatn, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('فضای آزاد', W - 6, H - 6);
+
+  // ذرات
+  for (const p of particles) {
+    const color = getCSS('--' + p.type);
+    // اثر (trail)
+    for (let i=0; i<p.trail.length; i++) {
+      const a = i / p.trail.length;
+      ctx.fillStyle = color + Math.floor(a*255).toString(16).padStart(2,'0');
+      const tp = p.trail[i];
+      ctx.beginPath();
+      ctx.arc(tp.x*W, tp.y*H, 2 + a*1.5, 0, 2*Math.PI);
+      ctx.fill();
+    }
+    if (p.alive) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      const radius = p.type === 'alpha' ? 5 : p.type === 'beta' ? 3 : 2;
+      ctx.arc(p.x*W, p.y*H, radius, 0, 2*Math.PI);
+      ctx.fill();
+      // نمادِ ذره
+      if (p.type === 'alpha') {
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 8px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('α', p.x*W, p.y*H + 3);
+      }
+    } else if (p.stoppedAt) {
+      // علامتِ ضربدر
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(p.stoppedAt.x*W - 4, p.stoppedAt.y*H - 4);
+      ctx.lineTo(p.stoppedAt.x*W + 4, p.stoppedAt.y*H + 4);
+      ctx.moveTo(p.stoppedAt.x*W + 4, p.stoppedAt.y*H - 4);
+      ctx.lineTo(p.stoppedAt.x*W - 4, p.stoppedAt.y*H + 4);
+      ctx.stroke();
+    }
+  }
+}
+
+// اطلاعاتِ آموزشی
+const INFOS = {
+  alpha: {
+    title: 'α (ذره‌ی آلفا)',
+    desc: [
+      '<b>ماهیت:</b> هسته‌ی هلیوم-۴ (۲ پروتون + ۲ نوترون). بار: +2e، جرم: ~4u',
+      '<b>نفوذ:</b> 💥 <b>کم‌ترین</b> — یه ورقه‌ی کاغذ یا چند سانتی‌متر هوا متوقفش می‌کنه.',
+      '<b>خطر:</b> اگه استنشاق یا بلعیده بشه (مثل رادون)، چون انرژی زیادی در فاصله‌ی کم می‌ده، آسیبِ بزرگی به DNA می‌زنه.'
+    ]
+  },
+  beta: {
+    title: 'β (ذره‌ی بتا)',
+    desc: [
+      '<b>ماهیت:</b> الکترون (β⁻) یا پوزیترون (β⁺) از تبدیلِ نوترون به پروتون (یا برعکس).',
+      '<b>نفوذ:</b> 📏 <b>متوسط</b> — کاغذ ردش می‌کنه، ولی چند میلی‌متر آلومینیوم متوقفش می‌کنه.',
+      '<b>کاربرد:</b> در C-14، Sr-90، کنترلِ ضخامتِ فلز و کاغذ در صنعت.'
+    ]
+  },
+  gamma: {
+    title: 'γ (پرتوی گاما)',
+    desc: [
+      '<b>ماهیت:</b> موجِ الکترومغناطیسی با انرژی بسیار بالا (فرکانس > 10¹⁹ Hz). بدون بار، بدون جرم.',
+      '<b>نفوذ:</b> 🚀 <b>بیش‌ترین</b> — کاغذ، آلومینیوم رد می‌شه. برای متوقفش چند سانتی‌متر <b>سرب</b> یا یک متر بتن لازم است.',
+      '<b>کاربرد:</b> پرتو-درمانی (Co-60)، استریلیزه‌سازی، بازرسی صنعتی.'
+    ]
+  },
+  all: {
+    title: 'مقایسهٔ سه پرتو',
+    desc: [
+      '<b>α</b> با کاغذ متوقف می‌شه (بُرد کم، بار +2e).',
+      '<b>β</b> از کاغذ رد می‌شه ولی آلومینیوم نگهش می‌داره.',
+      '<b>γ</b> از کاغذ و آلومینیوم رد می‌شه — فقط <b>سرب</b> یا <b>بتن ضخیم</b> متوقفش می‌کنه.'
+    ]
+  }
+};
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.rad === m);
+  });
+  const info_ = INFOS[m];
+  info.innerHTML = `<h3>${info_.title}</h3>` + info_.desc.map(d => `<p>${d}</p>`).join('');
+}
+
+document.querySelectorAll('.btn').forEach(b => {
+  b.addEventListener('click', () => setMode(b.dataset.rad));
+});
+
+let spawnTimer = 0;
+function loop() {
+  spawnTimer++;
+  if (spawnTimer > 18) {
+    spawn();
+    spawnTimer = 0;
+  }
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+resize();
+loop();
+</script>
+</body>
+</html>

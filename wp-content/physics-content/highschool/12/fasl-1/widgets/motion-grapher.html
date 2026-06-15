@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نمودارگرِ حرکت — درگ کن، v-t رو ببین</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed; --warn:#a87800; --warn-bg:#fef6e0;
+    --primary:#185fa5; --secondary:#c43838;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e0b860; --warn-bg:#4a3a15;
+      --primary:#85b7eb; --secondary:#f06a60;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:900px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .hint{padding:8px 12px; background:var(--info-bg); color:var(--info); border-radius:8px; font-size:12.5px; margin-bottom:10px;}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  @media(max-width:680px){.grid{grid-template-columns:1fr;}}
+  canvas{display:block; width:100%; background:var(--bg); border:1px solid var(--border); border-radius:10px; height:280px; touch-action:none;}
+  .glabel{text-align:center; font-size:12px; color:var(--muted); margin-top:3px;}
+  .controls{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .controls button{background:var(--info-bg); color:var(--info); border:none; padding:6px 12px; border-radius:8px; font-family:inherit; font-size:12.5px; cursor:pointer;}
+  .controls button:hover{filter:brightness(1.06);}
+  .controls button.warn{background:var(--warn-bg); color:var(--warn);}
+</style>
+  <script id="mathjax-config">
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+           displayMath: [['$$','$$'], ['\\[','\\]']],
+           processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>نمودارگرِ حرکت — درگ کن، خروجی رو ببین 🎨</h2>
+  <p class="sub">نمودار $x$-$t$ رو با ماوس (یا انگشت) درگ کن. نقطه‌ها رو بالا و پایین ببر و نگاه کن نمودار $v$-$t$ چی می‌شه.</p>
+  <div class="hint">💡 شیبِ $x$-$t$ در هر نقطه = $v$. اگه $x$-$t$ شیبِ مثبت داره، $v$ مثبته؛ اگه افقیه، $v=0$ هست.</div>
+
+  <div class="grid">
+    <div>
+      <canvas id="xt"></canvas>
+      <div class="glabel">نمودار $x$-$t$ — درگ کن نقطه‌ها رو</div>
+    </div>
+    <div>
+      <canvas id="vt"></canvas>
+      <div class="glabel">نمودار $v$-$t$ — خودکار محاسبه می‌شه</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="preset1">۱) سرعت ثابت مثبت</button>
+    <button id="preset2">۲) شتاب مثبت</button>
+    <button id="preset3">۳) سکون</button>
+    <button id="preset4">۴) رفت و برگشت</button>
+    <button id="preset5">۵) سقوط آزاد</button>
+    <button id="reset" class="warn">⟲ ریست</button>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const xt=$('xt'), vt=$('vt');
+let pts = []; // array of {t, x} - draggable
+const N = 11; // number of nodes
+const Tmax = 10;
+const xRange = {min:-10, max:10};
+
+function init(values){
+  pts = [];
+  for(let i=0; i<N; i++){
+    const t = i*Tmax/(N-1);
+    const x = values ? values[i] : 0;
+    pts.push({t, x});
+  }
+  render();
+}
+
+function presets(name){
+  const v = [];
+  if(name==='p1'){ for(let i=0;i<N;i++) v.push(-5 + i); }
+  else if(name==='p2'){ for(let i=0;i<N;i++){ const t=i*Tmax/(N-1); v.push(-8 + 0.5*t*t); } }
+  else if(name==='p3'){ for(let i=0;i<N;i++) v.push(0); }
+  else if(name==='p4'){ for(let i=0;i<N;i++){ const t=i*Tmax/(N-1); v.push(-7 + 6*Math.sin(t*Math.PI/Tmax*2)); } }
+  else if(name==='p5'){ for(let i=0;i<N;i++){ const t=i*Tmax/(N-1); v.push(Math.max(-9, 8*t - 0.5*2*t*t)); } }
+  init(v);
+}
+
+function px(canvas, t){
+  const w=canvas.clientWidth;
+  return 32 + t/Tmax*(w-40);
+}
+function py(canvas, x, lo, hi){
+  const h=canvas.clientHeight;
+  return h-25 - (x-lo)/(hi-lo)*(h-35);
+}
+function inv_py(canvas, py_pixel, lo, hi){
+  const h=canvas.clientHeight;
+  return lo + (h-25 - py_pixel)/(h-35) * (hi-lo);
+}
+
+function drawAxes(c, label, lo, hi){
+  const ctx=c.getContext('2d');
+  const W=c.clientWidth, H=c.clientHeight;
+  c.width=W*devicePixelRatio; c.height=H*devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--border');
+  ctx.lineWidth=1;
+  // border
+  ctx.beginPath(); ctx.moveTo(32,8); ctx.lineTo(32, H-25); ctx.lineTo(W-8, H-25); ctx.stroke();
+  // zero line if needed
+  if(lo<0 && hi>0){
+    ctx.setLineDash([2,3]);
+    ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--muted');
+    const zy = py(c, 0, lo, hi);
+    ctx.beginPath(); ctx.moveTo(32, zy); ctx.lineTo(W-8, zy); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // ticks
+  ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--muted');
+  ctx.font='10px Vazirmatn';
+  ctx.textAlign='right';
+  ctx.fillText(hi.toFixed(1), 28, 14);
+  ctx.fillText(lo.toFixed(1), 28, H-22);
+  ctx.textAlign='center';
+  for(let i=0;i<=N-1;i+=2){
+    const t = i*Tmax/(N-1);
+    ctx.fillText(t.toFixed(0), px(c,t), H-10);
+  }
+  ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--info');
+  ctx.font='12px Vazirmatn';
+  ctx.textAlign='left';
+  ctx.fillText(label, 36, 18);
+}
+
+function renderXT(){
+  drawAxes(xt, 'x (m)', xRange.min, xRange.max);
+  const ctx=xt.getContext('2d');
+  // curve
+  ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--info');
+  ctx.lineWidth=2.2;
+  ctx.beginPath();
+  for(let i=0;i<pts.length;i++){
+    const X=px(xt,pts[i].t), Y=py(xt,pts[i].x,xRange.min,xRange.max);
+    if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+  }
+  ctx.stroke();
+  // draggable dots
+  ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--secondary');
+  for(const p of pts){
+    ctx.beginPath();
+    ctx.arc(px(xt,p.t), py(xt,p.x,xRange.min,xRange.max), 6, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function renderVT(){
+  // compute v from finite differences
+  const vs = [];
+  for(let i=0; i<pts.length; i++){
+    let dt, dx;
+    if(i===0){ dt = pts[1].t - pts[0].t; dx = pts[1].x - pts[0].x; }
+    else if(i===pts.length-1){ dt = pts[i].t - pts[i-1].t; dx = pts[i].x - pts[i-1].x; }
+    else { dt = pts[i+1].t - pts[i-1].t; dx = pts[i+1].x - pts[i-1].x; }
+    vs.push(dx/dt);
+  }
+  let lo=Math.min(...vs, 0)-1, hi=Math.max(...vs, 0)+1;
+  drawAxes(vt, 'v (m/s)', lo, hi);
+  const ctx=vt.getContext('2d');
+  ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--ok');
+  ctx.lineWidth=2.2;
+  ctx.beginPath();
+  for(let i=0;i<pts.length;i++){
+    const X=px(vt,pts[i].t), Y=py(vt,vs[i],lo,hi);
+    if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+  }
+  ctx.stroke();
+  ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--ok');
+  for(let i=0;i<pts.length;i++){
+    ctx.beginPath();
+    ctx.arc(px(vt,pts[i].t), py(vt,vs[i],lo,hi), 4, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function render(){ renderXT(); renderVT(); }
+
+let dragIdx=-1;
+function pickIndex(evt){
+  const rect=xt.getBoundingClientRect();
+  const e = evt.touches ? evt.touches[0] : evt;
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  for(let i=0;i<pts.length;i++){
+    const X=px(xt,pts[i].t), Y=py(xt,pts[i].x,xRange.min,xRange.max);
+    if(Math.hypot(mx-X, my-Y) < 12) return i;
+  }
+  return -1;
+}
+
+xt.addEventListener('mousedown', e=>{ dragIdx=pickIndex(e); });
+xt.addEventListener('touchstart', e=>{ dragIdx=pickIndex(e); e.preventDefault(); }, {passive:false});
+xt.addEventListener('mousemove', e=>{
+  if(dragIdx<0) return;
+  const rect=xt.getBoundingClientRect();
+  const my=e.clientY-rect.top;
+  pts[dragIdx].x = Math.max(xRange.min, Math.min(xRange.max, inv_py(xt, my, xRange.min, xRange.max)));
+  render();
+});
+xt.addEventListener('touchmove', e=>{
+  if(dragIdx<0) return;
+  const rect=xt.getBoundingClientRect();
+  const my=e.touches[0].clientY-rect.top;
+  pts[dragIdx].x = Math.max(xRange.min, Math.min(xRange.max, inv_py(xt, my, xRange.min, xRange.max)));
+  render();
+  e.preventDefault();
+}, {passive:false});
+document.addEventListener('mouseup', ()=>{ dragIdx=-1; });
+document.addEventListener('touchend', ()=>{ dragIdx=-1; });
+
+$('preset1').addEventListener('click', ()=>presets('p1'));
+$('preset2').addEventListener('click', ()=>presets('p2'));
+$('preset3').addEventListener('click', ()=>presets('p3'));
+$('preset4').addEventListener('click', ()=>presets('p4'));
+$('preset5').addEventListener('click', ()=>presets('p5'));
+$('reset').addEventListener('click', ()=>init());
+
+window.addEventListener('resize', render);
+init();
+</script>
+</body>
+</html>

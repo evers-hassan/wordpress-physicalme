@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>حل مسائل — فصل ۱: فیزیک و اندازه‌گیری</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --hint:#9b9a93; --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --hint-c:#a87800; --hint-bg:#fef6e0; --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --check:#7a4dbd; --check-bg:#efe6f9; --bad:#c43838; --bad-bg:#fce5e5;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --hint:#76746d; --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --hint-c:#e0b860; --hint-bg:#4a3a15; --ok:#5dcaa5; --ok-bg:#1a4a35;
+      --check:#b08be8; --check-bg:#3a2858; --bad:#f0807d; --bad-bg:#4a1f1f; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; font-family:Vazirmatn,Tahoma,system-ui,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.8;}
+  .problem{border:1px solid var(--border); border-radius:14px; padding:18px 20px;
+    margin-bottom:18px; background:var(--bg);}
+  .pnum{display:inline-block; background:var(--info-bg); color:var(--info);
+    font-weight:700; padding:2px 10px; border-radius:8px; font-size:13px; margin-bottom:8px;}
+  .pq{font-size:15.5px; margin:6px 0 14px; color:var(--text); line-height:1.85;}
+  .ptype{font-size:12px; color:var(--muted); margin-bottom:10px;}
+  .relate{font-size:13px; color:var(--muted); background:var(--surface);
+    padding:8px 12px; border-radius:8px; margin-bottom:12px; border-right:3px solid var(--info);}
+  .controls{margin:10px 0 4px; display:flex; flex-wrap:wrap; gap:8px;}
+  .btn{font-family:inherit; font-size:14px; padding:8px 16px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text);
+    cursor:pointer; transition:.15s;}
+  .btn:hover{background:var(--surface);}
+  .btn-hint{color:var(--hint-c); border-color:var(--hint-c);}
+  .btn-next{color:var(--info); border-color:var(--info);}
+  .btn-check{color:var(--check); border-color:var(--check);}
+  .btn:disabled{opacity:.4; cursor:not-allowed;}
+  .step{margin-top:12px; padding:12px 14px; border-radius:10px; background:var(--info-bg);
+    border-right:3px solid var(--info); animation:fadeIn .25s ease;}
+  .step b{color:var(--info);}
+  .hint-box{margin-top:12px; padding:12px 14px; border-radius:10px;
+    background:var(--hint-bg); border-right:3px solid var(--hint-c);
+    animation:fadeIn .25s ease;}
+  .hint-box b{color:var(--hint-c);}
+  .final{margin-top:12px; padding:14px; border-radius:10px; background:var(--ok-bg);
+    border-right:3px solid var(--ok); animation:fadeIn .25s ease;}
+  .final b{color:var(--ok);}
+  .check-box{margin-top:12px; padding:14px; border-radius:10px; background:var(--check-bg);
+    border-right:3px solid var(--check); animation:fadeIn .25s ease;}
+  .check-box b{color:var(--check);}
+  .check-row{display:flex; align-items:center; gap:8px; margin:6px 0; flex-wrap:wrap;}
+  .check-row label{min-width:24px; font-weight:600; color:var(--text);}
+  .check-row input{flex:1; min-width:120px; padding:7px 10px; border-radius:8px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text);
+    font-family:inherit; font-size:14px;}
+  .check-row .unit{font-size:13px; color:var(--muted); white-space:nowrap;}
+  .check-result{margin-top:10px; padding:10px 12px; border-radius:8px; font-size:14px;}
+  .check-result.ok{background:var(--ok-bg); color:var(--ok); border-right:3px solid var(--ok);}
+  .check-result.bad{background:var(--bad-bg); color:var(--bad); border-right:3px solid var(--bad);}
+  .check-result b{font-weight:700;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:none;}}
+  .label{font-size:11px; font-weight:700; letter-spacing:.5px; margin-bottom:4px;
+    display:inline-block;}
+  h1.page-title{font-size:22px; margin:8px 0 18px; color:var(--text);}
+  .intro{background:var(--surface); padding:14px 16px; border-radius:12px; margin-bottom:18px;
+    font-size:14px; color:var(--muted); line-height:1.8;}
+  .intro b{color:var(--text);}
+
+  /* ---- master-detail layout ---- */
+  .layout{display:grid; grid-template-columns:200px 1fr; gap:22px; align-items:start;}
+  @media (max-width:620px){ .layout{grid-template-columns:1fr;} }
+  .sidebar{background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:14px; position:sticky; top:16px; max-height:calc(100vh - 32px);
+    overflow-y:auto;}
+  .sidebar h2{font-size:13px; font-weight:700; color:var(--muted); letter-spacing:1px;
+    margin:0 0 10px; text-transform:uppercase; padding:0 4px;}
+  .sidebar ol{list-style:none; padding:0; margin:0; counter-reset:msc;}
+  .sidebar li{margin:2px 0;}
+  .sidebar .nav-btn{display:flex; align-items:center; gap:10px; width:100%;
+    text-align:right; font-family:inherit; font-size:14px; color:var(--text);
+    padding:9px 12px; background:transparent; border:none; border-radius:8px;
+    cursor:pointer; line-height:1.5; transition:.12s;}
+  .sidebar .nav-btn:hover{background:var(--bg);}
+  .sidebar .nav-btn.active{background:var(--info-bg); color:var(--info); font-weight:700;}
+  .sidebar .nav-btn .nb-num{flex-shrink:0; min-width:26px; height:26px;
+    border-radius:50%; background:var(--bg); color:var(--muted); display:flex;
+    align-items:center; justify-content:center; font-size:12px; font-weight:700;
+    border:1px solid var(--border);}
+  .sidebar .nav-btn.active .nb-num{background:var(--info); color:#fff; border-color:var(--info);}
+  .sidebar .nav-btn .nb-title{flex:1; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap;}
+  @media (max-width:620px){
+    .sidebar{position:relative; top:0; max-height:none;}
+    .sidebar ol{display:grid; grid-template-columns:repeat(auto-fill, minmax(56px,1fr)); gap:6px;}
+    .sidebar .nav-btn{justify-content:center; padding:8px 6px; font-size:13px;}
+    .sidebar .nav-btn .nb-title{display:none;}
+  }
+  .nav-arrows{display:flex; gap:10px; margin-top:18px; justify-content:space-between;}
+  .nav-arrows .btn{flex:1;}
+  .nav-arrows .btn:disabled{visibility:hidden;}
+</style>
+  <script id="mathjax-config">
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\(','\)']],
+           displayMath: [['$$','$$'], ['\[','\]']],
+           processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+  <h1 class="page-title">حل مسائل فصل ۱ — فیزیک و اندازه‌گیری 📐</h1>
+  <div class="intro">
+    اینجا هر مسئله رو می‌تونی <b>قدم‌به‌قدم</b> پیش بری. اگه گیر کردی <b>💡 راهنمایی</b> بگیر؛ اگه خودت حل کردی و فقط می‌خوای جوابتو چک کنی، رو <b>🔍 بررسی جواب من</b> کلیک کن. تلرانسِ بررسی حدودِ ۵٪ ـه تا اعدادِ رُند هم قبول بشن.
+  </div>
+  <div class="layout">
+    <aside class="sidebar">
+      <h2>فهرست مسائل</h2>
+      <ol id="nav-list"></ol>
+    </aside>
+    <main>
+      <div id="problems"></div>
+      <div class="nav-arrows">
+        <button class="btn" id="prev-btn">← مسئله‌ی قبلی</button>
+        <button class="btn btn-next" id="next-btn">مسئله‌ی بعدی →</button>
+      </div>
+    </main>
+  </div>
+
+<script>
+// ============================================================
+// مسائل فصل ۱
+// ساختار هر مسئله:
+//   n         شماره (نمایشی)
+//   type      نوع
+//   q         صورت سؤال (HTML)
+//   relate    ارتباط با مسائل قبلی (اختیاری)
+//   hint      راهنمایی (اختیاری)
+//   steps     آرایه‌ی قدم‌های حل (HTML)
+//   final     جواب نهایی (HTML)
+//   check     [{label, value, unit, tol?}]  ← اگر بود، دکمه‌ی بررسی جواب فعال می‌شود
+// ============================================================
+var problems = [
+  // ---- مسئله ۱ ----
+  {n:"۱", type:"مفهومی — نظری",
+   q:"در چه صورت یک مدل یا نظریه‌ی فیزیکی بازنگری می‌شود؟",
+   hint:"فکر کن: مدل برای چی ساخته شد؟ کِی می‌فهمیم به‌روزرسانی لازم داره؟ یعنی یه چیزی پیش بیاد که مدل دیگه نتونه توضیحش بده.",
+   steps:[
+     "<b>یادآوری از درس مدل‌سازی:</b> هر مدل یه نسخه‌ی ساده‌شده از واقعیته که با حذف جزئیاتِ کم‌اهمیت ساخته می‌شه تا بتونیم پدیده‌ها رو بفهمیم و پیش‌بینی کنیم.",
+     "<b>چه زمانی به مشکل می‌خوره؟</b> وقتی آزمایش‌های جدید یا مشاهده‌های دقیق‌تر، نتایجی نشون بدن که با پیش‌بینی‌های مدل جور درنمیاد — یعنی مدل از پسِ توضیحِ بعضی پدیده‌ها برنمیاد.",
+     "<b>چه زمانی بازنگری می‌شه؟</b> همون‌جا. دانشمندان یا فرض‌های مدلو تغییر می‌دن، یا یه چیزِ جدید بهش اضافه می‌کنن، یا کلاً یه مدلِ تازه می‌سازن که هم پدیده‌های قدیمی و هم نتایجِ جدید رو توضیح بده."
+   ],
+   final:"هر وقت داده‌ها یا آزمایش‌های جدید با پیش‌بینی‌های مدل جور درنیاد، اون مدل باید بازنگری شه — این یعنی علم زنده‌ست و دائم خودشو اصلاح می‌کنه. <i>(کاملش تو مقاله‌ی «۱-۱ مدل‌سازی در فیزیک» اومده.)</i>"
+  },
+
+  // ---- مسئله ۲ ----
+  {n:"۲", type:"مفهومی — نظری",
+   q:"فرایند مدل‌سازی در فیزیک را با ذکر یک مثال توضیح دهید.",
+   relate:"این مسئله‌ی ادامه‌ی مسئله‌ی ۱ ـه. اگه اون بازنگری‌ها برات روشن نیست، اول مسئله‌ی ۱ رو ببین.",
+   hint:"خودِ کلمه‌ی «مدل‌سازی» راهنمایی‌ت می‌کنه: یعنی ساختنِ یه «مدل». دو تا سؤال از خودت بپرس: ۱) چی رو حذف می‌کنیم؟ ۲) چی رو نگه می‌داریم؟",
+   steps:[
+     "<b>قدم اول — ساده‌سازی:</b> فیزیک‌دان یه پدیده‌ی پیچیده رو می‌گیره و عواملی که اثرشون ناچیزه رو حذف می‌کنه. مثلاً برای پرتاب توپ، مقاومت هوا و چرخش توپ رو فعلاً نادیده می‌گیریم.",
+     "<b>قدم دوم — فرض‌های ساده:</b> چند تا فرضِ ساده‌کننده می‌ذاره. مثلاً «توپ یه نقطه‌ست»، «گرانش ثابته»، «زمین مسطحه برای فاصله‌های کم».",
+     "<b>قدم سوم — استخراج قانون:</b> با این فرض‌ها، معادله‌ها قابل حل می‌شن و یه پیش‌بینی به‌دست میاد (مثلاً مسیر سهمی‌گون).",
+     "<b>قدم چهارم — مقایسه با تجربه:</b> پیش‌بینی رو با آزمایش چک می‌کنیم. اگه نزدیک به واقعیت بود، مدل خوبه. اگه فرق فاحش داشت، فرض‌ها رو بازنگری می‌کنیم (مثلاً اضافه کردنِ مقاومتِ هوا).",
+     "<b>یه مثالِ آشنا:</b> مدلِ «گازِ آرمانی» که تو فصل‌های بعد می‌بینی — فرض می‌کنه ذره‌های گاز حجم ندارن و فقط موقع برخورد همدیگه رو می‌بینن. واقعی نیست، ولی برای خیلی از کاربردها فوق‌العاده دقیقه!"
+   ],
+   final:"مدل‌سازی یعنی: ساده‌سازیِ پدیده با فرض‌های هوشمندانه → استخراجِ قانون → آزمایش → اگه لازم بود، اصلاح. مثال‌های زیادی داریم: مدلِ پرتابه بدون مقاومتِ هوا، مدلِ گازِ آرمانی، مدلِ زمین به‌صورتِ کره‌ی یکنواخت. <i>(کاملش تو مقاله‌ی «۱-۱ مدل‌سازی در فیزیک».)</i>"
+  },
+
+  // ---- مسئله ۳ ----
+  {n:"۳", type:"عملی — انجامش بده",
+   q:"سعی کن با نگاه کردن، طولِ چند جسم رو دور و برت (مثلِ کتاب، گوشی، عرضِ میز) برحسبِ سانتی‌متر یا متر برآورد کنی. بعد با خط‌کش یا متر دقیق اندازه بگیر و ببین برآوردِ چشمیت چقدر درست بوده.",
+   hint:"این یه تمرینِ عملیه — هدفش اینه که حسِ اندازه‌گیریِ چشمیت دقیق‌تر بشه. بریم ببینیم چه چیزی انتظار داشته باشی.",
+   steps:[
+     "<b>کتاب درسی (مثلاً همین فیزیک):</b> معمولاً حدودِ ۲۴ سانتی‌متر طول داره. اگه برآوردت بین ۲۰ تا ۲۸ سانتی‌متر بود، عالیه!",
+     "<b>گوشی موبایل:</b> اکثرِ گوشی‌ها بین ۱۵ تا ۱۷ سانتی‌مترن. اگه برآوردت بین ۱۳ تا ۱۹ بود، خوبه.",
+     "<b>عرضِ میزِ مطالعه:</b> معمولاً بین ۶۰ تا ۱۰۰ سانتی‌متر (حدودِ یک متر).",
+     "<b>نتیجه‌گیری:</b> برآوردِ چشمیِ آدمِ معمولی، حدودِ ۱۰ تا ۲۰ درصد خطا داره. هرچی بیشتر تمرین کنی، دقیق‌تر می‌شی — این مهارتی‌ست که فیزیک‌دانا بهش می‌گن <b>برآوردِ مرتبه‌ی بزرگی</b>."
+   ],
+   final:"هیچ جوابِ «درست» یا «غلطی» نداره — هدف اینه که خودتو محک بزنی و حسِ اندازه‌گیری‌تو تقویت کنی. اگه خطات کمتر از ۲۰٪ بود، چشمت خوب میزانه! 👁️"
+  },
+
+  // ---- مسئله ۴ ----
+  {n:"۴", type:"عملی — مفهومی",
+   q:"چگونه می‌تونی جرمِ یک سوزنِ ته‌گرد رو با یک ترازوی آشپزخانه اندازه‌گیری کنی؟",
+   hint:"یه سوزن خیلی سبکه (حدودِ یک‌دهم گرم) ولی ترازوی آشپزخونه دقتش معمولاً یک گرمه. پس مستقیماً وزن کردنِ یه سوزن نشون نمی‌ده! چاره چیه؟",
+   steps:[
+     "<b>مشکل:</b> ترازوی آشپزخونه دقتش حدودِ ۱ گرمه، ولی یه سوزنِ ته‌گرد حدودِ ۰٫۱ گرم ـه. پس اگه یه سوزنو بذاری روش، صفر نشون می‌ده یا تشخیص نمی‌ده.",
+     "<b>راه‌حلِ هوشمندانه:</b> به‌جای یه سوزن، یه <b>تعدادِ زیادی</b> سوزن (مثلاً ۱۰۰ تا) رو با هم وزن کن.",
+     "<b>چرا کار می‌کنه؟</b> اگه ۱۰۰ سوزن مثلاً ۱۰ گرم وزن داشتن، یعنی هر سوزن میانگین ۱۰ ÷ ۱۰۰ = ۰٫۱ گرم وزن داره — و این عدد رو ترازو می‌تونه تشخیص بده!",
+     "<b>این روش یه اسم داره:</b> «اندازه‌گیریِ غیرمستقیم» یا «روشِ میانگین». استفاده‌ش وقتیه که چیزی رو خیلی کوچک‌تر از دقتِ ابزارت داری."
+   ],
+   final:"تعدادِ زیادی سوزن (مثلاً ۱۰۰ تا) رو با هم بذار رو ترازو، عددو بخون، بر ۱۰۰ تقسیم کن. این روش دقتو ۱۰۰ برابر بهتر می‌کنه. <i>(این موضوع تو مقاله‌ی «۱-۴ دقت در اندازه‌گیری» هم اشاره شده.)</i>"
+  },
+
+  // ---- مسئله ۵ ----
+  {n:"۵", type:"مفهومی — کاربردی",
+   q:"گالیله در برخی از کارهایش، از ضربانِ نبضِ خودش به‌عنوانِ زمان‌سنج استفاده می‌کرد. تو هم چند تا پدیده‌ی تکرارشونده تو طبیعت رو نام ببر که می‌تونن به‌عنوانِ ابزارِ اندازه‌گیریِ زمان به‌کار برن.",
+   hint:"هر چیزی که با نظمِ خوب تکرار شه، می‌تونه یه «ساعت» باشه. به طبیعت نگاه کن: چی هست که با فاصله‌های منظم تکرار می‌شه؟",
+   steps:[
+     "<b>ضربانِ قلب:</b> همون که گالیله استفاده می‌کرد. حدودِ ۶۰-۸۰ بار در دقیقه. ساعتِ زنده‌ی توی سینه‌ت!",
+     "<b>نوسانِ یه آونگ:</b> آونگ با طولِ ثابت همیشه با دوره‌ی یکسانی نوسان می‌کنه. این کشفِ خودِ گالیله بود و بعدها به ساعتِ پاندولی منجر شد.",
+     "<b>طلوع و غروبِ خورشید:</b> هر ۲۴ ساعت یه بار. اصلاً تعریفِ «روز» از همینجا اومده.",
+     "<b>فاز‌های ماه:</b> هر ۲۹ روز و خرده‌ای یه بار. واژه‌ی «ماه» (به‌معنی واحدِ زمان) هم از همینجاست.",
+     "<b>چرخشِ زمین به دورِ خورشید:</b> هر ۳۶۵ روز و خرده‌ای — تعریفِ «سال».",
+     "<b>قطره‌چکانِ آب یا شن:</b> ساعتِ آبی و ساعتِ شنیِ قدیمی‌ها — قطره‌ای که با نظم می‌چکه.",
+     "<b>ارتعاشِ بلورِ کوارتز:</b> ساعت‌های مچی امروزی از این استفاده می‌کنن — بلور کوارتز با فرکانسِ خیلی ثابتی می‌لرزه.",
+     "<b>تابشِ اتم‌ها:</b> ساعت‌های اتمی (که الان مرجعِ تعریفِ ثانیه‌ست) از فرکانسِ تابشِ اتم‌های سزیم استفاده می‌کنن."
+   ],
+   final:"هر پدیده‌ی منظمِ تکراری می‌تونه ساعت باشه: ضربانِ قلب، نوسانِ آونگ، چرخه‌ی روز و شب، ماه و سال، چکیدنِ آب، ارتعاشِ کوارتز، و تابشِ اتم‌ها. هرچی این تکرار منظم‌تر و دقیق‌تر باشه، ساعت دقیق‌تره — به همین خاطر امروز از ساعتِ اتمی استفاده می‌کنیم."
+  },
+
+  // ---- مسئله ۶ ----
+  {n:"۶", type:"محاسباتی — تبدیل یکا",
+   q:"<b>الف)</b> هر <b>میکروقرن</b> تقریباً چند دقیقه است؟ <br><b>ب)</b> یک <b>میلیارد ثانیه‌ی</b> دیگر، تقریباً چند سال پیرتر می‌شوی؟",
+   hint:"اینا تبدیلِ یکا هستن. ابزار مهم: «میکرو» یعنی یک‌میلیونیم (۱۰⁻⁶) و یه قرن یعنی ۱۰۰ سال. روشِ ضرب در یک رو یادته؟ تو مقاله‌ی «۱-۳ دستگاه SI» توضیح دادیم.",
+   steps:[
+     "<b>قسمت الف — اول قرن رو تبدیل کن به دقیقه:</b><br>۱ قرن = ۱۰۰ سال<br>۱ سال ≈ ۳۶۵ روز × ۲۴ ساعت × ۶۰ دقیقه = ۵۲۵۶۰۰ دقیقه<br>پس ۱ قرن ≈ ۱۰۰ × ۵۲۵۶۰۰ = ۵٫۲۵۶ × ۱۰⁷ دقیقه",
+     "<b>حالا میکروقرن:</b> میکرو = ۱۰⁻⁶<br>۱ میکروقرن = ۱۰⁻⁶ × ۵٫۲۵۶ × ۱۰⁷ ≈ <b>۵۲٫۶ دقیقه</b><br>یعنی تقریباً <b>یک ساعت!</b> 🤯",
+     "<b>قسمت ب — یک میلیارد ثانیه به سال:</b><br>۱ سال = ۳۶۵ × ۲۴ × ۳۶۰۰ ثانیه ≈ ۳٫۱۵۶ × ۱۰⁷ ثانیه",
+     "<b>پس:</b> ۱۰⁹ ÷ (۳٫۱۵۶ × ۱۰⁷) ≈ <b>۳۱٫۷ سال</b><br>یعنی اگه الان ۱۶ سالته، بعد از یک میلیارد ثانیه حدودِ ۴۸ سالته!"
+   ],
+   final:"<b>الف)</b> ۱ میکروقرن ≈ ۵۲٫۶ دقیقه (حدودِ یک ساعت!) <br><b>ب)</b> ۱ میلیارد ثانیه ≈ ۳۱٫۷ سال.",
+   check:[
+     {label:"الف", value:52.6, unit:"دقیقه"},
+     {label:"ب", value:31.7, unit:"سال"}
+   ]
+  },
+
+  // ---- مسئله ۷ ----
+  {n:"۷", type:"محاسباتی — تبدیل یکا و مساحت",
+   q:"هکتار یکی از یکاهای متداولِ مساحته. هر هکتار = ۱۰۰۰۰ مترمربع. <br><b>الف)</b> اگه زمینو یه کره‌ی یکنواخت با شعاع ۶۳۷۰ کیلومتر بگیری، مساحتش چند هکتاره؟ <br><b>ب)</b> مساحتِ کلِ ایران حدودِ ۱٫۶۴۸ × ۱۰⁶ کیلومترمربعه. چند هکتاره و چند درصدِ مساحتِ زمینه؟",
+   relate:"این مسئله یه قدم جلوتر از مسئله‌ی ۶ ـه — اونجا تبدیلِ زمان بود، اینجا تبدیلِ مساحت و کار با اعدادِ بزرگ.",
+   hint:"مساحتِ سطحِ یه کره: A = 4πr². اول مساحت رو برحسبِ مترمربع حساب کن، بعد به هکتار تبدیل کن (تقسیم بر ۱۰⁴).",
+   steps:[
+     "<b>قسمت الف — فرمولِ سطحِ کره:</b><br>A = 4πr²",
+     "<b>تبدیلِ شعاع به متر:</b> r = ۶۳۷۰ کیلومتر = ۶٫۳۷ × ۱۰⁶ متر",
+     "<b>محاسبه:</b><br>A = ۴ × ۳٫۱۴ × (۶٫۳۷ × ۱۰⁶)²<br>A ≈ ۴ × ۳٫۱۴ × ۴٫۰۶ × ۱۰¹³<br>A ≈ <b>۵٫۱ × ۱۰¹⁴</b> مترمربع",
+     "<b>تبدیل به هکتار:</b> هر هکتار = ۱۰⁴ مترمربع<br>A = ۵٫۱ × ۱۰¹⁴ ÷ ۱۰⁴ = <b>۵٫۱ × ۱۰¹⁰ هکتار</b> (پنجاه‌ویک میلیارد هکتار!)",
+     "<b>قسمت ب — مساحتِ ایران به هکتار:</b><br>۱٫۶۴۸ × ۱۰⁶ کیلومترمربع = ۱٫۶۴۸ × ۱۰¹² مترمربع<br>÷ ۱۰⁴ = <b>۱٫۶۵ × ۱۰⁸ هکتار</b>",
+     "<b>درصد نسبت به زمین:</b><br>(۱٫۶۵ × ۱۰⁸) ÷ (۵٫۱ × ۱۰¹⁰) × ۱۰۰ ≈ <b>۰٫۳۲٪</b><br>یعنی ایران حدودِ یک‌سومِ یک درصد از کلِ سطحِ زمینه."
+   ],
+   final:"<b>الف)</b> مساحتِ زمین ≈ ۵٫۱ × ۱۰¹⁰ هکتار <br><b>ب)</b> مساحتِ ایران ≈ ۱٫۶۵ × ۱۰⁸ هکتار، یعنی حدودِ ۰٫۳۲٪ از کلِ سطحِ زمین.",
+   check:[
+     {label:"الف", value:5.1e10, unit:"هکتار"},
+     {label:"ب-مساحت", value:1.65e8, unit:"هکتار"},
+     {label:"ب-درصد", value:0.32, unit:"٪"}
+   ]
+  },
+
+  // ---- مسئله ۸ ----
+  {n:"۸", type:"محاسباتی — تبدیل یکا",
+   q:"<b>دریای نور</b> از بزرگ‌ترین الماس‌های موجود در ایرانه با جرمِ ۱۸۲ قیراط (رنگش صورتیِ کمیابه و تو خزانه‌ی جواهراتِ ملی نگه‌داری می‌شه). <b>کوه نور</b> هم از الماس‌های مشهورِ جهانه با جرمِ ۱۰۸ قیراط (الان تو برجِ لندنه). با توجه به اینکه هر قیراط = ۲۰۰ میلی‌گرم، جرمِ این دو الماس برحسبِ گرم چقدره؟",
+   hint:"این یه تبدیلِ یکای ساده‌ست. اول قیراط رو به میلی‌گرم تبدیل کن، بعد به گرم.",
+   steps:[
+     "<b>دریای نور:</b><br>۱۸۲ قیراط × ۲۰۰ میلی‌گرم/قیراط = ۳۶۴۰۰ میلی‌گرم",
+     "<b>تبدیلِ میلی‌گرم به گرم:</b> هر گرم = ۱۰۰۰ میلی‌گرم<br>۳۶۴۰۰ ÷ ۱۰۰۰ = <b>۳۶٫۴ گرم</b>",
+     "<b>کوه نور:</b><br>۱۰۸ × ۲۰۰ = ۲۱۶۰۰ میلی‌گرم = <b>۲۱٫۶ گرم</b>",
+     "<b>یه مقایسه‌ی جالب:</b> یه قاشقِ چای‌خوری آب حدودِ ۵ گرمه. پس دریای نور حدودِ هفت قاشق چای‌خوری وزن داره — ولی ارزشش میلیون‌ها برابرِ یه قاشق آبه! 💎"
+   ],
+   final:"<b>دریای نور:</b> ۳۶٫۴ گرم <br><b>کوه نور:</b> ۲۱٫۶ گرم",
+   check:[
+     {label:"دریای نور", value:36.4, unit:"گرم"},
+     {label:"کوه نور", value:21.6, unit:"گرم"}
+   ]
+  },
+
+  // ---- مسئله ۹ ----
+  {n:"۹", type:"مفهومی — نقشه مفهومی",
+   q:"نقشه‌ی مفهومیِ کمیت‌های فیزیکی رو کامل کنی (تو کتاب یه نقشه‌ی نیمه‌تمامه که باید جاهای خالی‌شو پر کنی).",
+   relate:"این بخشِ تصویریه و بهتره خودِ کتاب رو هم ببینی. ولی اینجا یه چارچوبِ ذهنی بهت می‌دم تا بتونی پُرش کنی.",
+   hint:"از بالا به پایین فکر کن: «کمیت‌های فیزیکی» تقسیم می‌شن به چی؟ و هر کدوم چه شاخه‌هایی دارن؟",
+   steps:[
+     "<b>سطحِ اول — دسته‌بندیِ اصلی:</b> کمیت‌های فیزیکی به دو دسته تقسیم می‌شن:<br>۱) <b>نرده‌ای</b> (فقط عدد و یکا)<br>۲) <b>برداری</b> (عدد، یکا، و جهت)",
+     "<b>سطحِ دوم — نمونه‌ها:</b><br>نرده‌ای: جرم، طول، زمان، دما، انرژی، تندی<br>برداری: نیرو، سرعت، شتاب، جابه‌جایی",
+     "<b>سطحِ سوم — یکا:</b> هر کمیت برحسبِ یکای SI بیان می‌شه. جرم → کیلوگرم، طول → متر، زمان → ثانیه و... .",
+     "<b>سطحِ چهارم — یکای اصلی و فرعی:</b><br>یکای اصلی: یکی از هفت یکای پایه (متر، کیلوگرم، ثانیه، کلوین، مول، آمپر، کندلا)<br>یکای فرعی: از ترکیبِ یکاهای اصلی ساخته می‌شه (m/s برای سرعت، N برای نیرو)."
+   ],
+   final:"ساختارِ کلی: کمیت‌های فیزیکی → نرده‌ای / برداری → هر کدوم نمونه‌هایی دارن → هر کمیت یکای SI داره → یکاها یا اصلی‌اند یا فرعی. <i>(کاملش تو مقاله‌های «۱-۲ کمیت‌های نرده‌ای و برداری» و «۱-۳ دستگاه SI» اومده.)</i>"
+  },
+
+  // ---- مسئله ۱۰ ----
+  {n:"۱۰", type:"محاسباتی — تبدیل یکا و آهنگ",
+   q:"سریع‌ترین رشدِ گیاه متعلق به گیاهی به اسمِ <b>هِسپِرویوکا (Hesperoyucca)</b> ست که در مدتِ ۱۴ روز ۳٫۶ متر رشد می‌کنه. آهنگِ رشدِ این گیاه برحسبِ <b>میکرومتر بر ثانیه</b> چقدره؟",
+   relate:"شبیه مسئله‌ی ۶ و ۸ ـه — یه تبدیلِ یکا. ولی این بار از یکای بزرگ به یکای خیلی کوچیک می‌ریم.",
+   hint:"آهنگِ رشد = طول ÷ زمان. اول هر دو رو به یکای پایه ببر (متر و ثانیه)، بعد آخرش متر رو به میکرومتر تبدیل کن.",
+   steps:[
+     "<b>تبدیل طول به میکرومتر:</b><br>۳٫۶ متر = ۳٫۶ × ۱۰⁶ میکرومتر",
+     "<b>تبدیل زمان به ثانیه:</b><br>۱۴ روز × ۲۴ ساعت × ۳۶۰۰ ثانیه = ۱۴ × ۸۶۴۰۰ ≈ ۱٫۲۱ × ۱۰⁶ ثانیه",
+     "<b>محاسبه‌ی آهنگ:</b><br>(۳٫۶ × ۱۰⁶) ÷ (۱٫۲۱ × ۱۰⁶) ≈ <b>۳ میکرومتر بر ثانیه</b>",
+     "<b>قشنگیِ این عدد:</b> یعنی این گیاه در هر ثانیه فقط ۳ میکرومتر رشد می‌کنه — ولی این رشدِ مداوم در طولِ روزها، بهش می‌رسه به متعجب‌کننده‌ترین آهنگِ رشدِ گیاهی! درسش؟ ثبات از سرعت مهم‌تره 🌱"
+   ],
+   final:"آهنگِ رشدِ گیاه ≈ <b>۳ میکرومتر بر ثانیه</b>",
+   check:[{label:"آهنگ", value:3, unit:"μm/s"}]
+  },
+
+  // ---- مسئله ۱۱ ----
+  {n:"۱۱", type:"محاسباتی — تبدیل یکا",
+   q:"دستگاهِ بریتانیاییِ یکاها (در آمریکا و انگلیس هنوز استفاده می‌شه): یکای اصلی طول <b>پا (فوت)</b> ـه و یکای کوچک‌ترش <b>اینچ</b>، طوری که هر ۱ فوت = ۱۲ اینچ. اگه ۱ فوت = ۰٫۳۰۴۸ متر باشه، هر اینچ برحسبِ متر چقدره؟",
+   relate:"شبیه مسئله‌ی ۸ ـه — تبدیلِ ساده‌ی یکا، فقط این‌بار یکای انگلیسی.",
+   hint:"اگه ۱۲ تا اینچ روی هم می‌شه یک فوت، پس یک اینچ یعنی فوت تقسیم بر ۱۲.",
+   steps:[
+     "<b>رابطه:</b> ۱ فوت = ۱۲ اینچ ⟹ ۱ اینچ = ۱ فوت ÷ ۱۲",
+     "<b>به متر تبدیل کن:</b><br>۱ اینچ = ۰٫۳۰۴۸ ÷ ۱۲ ≈ <b>۰٫۰۲۵۴ متر</b><br>یا معادلاً ۲٫۵۴ سانتی‌متر."
+   ],
+   final:"۱ اینچ ≈ <b>۰٫۰۲۵۴ متر</b> = ۲٫۵۴ سانتی‌متر. این عددو حفظ داشته باش — تو خیلی از مسائلِ بعدی به دردت می‌خوره.",
+   check:[{label:"اینچ", value:0.0254, unit:"متر"}]
+  },
+
+  // ---- مسئله ۱۲ ----
+  {n:"۱۲", type:"محاسباتی — تبدیل یکا",
+   q:"قدیمی‌ترین سنگ‌نوشته‌ی حقوقِ بشر که تا حالا یافت شده، به فرمانِ کورش پادشاهِ هخامنشی نوشته شده و حدودِ <b>۲۵۵۰ سال</b> قدمت داره. این مدت برحسبِ ثانیه چقدره؟",
+   relate:"شبیه قسمتِ دومِ مسئله‌ی ۶ ـه (تبدیلِ سال به ثانیه).",
+   hint:"۱ سال ≈ ۳٫۱۵۶ × ۱۰⁷ ثانیه. کافیه ضرب کنی.",
+   steps:[
+     "<b>ضربِ تعدادِ سال‌ها در ثانیه‌های هر سال:</b><br>۲۵۵۰ × ۳٫۱۵۶ × ۱۰⁷ ≈ <b>۸٫۰۵ × ۱۰¹⁰ ثانیه</b>",
+     "<b>یه نکته‌ی قشنگ:</b> این یعنی استوانه‌ی کوروش حدودِ <b>هشتاد میلیارد</b> ثانیه پیش نوشته شده! اعداد بزرگ، با تبدیل یکا قیافه‌ی غول‌پیکری پیدا می‌کنن. 🏛️"
+   ],
+   final:"۲۵۵۰ سال ≈ <b>۸٫۰۵ × ۱۰¹⁰ ثانیه</b>",
+   check:[{label:"ثانیه", value:8.05e10, unit:"ثانیه"}]
+  },
+
+  // ---- مسئله ۱۳ ----
+  {n:"۱۳", type:"محاسباتی — تبدیل یکا",
+   q:"تندیِ شناورها در دریا برحسبِ <b>گره دریایی</b> بیان می‌شه، که هر گره = ۱۸۵۲ متر بر ساعت. <br><b>الف)</b> اگه یه کشتیِ کالا با تندیِ ۲۰ گره به طرف جزیره‌ی لاوان بره، تندی‌ش برحسبِ کیلومتر بر ساعت چنده؟ <br><b>ب)</b> هر مایلِ خشکی = ۱۶۰۹ متر. تندیِ قسمت الف رو برحسبِ <b>مایل بر ساعت</b> هم به‌دست بیار.",
+   relate:"این هم یه تبدیل یکای دیگه‌ست، مثلِ مسئله‌های ۱۱ و ۱۲. فقط این‌بار با چند مرحله.",
+   hint:"اول معنیِ گره رو بگیر (متر/ساعت)، ضرب‌در تندی، بعد کیلومتر کن (تقسیم بر ۱۰۰۰). برای قسمت ب، با تقسیم بر متر‌ها به مایل تبدیل کن.",
+   steps:[
+     "<b>قسمت الف — کیلومتر بر ساعت:</b><br>۱ گره = ۱۸۵۲ متر/ساعت ⟹ ۲۰ گره = ۲۰ × ۱۸۵۲ = ۳۷۰۴۰ متر/ساعت<br>تبدیل به کیلومتر: ÷ ۱۰۰۰ = <b>۳۷٫۰ کیلومتر بر ساعت</b>",
+     "<b>قسمت ب — مایل بر ساعت:</b><br>۳۷۰۴۰ متر/ساعت ÷ ۱۶۰۹ متر/مایل ≈ <b>۲۳٫۰ مایل بر ساعت</b>",
+     "<b>یه نکته‌ی جالب:</b> چون مایل دریایی (۱۸۵۲ متر) بزرگ‌تر از مایل خشکی (۱۶۰۹ متر) ـه، عددِ مایلِ خشکی بزرگ‌تر از عددِ گره می‌شه. این اشتباهِ رایجیه که آدما گره و مایل رو یکی می‌گیرن!"
+   ],
+   final:"<b>الف)</b> ۳۷٫۰ کیلومتر بر ساعت <br><b>ب)</b> ۲۳٫۰ مایل بر ساعت",
+   check:[
+     {label:"الف", value:37.0, unit:"km/h"},
+     {label:"ب", value:23.0, unit:"mph"}
+   ]
+  },
+
+  // ---- مسئله ۱۴ ----
+  {n:"۱۴", type:"محاسباتی — تبدیل یکا (یکای ایرانی)",
+   q:"یکاهای قدیمیِ ایرانی برای طول: <b>ذرع</b> ≈ ۱۰۴ سانتی‌متر، و <b>فرسنگ</b> ≈ ۶ کیلومتر. جزیره‌ی قشم بزرگ‌ترین جزیره‌ی خلیجِ فارسه با طولی حدودِ ۱۲۰ کیلومتر. این طولو برحسبِ فرسنگ بیان کن.",
+   relate:"تبدیلِ یکای ساده، مثلِ مسائل ۱۱، ۱۲ و ۱۳.",
+   hint:"اگه ۱ فرسنگ = ۶ کیلومتر، پس ۱۲۰ کیلومتر یعنی ۱۲۰ ÷ ۶ فرسنگ.",
+   steps:[
+     "<b>محاسبه:</b><br>۱۲۰ ÷ ۶ = <b>۲۰ فرسنگ</b>",
+     "<b>یه نکته‌ی فرهنگی:</b> فرسنگ یکی از قدیمی‌ترین یکاهای فارسیه و حتی تو شاهنامه و دیوانِ حافظ هم اومده. به‌اصلش یعنی فاصله‌ای که یه کاروان در یک ساعت طی می‌کرد. هر چند SI استانداردتره، ولی این یکاها بخشی از فرهنگِ ما هستن 📜."
+   ],
+   final:"طولِ جزیره‌ی قشم ≈ <b>۲۰ فرسنگ</b>",
+   check:[{label:"فرسنگ", value:20, unit:"فرسنگ"}]
+  },
+
+  // ---- مسئله ۱۵ ----
+  {n:"۱۵", type:"مفهومی — دقت ابزار",
+   q:"شکلِ کتاب، صفحه‌ی یه تندی‌سنج (سرعت‌سنج) رو نشون می‌ده که درجه‌بندی‌هاش هر ۱۰ کیلومتر بر ساعت یه خطِ بزرگ و بینشون ۱۰ خطِ کوچیک‌تر داره. دقتِ این تندی‌سنج چقدره؟",
+   relate:"این موضوع تو مقاله‌ی «۱-۴ دقت در اندازه‌گیری» توضیح داده شده.",
+   hint:"یادته گفتیم دقتِ یه ابزارِ مدرّج برابرِ کوچک‌ترین درجه‌بندیشه؟ اینجا کوچک‌ترین درجه‌بندی چنده؟",
+   steps:[
+     "<b>قانونِ دقت:</b> دقتِ یه ابزارِ مدرّج، برابر با کوچک‌ترین درجه‌بندیِ اونه.",
+     "<b>پیدا کردنِ کوچک‌ترین درجه:</b> بین هر دو خطِ بزرگ (که فاصله‌شون ۱۰ km/h ـه) ۱۰ خطِ کوچیک هست. پس فاصله‌ی هر دو خطِ کوچیک = ۱۰ ÷ ۱۰ = <b>۱ کیلومتر بر ساعت</b>",
+     "<b>پس دقت = ۱ km/h.</b><br>یعنی این تندی‌سنج تا یک کیلومتر بر ساعت رو می‌تونه تشخیص بده، نه دقیق‌تر از اون. اگه واقعاً سرعتت ۸۵٫۳ بود، این ابزار فقط ۸۵ نشون می‌ده."
+   ],
+   final:"دقتِ تندی‌سنج = <b>۱ کیلومتر بر ساعت</b>",
+   check:[{label:"دقت", value:1, unit:"km/h"}]
+  },
+
+  // ---- مسئله ۱۶ ----
+  {n:"۱۶", type:"مفهومی — دقت ابزار",
+   q:"تو کارگاه‌های صنعتی، اندازه‌گیریِ طول با ابزارهای دقیق‌تر از خط‌کش انجام می‌شه: <b>کولیس</b> و <b>ریزسنج</b> (که هر دو نسخه‌ی مدرج و دیجیتال دارن). اگه یه ریزسنجِ دیجیتالی عددِ ۱۲٫۳۴۵ میلی‌متر و یه کولیسِ دیجیتالی عددِ ۲۳٫۴۵ میلی‌متر نشون بدن، دقتِ هرکدوم چقدره؟",
+   relate:"شبیه مسئله‌ی ۱۵ ـه، فقط این‌بار ابزار دیجیتاله.",
+   hint:"یادته گفتیم دقتِ یه ابزارِ دیجیتال برابرِ یه واحد از آخرین رقمیه که نشون می‌ده؟",
+   steps:[
+     "<b>قانونِ دقتِ دیجیتال:</b> دقت برابر با یک واحد از آخرین رقمِ نمایش‌داده‌شده‌ست.",
+     "<b>ریزسنج (۱۲٫۳۴۵):</b> آخرین رقم در جایگاهِ هزارمِ میلی‌متره. پس دقت = <b>۰٫۰۰۱ میلی‌متر</b> (یک میکرومتر!) — به همین خاطر اسمش «ریزسنج»ه 🔬.",
+     "<b>کولیس (۲۳٫۴۵):</b> آخرین رقم در جایگاهِ صدمِ میلی‌متره. پس دقت = <b>۰٫۰۱ میلی‌متر</b>.",
+     "<b>نتیجه:</b> ریزسنج ۱۰ برابر دقیق‌تر از کولیسه. برای همین تو ساختِ قطعاتِ خیلی ظریف (مثلِ ساعت‌سازی) از ریزسنج استفاده می‌کنن."
+   ],
+   final:"دقتِ ریزسنج = <b>۰٫۰۰۱ میلی‌متر</b> | دقتِ کولیس = <b>۰٫۰۱ میلی‌متر</b>",
+   check:[
+     {label:"ریزسنج", value:0.001, unit:"mm"},
+     {label:"کولیس", value:0.01, unit:"mm"}
+   ]
+  },
+
+  // ---- مسئله ۱۷ ----
+  {n:"۱۷", type:"مفهومی + محاسباتی — چگالی",
+   q:"<b>الف)</b> یه قطعه فلزِ توپُر بهت داده شده و ادعا می‌شه از طلای خالص ساخته شده. چطوری می‌تونی درستیِ این ادعا رو بررسی کنی؟ <br><b>ب)</b> بزرگ‌ترین شمشِ طلا با حجمِ ۱۲٫۹۶ × ۱۰⁻³ مترمکعب و جرمِ ۲۵۰ کیلوگرم رو در نظر بگیر. چگالیش رو حساب کن. <br><b>پ)</b> چگالیِ به‌دست‌اومده در قسمت ب رو با چگالیِ طلای خالص (۱۹۳۰۰ کیلوگرم/مترمکعب) مقایسه کن.",
+   relate:"موضوعِ چگالی رو تو مقاله‌ی «۱-۵ چگالی» توضیح دادیم.",
+   hint:"چگالیِ هر ماده مثلِ اثرِ انگشتِ اونه — برای هر فلز یه عددِ ثابت. اگه چگالیِ این قطعه با چگالیِ طلای خالص یکی بود، خالصه؛ وگرنه نه.",
+   steps:[
+     "<b>قسمت الف — راهِ تشخیص:</b><br>۱. جرمِ قطعه رو با ترازوی دقیق وزن کن (m).<br>۲. حجمشو پیدا کن: اگه شکلش منظم نیست، با روشِ جابه‌جاییِ آب (ارشمیدس) — تو استوانه‌ی مدرّجِ پر از آب فروش کن و اختلاف حجمِ آبو ببین.<br>۳. چگالیشو حساب کن: ρ = m/V<br>۴. اگه ≈ ۱۹۳۰۰ kg/m³ بود → طلای خالص ✅، وگرنه → ناخالصه ❌.",
+     "<b>قسمت ب — محاسبه:</b><br>ρ = m/V = ۲۵۰ ÷ (۱۲٫۹۶ × ۱۰⁻³)<br>ρ ≈ <b>۱٫۹۳ × ۱۰⁴ kg/m³</b><br>یعنی ۱۹۳۰۰ kg/m³",
+     "<b>قسمت پ — مقایسه:</b><br>چگالیِ به‌دست‌اومده = ۱۹۳۰۰ kg/m³<br>چگالیِ طلای خالص = ۱۹۳۰۰ kg/m³<br><b>دقیقاً یکی!</b> پس این شمش، طلای خالصه ✅"
+   ],
+   final:"<b>الف)</b> با اندازه‌گیریِ جرم و حجم، چگالیشو حساب کن و با ۱۹۳۰۰ kg/m³ مقایسه کن. <br><b>ب)</b> ρ ≈ ۱٫۹۳ × ۱۰⁴ kg/m³ <br><b>پ)</b> با چگالیِ طلای خالص یکیه، پس شمش خالصه.",
+   check:[{label:"ب) چگالی", value:19300, unit:"kg/m³"}]
+  },
+
+  // ---- مسئله ۱۸ ----
+  {n:"۱۸", type:"محاسباتی — چگالی",
+   q:"برای تعیینِ چگالیِ یه جسمِ جامد، اول جرمشو با ترازوی دیجیتالی اندازه گرفتیم: <b>m = ۳۶٫۸ گرم</b>. بعد جسمو تو استوانه‌ی مدرّجِ پر از آب فرو کردیم: ارتفاعِ آب از <b>۱۸٫۵ میلی‌لیتر</b> به <b>۲۳٫۱ میلی‌لیتر</b> رسید. چگالیِ جسم برحسبِ گرم بر سانتی‌مترمکعب چقدره؟",
+   relate:"این عملاً همون روشِ ارشمیدسه که در مسئله‌ی ۱۷ توضیح دادیم — حالا با عدد.",
+   hint:"حجمِ جسم = اختلافِ دو ارتفاعِ آبه. و یادت باشه ۱ میلی‌لیتر = ۱ سانتی‌مترمکعب (مفید!).",
+   steps:[
+     "<b>پیدا کردنِ حجم:</b><br>V = ۲۳٫۱ − ۱۸٫۵ = ۴٫۶ میلی‌لیتر = <b>۴٫۶ cm³</b>",
+     "<b>محاسبه‌ی چگالی:</b><br>ρ = m/V = ۳۶٫۸ ÷ ۴٫۶ ≈ <b>۸٫۰ گرم بر سانتی‌مترمکعب</b>",
+     "<b>این چی می‌تونه باشه؟</b> چگالیِ ۸ g/cm³ خیلی نزدیک به آهنه (۷٫۸۷). پس احتمالاً این جسم از آهن یا فولاد ساخته شده 🛠️."
+   ],
+   final:"چگالیِ جسم ≈ <b>۸٫۰ g/cm³</b> (احتمالاً آهن یا فولاد)",
+   check:[{label:"چگالی", value:8.0, unit:"g/cm³"}]
+  },
+
+  // ---- مسئله ۱۹ ----
+  {n:"۱۹", type:"محاسباتی — چگالی (مسئله‌ی فانتزی!)",
+   q:"<b>الف)</b> ستاره‌های کوتوله‌ی سفید فوق‌العاده چگال‌اند، با چگالیِ حدودِ ۱۰⁹ kg/m³ (یک میلیارد!). اگه یه قوطی کبریت از این ماده داشتی، جرمش چقدر می‌شد؟ (ابعادِ یه قوطی کبریت معمولی رو حدودِ ۵ × ۳ × ۲ سانتی‌متر بگیر.) <br><b>ب)</b> اگه جمعیتِ زمین ۸ میلیارد نفر باشه و جرمِ میانگینِ هر نفر ۶۰ کیلوگرم، و اگه ماده‌ی تشکیل‌دهنده‌ی انسان‌ها از جنسِ کوتوله‌ی سفید بود (فرضیِ ناممکن!)، ابعادِ یه اتاق چقدر باید باشه تا همه‌ی انسان‌ها توش جا بشن؟",
+   relate:"این مسئله بازم درباره‌ی چگالیه (مثلِ ۱۷ و ۱۸)، ولی یه نکته‌ی فانتزیِ نجومی بهش اضافه کرده. حسابِ خوبی برای تمرین.",
+   hint:"رابطه‌ی کلیدی: m = ρV. ابعادو به متر تبدیل کن، حجمو حساب کن، بعد ضرب در چگالی.",
+   steps:[
+     "<b>قسمت الف — حجمِ قوطی کبریت:</b><br>۵ × ۳ × ۲ = ۳۰ سانتی‌مترمکعب = ۳۰ × ۱۰⁻⁶ m³ = ۳ × ۱۰⁻⁵ m³",
+     "<b>جرم:</b><br>m = ρV = ۱۰⁹ × ۳ × ۱۰⁻⁵ = <b>۳ × ۱۰⁴ kg</b> = ۳۰ تُن!<br>یه قوطی کبریت با وزنِ ۳۰ تُن! 🤯",
+     "<b>قسمت ب — جرمِ کلِ انسان‌ها:</b><br>m = ۸ × ۱۰⁹ × ۶۰ = <b>۴٫۸ × ۱۰¹¹ kg</b>",
+     "<b>حجمِ این جرم اگه از کوتوله‌ی سفید باشه:</b><br>V = m/ρ = (۴٫۸ × ۱۰¹¹) ÷ ۱۰⁹ = <b>۴۸۰ مترمکعب</b>",
+     "<b>ابعادِ اتاق:</b> اگه مکعبی فرض کنیم، طولِ هر ضلع = ۴۸۰^(۱/۳) ≈ <b>۷٫۸ متر</b>!<br>یعنی همه‌ی ۸ میلیارد انسان، اگه از جنسِ کوتوله‌ی سفید بودن، تو یه اتاقِ ۸ × ۸ × ۸ متری جا می‌شدن! 🪐"
+   ],
+   final:"<b>الف)</b> جرمِ قوطی کبریت ≈ ۳ × ۱۰⁴ kg (سی تن!) <br><b>ب)</b> حجمِ کلِ بشر ≈ ۴۸۰ m³، یعنی یه اتاقِ مکعبی با ضلعِ حدودِ ۷٫۸ متر. این مسئله نشون می‌ده ماده‌ی متراکم چقدر می‌تونه فضا رو بشکنه — کاش بهتر بفهمیمش! 🌟",
+   check:[
+     {label:"الف) جرم", value:3e4, unit:"kg"},
+     {label:"ب) ضلع اتاق", value:7.8, unit:"متر"}
+   ]
+  }
+];
+
+// ============================================================
+// رندر
+// ============================================================
+var faNum = function(n){
+  return String(n).replace(/[0-9]/g, function(d){ return "۰۱۲۳۴۵۶۷۸۹"[d]; });
+};
+
+function formatExpected(v){
+  // برای اعدادِ علمیِ بزرگ، نمایشِ خواناتر
+  if(Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-2 && v !== 0)){
+    return v.toExponential(2);
+  }
+  return String(v);
+}
+
+function checkAnswer(user, expected, tol){
+  // tol پیش‌فرض ۵٪
+  tol = tol || 0.05;
+  if(isNaN(user)) return {ok:false, msg:"عددِ معتبر وارد کن."};
+  if(expected === 0){
+    return {ok: Math.abs(user) < 1e-9, msg:""};
+  }
+  var diff = Math.abs(user - expected) / Math.abs(expected);
+  return {ok: diff <= tol, diff: diff};
+}
+
+var box     = document.getElementById("problems");
+var navList = document.getElementById("nav-list");
+var prevBtn = document.getElementById("prev-btn");
+var nextBtn = document.getElementById("next-btn");
+var problemDivs = [];   // index → DOM
+var navBtns     = [];   // index → DOM
+
+problems.forEach(function(p, pIdx){
+  var div = document.createElement("div");
+  div.className = "problem";
+  div.style.display = "none";   // hidden by default — only one visible at a time
+  problemDivs.push(div);
+
+  // sidebar entry
+  var li  = document.createElement("li");
+  var btn = document.createElement("button");
+  btn.className = "nav-btn";
+  btn.type = "button";
+  btn.innerHTML = '<span class="nb-num">' + p.n + '</span>'
+                + '<span class="nb-title">مسئله ' + p.n + '</span>';
+  btn.addEventListener("click", (function (capturedIdx) {
+    return function () { showProblem(capturedIdx, true); };
+  })(pIdx));
+  li.appendChild(btn);
+  navList.appendChild(li);
+  navBtns.push(btn);
+
+  var num = document.createElement("div");
+  num.className = "pnum";
+  num.textContent = "مسئله‌ی " + p.n;
+  div.appendChild(num);
+
+  var typ = document.createElement("div");
+  typ.className = "ptype";
+  typ.textContent = "نوع: " + p.type;
+  div.appendChild(typ);
+
+  if(p.relate){
+    var rel = document.createElement("div");
+    rel.className = "relate";
+    rel.innerHTML = "🔗 " + p.relate;
+    div.appendChild(rel);
+  }
+
+  var q = document.createElement("div");
+  q.className = "pq";
+  q.innerHTML = p.q;
+  div.appendChild(q);
+
+  // ----- controls -----
+  var ctrl = document.createElement("div");
+  ctrl.className = "controls";
+
+  var hintBtn = null;
+  if(p.hint){
+    hintBtn = document.createElement("button");
+    hintBtn.className = "btn btn-hint";
+    hintBtn.textContent = "💡 راهنمایی";
+    ctrl.appendChild(hintBtn);
+  }
+
+  var nextBtn = document.createElement("button");
+  nextBtn.className = "btn btn-next";
+  nextBtn.textContent = "▶️ شروع حل / قدم بعدی";
+  ctrl.appendChild(nextBtn);
+
+  var checkBtn = null;
+  if(p.check && p.check.length){
+    checkBtn = document.createElement("button");
+    checkBtn.className = "btn btn-check";
+    checkBtn.textContent = "🔍 بررسی جواب من";
+    ctrl.appendChild(checkBtn);
+  }
+
+  div.appendChild(ctrl);
+
+  // hint handler
+  if(hintBtn){
+    var hintShown = false;
+    hintBtn.addEventListener("click", function(){
+      if(hintShown) return;
+      hintShown = true;
+      var h = document.createElement("div");
+      h.className = "hint-box";
+      h.innerHTML = "<b>راهنمایی:</b> " + p.hint;
+      div.appendChild(h);
+      hintBtn.disabled = true;
+    });
+  }
+
+  // step-by-step
+  var idx = 0;
+  nextBtn.addEventListener("click", function(){
+    if(idx < p.steps.length){
+      var s = document.createElement("div");
+      s.className = "step";
+      s.innerHTML = "<span class='label' style='color:var(--info);'>قدم " + faNum(String(idx+1)) + "</span><br>" + p.steps[idx];
+      div.appendChild(s);
+      idx++;
+      if(idx === p.steps.length){
+        nextBtn.textContent = "✅ نمایش جواب نهایی";
+      }
+    } else if(idx === p.steps.length){
+      var f = document.createElement("div");
+      f.className = "final";
+      f.innerHTML = "<b>✅ جواب نهایی:</b><br>" + p.final;
+      div.appendChild(f);
+      nextBtn.disabled = true;
+      nextBtn.textContent = "تمام";
+      idx++;
+    }
+  });
+
+  // check-answer
+  if(checkBtn){
+    var checkShown = false;
+    checkBtn.addEventListener("click", function(){
+      if(checkShown) return;
+      checkShown = true;
+      checkBtn.disabled = true;
+
+      var cb = document.createElement("div");
+      cb.className = "check-box";
+      cb.innerHTML = "<b>🔍 جوابِ خودتو وارد کن:</b><br><span style='font-size:13px; color:var(--muted);'>تلرانس ۵٪؛ از اعدادِ علمی مثل <code>3e4</code> هم می‌تونی استفاده کنی.</span>";
+
+      var inputs = [];
+      p.check.forEach(function(c){
+        var row = document.createElement("div");
+        row.className = "check-row";
+        var lbl = document.createElement("label"); lbl.textContent = c.label + ":"; row.appendChild(lbl);
+        var inp = document.createElement("input"); inp.type = "text"; inp.placeholder = "عدد..."; row.appendChild(inp);
+        var u = document.createElement("span"); u.className = "unit"; u.textContent = c.unit || ""; row.appendChild(u);
+        cb.appendChild(row);
+        inputs.push({c:c, inp:inp});
+      });
+
+      var goBtn = document.createElement("button");
+      goBtn.className = "btn btn-check";
+      goBtn.textContent = "بررسی";
+      goBtn.style.marginTop = "8px";
+      cb.appendChild(goBtn);
+
+      var resultArea = document.createElement("div");
+      cb.appendChild(resultArea);
+
+      goBtn.addEventListener("click", function(){
+        resultArea.innerHTML = "";
+        var allOk = true;
+        inputs.forEach(function(it){
+          var userVal = parseFloat(it.inp.value);
+          var r = checkAnswer(userVal, it.c.value, it.c.tol);
+          var row = document.createElement("div");
+          row.className = "check-result " + (r.ok ? "ok" : "bad");
+          if(r.ok){
+            row.innerHTML = "✅ <b>" + it.c.label + ":</b> درسته! جوابِ تو نزدیک به " + formatExpected(it.c.value) + " " + (it.c.unit||"") + " ـه.";
+          } else {
+            allOk = false;
+            if(isNaN(userVal)){
+              row.innerHTML = "❌ <b>" + it.c.label + ":</b> عددِ معتبر وارد نکردی.";
+            } else {
+              row.innerHTML = "❌ <b>" + it.c.label + ":</b> جوابت با مقدارِ موردِ انتظار (" + formatExpected(it.c.value) + " " + (it.c.unit||"") + ") اختلافِ زیادی داره. حلِ قدم‌به‌قدم رو ببین.";
+            }
+          }
+          resultArea.appendChild(row);
+        });
+        if(allOk){
+          var hooray = document.createElement("div");
+          hooray.className = "check-result ok";
+          hooray.style.marginTop = "8px";
+          hooray.innerHTML = "🎉 آفرین! همه‌ی جواب‌هات درست بود.";
+          resultArea.appendChild(hooray);
+        }
+      });
+
+      div.appendChild(cb);
+    });
+  }
+
+  box.appendChild(div);
+});
+
+// ─── master-detail navigation ────────────────────────────────
+var currentIdx = 0;
+
+function showProblem(idx, updateHash) {
+  if (idx < 0 || idx >= problemDivs.length) return;
+  problemDivs.forEach(function (d, i) { d.style.display = (i === idx) ? "" : "none"; });
+  navBtns.forEach(function (b, i) { b.classList.toggle("active", i === idx); });
+  prevBtn.disabled = (idx === 0);
+  nextBtn.disabled = (idx === problemDivs.length - 1);
+  // scroll the active sidebar item into view (mobile + when list is long)
+  navBtns[idx].scrollIntoView({block: "nearest"});
+  currentIdx = idx;
+  if (updateHash) {
+    try { history.replaceState(null, "", "#mas-" + (idx + 1)); } catch (e) {}
+  }
+  // notify parent iframe (autosize)
+  try { window.parent.postMessage({pmEvent: "problem-changed", idx: idx}, "*"); } catch (e) {}
+}
+
+prevBtn.addEventListener("click", function () { showProblem(currentIdx - 1, true); });
+nextBtn.addEventListener("click", function () { showProblem(currentIdx + 1, true); });
+
+// keyboard left/right
+document.addEventListener("keydown", function (e) {
+  if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  if (e.key === "ArrowLeft")  showProblem(currentIdx + 1, true);   // RTL: left = next
+  if (e.key === "ArrowRight") showProblem(currentIdx - 1, true);
+});
+
+// initial: read hash or default to first
+(function init() {
+  var m = /^#mas-(\d+)$/.exec(location.hash);
+  var start = m ? Math.max(0, Math.min(problems.length - 1, parseInt(m[1], 10) - 1)) : 0;
+  showProblem(start, false);
+})();
+</script>
+</body>
+</html>

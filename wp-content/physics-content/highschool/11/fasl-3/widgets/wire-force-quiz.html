@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودتو بسنج — نیرو بر سیم حامل جریان</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8;}
+  .wrap{max-width:720px; margin:0 auto;}
+  .q-item{border:1px solid var(--border); border-radius:12px; margin-bottom:10px;
+    overflow:hidden; background:var(--surface);}
+  .q-head{display:flex; align-items:center; gap:10px; cursor:pointer;
+    padding:13px 15px; font-weight:500; font-size:15px; user-select:none;}
+  .q-head:hover{background:var(--info-bg);}
+  .q-head .tog{margin-inline-start:auto; flex:0 0 auto; color:var(--info);
+    transition:transform .2s ease; font-size:18px;}
+  .q-item.open .q-head .tog{transform:rotate(45deg);}
+  .q-num{flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+    background:var(--info); color:#fff; display:flex; align-items:center;
+    justify-content:center; font-size:13px; font-weight:700;}
+  .q-body{max-height:0; overflow:hidden; transition:max-height .25s ease;
+    background:var(--ok-bg);}
+  .q-body .inner{padding:13px 15px; color:var(--text); font-size:14.5px;}
+  .q-body .inner::before{content:"پاسخ: "; color:var(--ok); font-weight:700;}
+  .hint{font-size:13px; color:var(--muted); margin:0 0 14px;}
+</style>
+<script id="mathjax-config">
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <p class="hint">روی هر سؤال بزن تا پاسخش باز شود 👇</p>
+  <div id="quiz"></div>
+</div>
+
+<script>
+  var items = [
+    { q: "فرمول نیرو بر سیمِ حامل جریان رو از فرمولِ ذرّه چطور به دست میاریم؟",
+      a: "از $F = qvB\\sin\\theta$ شروع می‌کنیم. توی سیم، بارهای زیاد ($n$ تا بار $q$ در حجم) حرکت می‌کنن. مقدار بارِ کل: $Q = nALq$ که $A$ سطح مقطع و $L$ طول سیمه. سرعت رو با $v$ علامت می‌زنیم. وقتی نیرو رو روی همه‌ی بارها جمع کنی: $F_{\\text{total}} = (nALq)\\, v\\, B\\sin\\theta$. ولی $nAvq = I$ (تعریف جریان). پس $$F = ILB\\sin\\theta$$ این فرمول، نیرو روی <b>کلِ سیم</b> ـه. ساده، زیبا!" },
+    { q: "اگه سیم موازی با میدان باشه چی می‌شه؟",
+      a: "$\\theta = 0$ → $\\sin\\theta = 0$ → <b>F = 0</b>. <br>مثل ذرّهٔ تنها: وقتی جریانِ سیم در امتداد میدان جریان داره، هیچ نیرویی روش نیست. <b>حداکثر نیرو</b> وقتیه که سیم <b>عمود</b> بر میدانه ($\\theta=90°$)، اون موقع $F=ILB$." },
+    { q: "جهت نیرو بر سیم رو با چه قاعده‌ای پیدا می‌کنیم؟",
+      a: "همون <b>قاعدهٔ دست راست</b>:<br>۱) انگشتِ <b>اشاره</b> در جهت <b>جریان</b> $I$<br>۲) انگشتِ <b>میانی</b> در جهت میدان $\\vec{B}$<br>۳) <b>شَست</b>، جهتِ نیرو رو نشون می‌ده.<br>اگه جریان رو معکوس کنی، نیرو معکوس می‌شه. اگه میدان رو معکوس کنی، باز نیرو معکوس می‌شه. اگه <b>هر دو</b> رو معکوس کنی، نیرو همون جهت قبلی می‌مونه!" },
+    { q: "محاسبه: یه سیم به طولِ $0.5$ m با جریان $4$ A در میدانِ یکنواخت $0.2$ T (عمود بر سیم) قرار داره. نیرو چقدره؟",
+      a: "$$F = BIL\\sin\\theta = (0.2)(4)(0.5)(1) = 0.4\\text{ N}$$<br>این نیروی نه چندان زیادیه، ولی اگه سیم رو به یه قرقره وصل کنی، می‌تونی باهاش جسم ۴۰ گرمی رو بلند کنی. این پایه‌ی موتورهای کوچیکه." },
+    { q: "حلقه‌ای از سیم در میدان مغناطیسی چه اتفاقی براش می‌افته؟",
+      a: "هر ضلع از حلقه نیروی متفاوتی می‌گیره. روی دو ضلع موازی با میدان: نیرو صفر. روی دو ضلعِ <b>عمود بر میدان</b>: نیروهای متضاد (یکی به طرف بالا، اون یکی به طرف پایین). این جفت‌نیرو یه <b>گشتاور</b> می‌سازه و حلقه رو می‌چرخونه. این اصلِ کارِ <b>موتور الکتریکی</b> ـه!" },
+    { q: "نقشِ کموتاتور (commutator) در موتورِ DC چیه؟",
+      a: "<b>حلقهٔ شکافته</b> (split-ring) ـه که هر نیم دور، جهت جریان رو در حلقه <b>معکوس</b> می‌کنه. چرا لازمه؟ چون بدونش، وقتی حلقه به موقعیتِ موازی با میدان می‌رسه، گشتاور صفر می‌شه و بعدش جهتش <b>برعکس</b> می‌شه → حلقه فقط نوسان می‌کنه و نمی‌چرخه. کموتاتور با معکوس‌کردنِ جریان در لحظهٔ موازی، گشتاور رو در <b>یک جهتِ ثابت</b> نگه می‌داره → چرخشِ پیوسته." },
+    { q: "گالوانومتر چجوری کار می‌کنه؟",
+      a: "<b>گالوانومتر</b> یه دستگاه قدیمی برای اندازه‌گیری جریانه. توش یه حلقهٔ سیم در میدان مغناطیسی قرار داره. جریان که می‌فرسته توش، گشتاور $\\tau = BIA\\sin\\theta$ ایجاد می‌شه ($A$ مساحت حلقه). این گشتاور با یه <b>فنرِ مارپیچ</b> مقابله می‌کنه — تا تعادل برقرار بشه. زاویه‌ی نهاییِ سوزن متناسب با جریانه. بنابراین یه عقربه روش می‌ذارن که <b>I</b> رو روی صفحه نشون بده." },
+    { q: "بلندگو (speaker) چطور با همین پدیده صدا تولید می‌کنه؟",
+      a: "داخلِ بلندگو یه <b>سیم‌پیچِ کوچیک</b> هست که چسبیده به دیافراگم (پرده‌ی نازکی که هوا رو حرکت می‌ده). این سیم‌پیچ توی یه آهنربای دائمی قرار داره. وقتی جریانِ صوتی (متناوب) بفرستی، نیروی $F=BIL$ سیم‌پیچ رو جلو و عقب می‌بره — دیافراگم رو لرزون می‌کنه — هوا لرزش می‌کنه — صدا تولید می‌شه! تمام بلندگوها (از گوش‌هندزفری تا اسپیکر ماشین) با همین فرمولِ ساده کار می‌کنن." }
+  ];
+
+  var box = document.getElementById('quiz');
+  items.forEach(function(it, i){
+    var item = document.createElement('div'); item.className='q-item';
+    var head = document.createElement('div'); head.className='q-head';
+    head.innerHTML = '<span class="q-num">'+toFa(i+1)+'</span><span>'+it.q+'</span><span class="tog">+</span>';
+    var body = document.createElement('div'); body.className='q-body';
+    var inner = document.createElement('div'); inner.className='inner'; inner.innerHTML=it.a;
+    body.appendChild(inner);
+    head.addEventListener('click', function(){
+      var open = item.classList.toggle('open');
+      body.style.maxHeight = open ? (inner.scrollHeight + 26) + 'px' : '0';
+    });
+    item.appendChild(head); item.appendChild(body); box.appendChild(item);
+  });
+  function toFa(n){return (''+n).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+</script>
+</body>
+</html>

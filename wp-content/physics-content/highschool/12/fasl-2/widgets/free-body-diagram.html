@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نمودار آزاد و قانون دوم نیوتون — شبیه‌سازی</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed; --warn:#a87800; --warn-bg:#fef6e0;
+    --primary:#185fa5; --secondary:#c43838; --accent:#9CAB52;
+    --sky:#e6f1fb; --ground:#bba382; --block:#5B6E32;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e0b860; --warn-bg:#4a3a15;
+      --primary:#85b7eb; --secondary:#f06a60; --accent:#9CAB52;
+      --sky:#1a2a3a; --ground:#4a3a2a; --block:#7a9050;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:880px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .layout{display:grid; grid-template-columns:1fr 240px; gap:12px;}
+  @media(max-width:700px){.layout{grid-template-columns:1fr;}}
+  .stage{background:linear-gradient(to bottom, var(--sky), var(--bg)); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:400px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:13px; margin:8px 0 6px; color:var(--muted); text-transform:uppercase;}
+  .panel h3:first-child{margin-top:0;}
+  .slider-row{display:grid; grid-template-columns:1fr 50px; gap:6px; align-items:center; font-size:13px; margin-bottom:6px;}
+  .val{font-weight:700; color:var(--info); text-align:left;}
+  input[type=range]{width:100%;}
+  .btn{background:var(--primary); color:white; border:none; padding:8px 14px; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer; width:100%; margin-top:6px;}
+  .btn:hover{filter:brightness(1.08);}
+  .btn.alt{background:var(--secondary);}
+  .readout{padding:10px 12px; display:grid; grid-template-columns:repeat(3,1fr); gap:6px; border-top:1px solid var(--border); background:var(--surface); font-size:13px;}
+  .readout .item{padding:5px 8px; background:var(--info-bg); color:var(--info); border-radius:6px; text-align:center;}
+  .readout .item b{display:block; font-size:14px;}
+  .check{display:flex; align-items:center; gap:6px; font-size:12.5px; margin:6px 0;}
+  .check input{margin:0;}
+  .note{font-size:12px; color:var(--muted); padding:8px 10px; background:var(--info-bg); border-radius:8px; margin-top:10px;}
+</style>
+<script id="mathjax-config">
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$']], processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script"></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>نمودار آزاد و قانون دوم نیوتون 💪</h2>
+  <p class="sub">نیروها رو به جعبه وارد کن — برآیند، شتاب و حرکت رو در زمان واقعی ببین.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <canvas id="cv"></canvas>
+      <div class="readout">
+        <div class="item">برآیند F<sub>x</sub><b id="rfx">0 N</b></div>
+        <div class="item">شتاب a<b id="ra">0 m/s²</b></div>
+        <div class="item">سرعت v<b id="rv">0 m/s</b></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>جرم جعبه</h3>
+      <div class="slider-row"><label>m (kg)</label><span class="val" id="vm">5</span></div>
+      <input type="range" id="m" min="1" max="20" step="1" value="5">
+
+      <h3>نیروی هل به راست</h3>
+      <div class="slider-row"><label>F<sub>راست</sub> (N)</label><span class="val" id="vfr">20</span></div>
+      <input type="range" id="fr" min="0" max="100" step="1" value="20">
+
+      <h3>نیروی هل به چپ</h3>
+      <div class="slider-row"><label>F<sub>چپ</sub> (N)</label><span class="val" id="vfl">0</span></div>
+      <input type="range" id="fl" min="0" max="100" step="1" value="0">
+
+      <h3>اصطکاک</h3>
+      <div class="check"><input type="checkbox" id="frictOn"> <label for="frictOn">اصطکاک فعال</label></div>
+      <div class="slider-row"><label>μ<sub>k</sub></label><span class="val" id="vmu">0.3</span></div>
+      <input type="range" id="mu" min="0" max="1" step="0.05" value="0.3">
+
+      <button class="btn" id="reset">شروع دوباره</button>
+      <div class="note">قانون دوم: $F_{\text{net}} = m\,a$. نیروی نرمال $N = mg$ و اصطکاک $f_k = \mu_k\,N$.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W, H;
+function resize(){
+  const r = cv.getBoundingClientRect();
+  W = cv.width = r.width * devicePixelRatio;
+  H = cv.height = r.height * devicePixelRatio;
+  cv.style.height = '400px';
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+resize();
+window.addEventListener('resize', resize);
+
+const g = 9.8;
+let x = 200, v = 0, lastT = 0;
+const boxW = 70, boxH = 60;
+const groundY = 280;
+
+function step(t){
+  const dt = Math.min(0.05, (t - lastT)/1000 || 0.016);
+  lastT = t;
+
+  const m = +document.getElementById('m').value;
+  const fr = +document.getElementById('fr').value;
+  const fl = +document.getElementById('fl').value;
+  const frictOn = document.getElementById('frictOn').checked;
+  const mu = +document.getElementById('mu').value;
+  const N = m * g;
+  const fk = frictOn ? mu * N : 0;
+  let netNoFric = fr - fl;
+  // friction opposes motion or applied force if at rest
+  let netF;
+  if (Math.abs(v) < 0.01) {
+    // static — if applied force exceeds max static, start moving
+    const fsMax = fk; // approximate using μk
+    if (Math.abs(netNoFric) <= fsMax) netF = 0;
+    else netF = netNoFric - Math.sign(netNoFric)*fsMax;
+  } else {
+    netF = netNoFric - Math.sign(v)*fk;
+  }
+  const a = netF / m;
+  v += a * dt;
+  if (Math.abs(v) < 0.01 && Math.abs(netNoFric) <= fk) v = 0;
+  x += v * dt * 30; // pixel scale
+  // walls
+  if (x < 60) { x = 60; v = 0; }
+  if (x > cv.clientWidth - boxW - 10) { x = cv.clientWidth - boxW - 10; v = 0; }
+
+  draw(m, fr, fl, fk, netF, a);
+  requestAnimationFrame(step);
+}
+
+function arrow(x1,y1,x2,y2,color,label){
+  ctx.strokeStyle = color; ctx.fillStyle = color;
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const ang = Math.atan2(y2-y1, x2-x1);
+  const ah = 10;
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2 - ah*Math.cos(ang - 0.4), y2 - ah*Math.sin(ang - 0.4));
+  ctx.lineTo(x2 - ah*Math.cos(ang + 0.4), y2 - ah*Math.sin(ang + 0.4));
+  ctx.closePath(); ctx.fill();
+  if (label) {
+    ctx.font = 'bold 13px Vazirmatn';
+    ctx.fillText(label, (x1+x2)/2 + 6, (y1+y2)/2 - 8);
+  }
+}
+
+function draw(m, fr, fl, fk, netF, a){
+  const W = cv.clientWidth, H = 400;
+  ctx.clearRect(0,0,W,H);
+  // ground
+  ctx.fillStyle = getCss('--ground');
+  ctx.fillRect(0, groundY+boxH, W, H-groundY-boxH);
+  ctx.strokeStyle = getCss('--border'); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, groundY+boxH); ctx.lineTo(W, groundY+boxH); ctx.stroke();
+  // box
+  ctx.fillStyle = getCss('--block');
+  ctx.fillRect(x, groundY, boxW, boxH);
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+  ctx.strokeRect(x, groundY, boxW, boxH);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Vazirmatn';
+  ctx.fillText(m+' kg', x+18, groundY+38);
+  // forces arrows from center of box
+  const cx = x + boxW/2, cy = groundY + boxH/2;
+  const scale = 1.5;
+  if (fr > 0) arrow(cx, cy, cx + fr*scale, cy, '#1d9e75', 'F→ '+fr+'N');
+  if (fl > 0) arrow(cx, cy, cx - fl*scale, cy, '#c43838', '←F '+fl+'N');
+  // weight
+  arrow(cx, cy, cx, cy + m*g*0.6, '#a87800', 'W='+ (m*g).toFixed(0) +'N');
+  // normal
+  arrow(cx, cy, cx, cy - m*g*0.6, '#185fa5', 'N='+ (m*g).toFixed(0) +'N');
+  // friction
+  if (fk > 0 && Math.abs(netF) > 0) {
+    const dir = -Math.sign(netF + fk * Math.sign(netF));
+    // actual friction direction: opposite to applied net (ignoring friction)
+    const netNoFric = fr - fl;
+    const fricDir = Math.abs(v) > 0.01 ? -Math.sign(v) : -Math.sign(netNoFric);
+    if (fricDir !== 0) {
+      arrow(cx, groundY+boxH, cx + fricDir*fk*scale, groundY+boxH, '#a87800', 'f='+fk.toFixed(0)+'N');
+    }
+  }
+  // net
+  if (Math.abs(netF) > 0.1) {
+    arrow(cx, cy - 90, cx + netF*scale, cy - 90, '#c43838', 'Σ='+netF.toFixed(0)+'N');
+  }
+
+  document.getElementById('rfx').textContent = netF.toFixed(1)+' N';
+  document.getElementById('ra').textContent = a.toFixed(2)+' m/s²';
+  document.getElementById('rv').textContent = v.toFixed(2)+' m/s';
+}
+
+function getCss(n){ return getComputedStyle(document.body).getPropertyValue(n).trim() || '#888'; }
+
+['m','fr','fl','mu'].forEach(id => {
+  document.getElementById(id).addEventListener('input', e => {
+    document.getElementById('v'+id).textContent = e.target.value;
+  });
+});
+document.getElementById('reset').addEventListener('click', () => { x = 200; v = 0; });
+document.getElementById('frictOn').addEventListener('change', () => { v = 0; });
+
+requestAnimationFrame(step);
+</script>
+</body>
+</html>

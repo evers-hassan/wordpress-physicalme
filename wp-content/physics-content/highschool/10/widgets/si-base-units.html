@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>هفت یکای اصلی SI</title>
+<style>
+  :root{--bg:#fff;--surface:#f4f3ef;--text:#1a1a18;--muted:#5f5e5a;--border:#e0ded7;--accent:#185fa5;--accent-bg:#e6f1fb;}
+  @media (prefers-color-scheme:dark){:root{--bg:#1f1e1c;--surface:#2a2926;--text:#f0efe9;--muted:#a8a69e;--border:#3a3835;--accent:#85b7eb;--accent-bg:#0c447c;}}
+  *{box-sizing:border-box;}
+  body{margin:0;padding:16px;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;background:var(--bg);color:var(--text);}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+  .card{border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:.15s;background:var(--bg);text-align:center;}
+  .card:hover{border-color:var(--accent);background:var(--surface);}
+  .card.active{background:var(--accent-bg);border-color:var(--accent);}
+  .sym{font-size:26px;font-weight:600;color:var(--accent);font-family:monospace;}
+  .uname{font-size:15px;font-weight:600;margin-top:4px;}
+  .qty{font-size:13px;color:var(--muted);margin-top:2px;}
+  .detail{margin-top:14px;border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-size:14px;line-height:1.8;color:var(--muted);min-height:48px;}
+  .detail b{color:var(--text);}
+</style>
+</head>
+<body>
+  <div class="grid" id="grid"></div>
+  <div class="detail" id="detail">روی هر کارت کلیک کن تا توضیحش رو ببینی 👆</div>
+<script>
+  var data=[
+    {sym:"m",u:"متر",q:"طول",d:"یکای طول. امروز بر اساسِ مسافتی که نور در ۱/۲۹۹۷۹۲۴۵۸ ثانیه در خلأ طی می‌کنه تعریف می‌شه — چون سرعتِ نور یه ثابتِ تغییرناپذیرِ جهانیه."},
+    {sym:"kg",u:"کیلوگرم",q:"جرم",d:"یکای جرم. تا سالِ ۲۰۱۹ با یه استوانه‌ی فلزی در موزه‌ی سور فرانسه تعریف می‌شد، ولی حالا بر اساسِ ثابتِ پلانک بازتعریف شده."},
+    {sym:"s",u:"ثانیه",q:"زمان",d:"یکای زمان. با ساعت‌های اتمی تعریف می‌شه که اون‌قدر دقیقن که بعد از چند میلیون سال فقط یک ثانیه خطا دارن."},
+    {sym:"K",u:"کلوین",q:"دما",d:"یکای دما. بر اساسِ ثابتِ بولتزمان تعریف می‌شه. صفرِ کلوین یعنی صفرِ مطلق — سردترین دمای ممکن!"},
+    {sym:"mol",u:"مول",q:"مقدار ماده",d:"یکای مقدارِ ماده. بر اساسِ ثابتِ آووگادرو تعریف می‌شه و تعدادِ ذرات (اتم یا مولکول) رو می‌شمره."},
+    {sym:"A",u:"آمپر",q:"جریان الکتریکی",d:"یکای جریانِ الکتریکی. بر اساسِ بارِ بنیادی (بارِ یک الکترون) تعریف می‌شه."},
+    {sym:"cd",u:"کندلا",q:"شدت روشنایی",d:"یکای شدتِ روشنایی. تقریباً برابرِ نوری که یک شمعِ معمولی می‌تابونه — برای همین اسمش از candle (شمع) میاد."}
+  ];
+  var grid=document.getElementById("grid"),detail=document.getElementById("detail");
+  data.forEach(function(d){
+    var c=document.createElement("div");c.className="card";
+    c.innerHTML="<div class='sym'>"+d.sym+"</div><div class='uname'>"+d.u+"</div><div class='qty'>"+d.q+"</div>";
+    c.addEventListener("click",function(){
+      document.querySelectorAll(".card").forEach(function(x){x.classList.remove("active");});
+      c.classList.add("active");
+      detail.innerHTML="<b>"+d.u+" ("+d.sym+")</b> — "+d.d;
+    });
+    grid.appendChild(c);
+  });
+</script>
+</body>
+</html>

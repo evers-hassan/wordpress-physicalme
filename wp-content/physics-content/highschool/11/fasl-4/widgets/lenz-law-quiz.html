@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خودتو بسنج — قانون لنز</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb; --ok:#1d9e75; --ok-bg:#e3f5ed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c; --ok:#5dcaa5; --ok-bg:#1a4a35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.8;
+  }
+  .wrap{max-width:720px; margin:0 auto;}
+  .q-item{
+    border:1px solid var(--border); border-radius:12px; margin-bottom:10px;
+    overflow:hidden; background:var(--surface);
+  }
+  .q-head{
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+    padding:13px 15px; font-weight:500; font-size:15px; user-select:none;
+  }
+  .q-head:hover{background:var(--info-bg);}
+  .q-head .tog{
+    margin-inline-start:auto; flex:0 0 auto; color:var(--info);
+    transition:transform .2s ease; font-size:18px;
+  }
+  .q-item.open .q-head .tog{transform:rotate(45deg);}
+  .q-num{
+    flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+    background:var(--info); color:#fff; display:flex; align-items:center;
+    justify-content:center; font-size:13px; font-weight:700;
+  }
+  .q-body{
+    max-height:0; overflow:hidden; transition:max-height .25s ease;
+    background:var(--ok-bg);
+  }
+  .q-body .inner{padding:13px 15px; color:var(--text); font-size:14.5px;}
+  .q-body .inner::before{
+    content:"پاسخ: "; color:var(--ok); font-weight:700;
+  }
+  .hint{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  mjx-container{font-size:110%!important;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="hint">روی هر سؤال بزن تا پاسخش باز شود 👇</p>
+  <div id="quiz"></div>
+</div>
+
+<script>
+  var items = [
+  {
+    "q": "وقتی قطبِ N آهنربا به یه حلقه‌ی رسانا نزدیک می‌شه، حلقه چه جوری واکنش نشون می‌ده؟",
+    "a": "حلقه جوری جریان القا می‌کنه که سرِ نزدیک به آهنربا <b>قطبِ N</b> بشه — تا N آهنربا رو <b>دفع کنه</b>. این بنابر قانون لنزه: حلقه می‌خواد <b>افزایش شار</b> رو متوقف کنه."
+  },
+  {
+    "q": "وقتی N آهنربا داره از حلقه دور می‌شه، چی می‌شه؟",
+    "a": "حلقه جوری جریان القا می‌کنه که سرِ نزدیک به آهنربا <b>قطبِ S</b> بشه — تا N آهنربا رو <b>جذب کنه</b> و نذاره دور بشه! دوباره قانون لنز: حلقه با <b>کاهش شار</b> مخالفت می‌کنه."
+  },
+  {
+    "q": "چرا قانون لنز یه «ضرورتِ منطقی» محسوب می‌شه، نه یه قانونِ اختیاری؟",
+    "a": "چون اگه برعکس بود — یعنی جریان القایی همراهی می‌کرد — می‌شد بدونِ مصرفِ انرژی، چرخه‌ای ساخت که آهنربا رو به شتاب جذب کنه و جریانِ بی‌نهایت تولید کنه. این <b>پایستگی انرژی رو نقض می‌کنه</b>. لنز یه نتیجهٔ پایستگیه."
+  },
+  {
+    "q": "چرا وقتی یه آهنربا رو توی یه لوله‌ی مسی می‌اندازی، خیلی آروم میاد پایین؟",
+    "a": "چون حرکتِ آهنربا توی مس، جریان‌های گردابی (Eddy Currents) القا می‌کنه. این جریان‌ها بنابر قانون لنز، با حرکتِ آهنربا مخالفت می‌کنن و یه نیروی به سمتِ بالا روش وارد می‌کنن. <b>یه ترمزِ مغناطیسیِ خودکار!</b>"
+  },
+  {
+    "q": "اگه یه سیم مستقیم با جریانِ افزایشی نزدیکِ یه حلقه‌ی رسانا باشه، جهتِ جریان القایی در حلقه چه‌جوریه؟",
+    "a": "میدانِ سیم در محلِ حلقه داره <b>زیاد</b> می‌شه. پس بنابر قانون لنز، حلقه جریانی القا می‌کنه که میدانش <b>مخالف</b> میدان سیم باشه. جهتِ دقیق با قاعدهٔ دست راست تعیین می‌شه."
+  },
+  {
+    "q": "قطار مَگ‌لوی چینی چه‌جوری از قانون لنز برای ترمز استفاده می‌کنه؟",
+    "a": "وقتی می‌خواد ترمز کنه، آهنرباهای قوی نزدیک ریل‌ها فعال می‌شن. حرکتِ نسبی، توی ریل‌های فلزی جریان القا می‌کنه که <b>با حرکت مخالفت می‌کنه</b>. نتیجه: ترمزِ بدون اصطکاک، بی‌سروصدا، با اتلافِ کم. ✨"
+  },
+  {
+    "q": "چه چیزی به جز پایستگیِ انرژی، قانون لنز رو تأیید می‌کنه؟",
+    "a": "<b>تجربه‌ی مستقیم!</b> توی هر آزمایشی که با آهنربا و حلقه انجام شده، جهتِ جریان دقیقاً همون چیزیه که لنز پیش‌بینی می‌کنه. لنز هم با تجربه به این قانون رسیده — درست مثل فاراده."
+  },
+  {
+    "q": "یه پاندولِ آلومینیومی رو روی نوسانش، یه آهنربا نزدیکش بذار. چی اتفاق می‌افته؟",
+    "a": "<b>پاندول به سرعت متوقف می‌شه!</b> چون حرکتش جریان‌های گردابی توی آلومینیوم القا می‌کنه که با حرکت مخالفت می‌کنن. این اصل توی ترازوهای آزمایشگاهی هم برای میرا کردنِ نوسان استفاده می‌شه."
+  }
+];
+
+  var box = document.getElementById('quiz');
+  items.forEach(function(it, i){
+    var item = document.createElement('div'); item.className='q-item';
+    var head = document.createElement('div'); head.className='q-head';
+    head.innerHTML = '<span class="q-num">'+toFa(i+1)+'</span><span>'+it.q+'</span><span class="tog">+</span>';
+    var body = document.createElement('div'); body.className='q-body';
+    var inner = document.createElement('div'); inner.className='inner'; inner.innerHTML=it.a;
+    body.appendChild(inner);
+    head.addEventListener('click', function(){
+      var open = item.classList.toggle('open');
+      body.style.maxHeight = open ? (inner.scrollHeight + 26) + 'px' : '0';
+      if(window.MathJax && window.MathJax.typesetPromise){
+        window.MathJax.typesetPromise([inner]);
+      }
+    });
+    item.appendChild(head); item.appendChild(body); box.appendChild(item);
+  });
+  function toFa(n){return (''+n).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+</script>
+</body>
+</html>

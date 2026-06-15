@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تشدید — نوسانگر تحریک‌شده</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed; --warn:#a87800; --warn-bg:#fef6e0;
+    --peak:#c43838;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --warn:#e0b860; --warn-bg:#4a3a15;
+      --peak:#f06a60;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:14px; background:var(--bg); color:var(--text);
+       font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.6;}
+  .wrap{max-width:980px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:17px;}
+  .sub{font-size:12.5px; color:var(--muted); margin:0 0 12px;}
+  .layout{display:grid; grid-template-columns:1fr 230px; gap:12px;}
+  @media(max-width:760px){.layout{grid-template-columns:1fr;}}
+  .stage{background:linear-gradient(to bottom, #f7f9fc, var(--bg)); border:1px solid var(--border); border-radius:14px; padding:8px;}
+  @media(prefers-color-scheme:dark){.stage{background:linear-gradient(to bottom, #2a3040, var(--bg));}}
+  canvas{display:block; width:100%;}
+  #cvSim{height:240px;}
+  #cvCurve{height:180px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:13px; margin:8px 0 6px; color:var(--muted); text-transform:uppercase;}
+  .panel h3:first-child{margin-top:0;}
+  .slider-row{display:grid; grid-template-columns:1fr 60px; gap:6px; align-items:center; font-size:13px; margin-bottom:4px;}
+  .val{font-weight:700; color:var(--info); text-align:left; font-variant-numeric:tabular-nums;}
+  input[type=range]{width:100%; accent-color:var(--info);}
+  .btn{background:var(--info); color:white; border:none; padding:8px 14px; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer; width:100%; margin-top:6px;}
+  .btn.alt{background:#c43838;}
+  .readout{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px;}
+  .read{padding:6px 8px; border-radius:6px; text-align:center; font-size:12px;}
+  .read b{display:block; font-size:13px; margin-top:2px;}
+  .read.amp{background:var(--info-bg); color:var(--info); grid-column:1/-1;}
+  .read.ok{background:var(--ok-bg); color:var(--ok);}
+  .read.warn{background:var(--warn-bg); color:var(--warn);}
+  .note{font-size:12px; padding:8px; background:var(--ok-bg); color:var(--ok); border-radius:8px; margin-top:8px; line-height:1.6;}
+</style>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']], processEscapes: true },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      pageReady: function () {
+        return MathJax.startup.defaultPageReady().then(function () {
+          var obs = new MutationObserver(function () {
+            MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+          });
+          obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>تشدید — وقتی فرکانس درست می‌خوره به طبیعی! 🎯💥</h2>
+  <p class="sub">یه فرد داره آونگ رو با فرکانس $f_d$ هل می‌ده. آونگ خودش فرکانس طبیعی $f_0$ داره. ببین چه می‌شه وقتی این دو با هم برابر بشن.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <canvas id="cvSim"></canvas>
+      <canvas id="cvCurve"></canvas>
+    </div>
+
+    <div class="panel">
+      <h3>فرکانس‌ها</h3>
+      <div class="slider-row"><label>فرکانس طبیعی $f_0$ (Hz)</label><span class="val" id="vf0">۱٫۰۰</span></div>
+      <input type="range" id="f0" min="0.3" max="2.5" step="0.05" value="1.00">
+      <div class="slider-row"><label>فرکانس تحریک $f_d$ (Hz)</label><span class="val" id="vfd">۰٫۵۰</span></div>
+      <input type="range" id="fd" min="0.1" max="3" step="0.02" value="0.50">
+
+      <h3>میرایی</h3>
+      <div class="slider-row"><label>ضریب میرایی $\gamma$</label><span class="val" id="vg">۰٫۲۰</span></div>
+      <input type="range" id="gm" min="0.05" max="1" step="0.01" value="0.20">
+
+      <h3>وضعیت</h3>
+      <div class="readout">
+        <div class="read amp">دامنه‌ی پایدار $A$<b id="rA">—</b></div>
+        <div class="read ok" id="rRat">$f_d / f_0$<b id="rRatV">۰٫۵</b></div>
+        <div class="read warn" id="rRes">حالت<b id="rResV">عادی</b></div>
+      </div>
+
+      <button class="btn" id="match">🎯 برابر کن با $f_0$</button>
+      <button class="btn alt" id="reset">⟲ ریست</button>
+
+      <div class="note">
+        💡 وقتی $f_d \to f_0$ و میرایی کوچک باشه، دامنه به سمت بی‌نهایت می‌ره — همون چیزی که پل تاکوما (۱۹۴۰) رو خراب کرد!
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fa=n=>n.toLocaleString('fa-IR');
+const cvS=$('cvSim'), cvC=$('cvCurve');
+const cS=cvS.getContext('2d'), cC=cvC.getContext('2d');
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+let DPR=window.devicePixelRatio||1;
+function fit(cv,c){const r=cv.getBoundingClientRect(); cv.width=r.width*DPR; cv.height=r.height*DPR; c.setTransform(DPR,0,0,DPR,0,0);}
+
+let f0=1.0, fd=0.5, gm=0.20;
+let t=0, last=null;
+let theta=0, vel=0;
+
+function omega0(){return 2*Math.PI*f0;}
+function omegad(){return 2*Math.PI*fd;}
+
+function steadyAmp(){
+  // For damped driven SHM: A = F0/m / sqrt((w0^2 - wd^2)^2 + (gamma*wd)^2)
+  // Take F0/m = 1 for normalization, present in arbitrary units (scaled).
+  const w0=omega0(), wd=omegad();
+  const denom = Math.sqrt(Math.pow(w0*w0 - wd*wd, 2) + Math.pow(gm*wd, 2));
+  return 1/denom;
+}
+
+function drawSim(){
+  fit(cvS, cS);
+  const W=cvS.clientWidth, H=cvS.clientHeight;
+  const pivX=W/2, pivY=24;
+  // pivot
+  cS.fillStyle=css('--border'); cS.fillRect(pivX-40, pivY-12, 80, 12);
+  // driver hand: oscillates around pivot
+  const driveAng = 0.15*Math.sin(omegad()*t);
+  const dx = pivX + 40*Math.cos(-Math.PI/2 + driveAng);
+  const dy = pivY + 40*Math.sin(-Math.PI/2 + driveAng);
+  // pendulum: integrate driven damped equation
+  // theta'' + gamma*theta' + w0^2*theta = w0^2*driveAng
+  // (so steady state matches scaled formula visually)
+  const pxL = H-80;
+  const bx = pivX + pxL*Math.sin(theta);
+  const by = pivY + pxL*Math.cos(theta);
+  cS.strokeStyle=css('--text'); cS.lineWidth=1.5;
+  cS.beginPath(); cS.moveTo(pivX, pivY); cS.lineTo(bx, by); cS.stroke();
+  cS.fillStyle=css('--info');
+  cS.beginPath(); cS.arc(bx, by, 18, 0, 2*Math.PI); cS.fill();
+  cS.strokeStyle=css('--text'); cS.stroke();
+  // driver indicator (small red arrow above)
+  cS.fillStyle=css('--peak'); cS.font='12px Vazirmatn'; cS.textAlign='center';
+  const driverPx = pivX + 50*Math.sin(driveAng);
+  cS.beginPath();
+  cS.moveTo(driverPx-8, pivY-20); cS.lineTo(driverPx+8, pivY-20);
+  cS.lineTo(driverPx, pivY-8); cS.closePath(); cS.fill();
+  cS.fillText('تحریک ↓', driverPx, pivY-26);
+  // label
+  cS.fillStyle=css('--muted'); cS.font='11px Vazirmatn';
+  cS.fillText('زاویه: '+fa((theta*180/Math.PI).toFixed(1))+'°', W/2, H-8);
+}
+
+function drawCurve(){
+  fit(cvC, cC);
+  const W=cvC.clientWidth, H=cvC.clientHeight;
+  cC.fillStyle=css('--surface'); cC.fillRect(0,0,W,H);
+  cC.strokeStyle=css('--border'); cC.lineWidth=1;
+  cC.beginPath(); cC.moveTo(36, H-20); cC.lineTo(W-6, H-20); cC.stroke();
+  cC.beginPath(); cC.moveTo(36, 8); cC.lineTo(36, H-20); cC.stroke();
+  cC.fillStyle=css('--muted'); cC.font='10px Vazirmatn'; cC.textAlign='center';
+  cC.fillText('فرکانس تحریک $f_d$ (Hz)', W/2, H-4);
+  cC.save(); cC.translate(10, H/2); cC.rotate(-Math.PI/2); cC.fillText('دامنه', 0,0); cC.restore();
+  // scan fd
+  const N=160;
+  const fmax=3.0;
+  // find absolute max for normalization
+  let A0 = 0;
+  const pts=[];
+  for(let i=0;i<=N;i++){
+    const f=(i/N)*fmax;
+    const w0=2*Math.PI*f0, wd=2*Math.PI*f;
+    const denom=Math.sqrt(Math.pow(w0*w0-wd*wd,2)+Math.pow(gm*wd,2));
+    const A=1/denom;
+    pts.push({f, A});
+    if(A>A0) A0=A;
+  }
+  // draw curve
+  cC.strokeStyle=css('--info'); cC.lineWidth=2;
+  cC.beginPath();
+  pts.forEach((p,i)=>{
+    const x=36 + (p.f/fmax)*(W-42);
+    const y=(H-20) - (p.A/A0)*(H-30);
+    if(i===0) cC.moveTo(x,y); else cC.lineTo(x,y);
+  });
+  cC.stroke();
+  // mark f0 (natural)
+  cC.strokeStyle=css('--ok'); cC.setLineDash([4,4]);
+  const xf0 = 36 + (f0/fmax)*(W-42);
+  cC.beginPath(); cC.moveTo(xf0, 8); cC.lineTo(xf0, H-20); cC.stroke();
+  cC.setLineDash([]);
+  cC.fillStyle=css('--ok'); cC.font='11px Vazirmatn'; cC.textAlign='center';
+  cC.fillText('$f_0$', xf0, 14);
+  // mark current fd
+  cC.strokeStyle=css('--peak');
+  const xfd = 36 + (fd/fmax)*(W-42);
+  cC.beginPath(); cC.moveTo(xfd, 8); cC.lineTo(xfd, H-20); cC.stroke();
+  cC.fillStyle=css('--peak');
+  cC.fillText('$f_d$', xfd, 14);
+  // current amplitude marker
+  const w0=2*Math.PI*f0, wd=2*Math.PI*fd;
+  const Anow = 1/Math.sqrt(Math.pow(w0*w0-wd*wd,2)+Math.pow(gm*wd,2));
+  cC.fillStyle=css('--peak');
+  cC.beginPath();
+  cC.arc(xfd, (H-20)-(Anow/A0)*(H-30), 5, 0, 2*Math.PI); cC.fill();
+  // text
+  $('rA').textContent = fa((Anow*100/A0).toFixed(0))+'٪ از قله';
+  $('rRatV').textContent = fa((fd/f0).toFixed(2));
+  const ratio = fd/f0;
+  if(Math.abs(ratio-1)<0.05){ $('rResV').textContent='تشدید! 🔥'; }
+  else if(Math.abs(ratio-1)<0.2){ $('rResV').textContent='نزدیک تشدید'; }
+  else { $('rResV').textContent='عادی'; }
+}
+
+function step(now){
+  if(!last) last=now;
+  const dt=Math.min((now-last)/1000, 0.03);
+  last=now;
+  t+=dt;
+  // integrate driven oscillator (Euler-Cromer)
+  const w0=omega0(), wd=omegad();
+  const driveAng = 0.15*Math.sin(wd*t);
+  const acc = -gm*vel - w0*w0*(theta - driveAng);
+  vel += acc*dt;
+  theta += vel*dt;
+  // visual cap
+  if(Math.abs(theta)>1.2) theta = Math.sign(theta)*1.2;
+  $('vf0').textContent=fa(f0.toFixed(2));
+  $('vfd').textContent=fa(fd.toFixed(2));
+  $('vg').textContent=fa(gm.toFixed(2));
+  drawSim(); drawCurve();
+  requestAnimationFrame(step);
+}
+
+['f0','fd','gm'].forEach(id=>{
+  const real=id==='gm'?'gm':id;
+  $(id).addEventListener('input', e=>{
+    if(id==='f0') f0=parseFloat(e.target.value);
+    if(id==='fd') fd=parseFloat(e.target.value);
+    if(id==='gm') gm=parseFloat(e.target.value);
+  });
+});
+$('match').addEventListener('click', ()=>{
+  fd=f0; $('fd').value=fd;
+});
+$('reset').addEventListener('click', ()=>{ t=0; theta=0; vel=0; });
+requestAnimationFrame(step);
+</script>
+</body>
+</html>

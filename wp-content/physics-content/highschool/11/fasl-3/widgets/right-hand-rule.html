@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>قاعدهٔ دست راست — نیروی مغناطیسی</title>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#f4f3ef; --text:#1a1a18; --muted:#5f5e5a;
+    --border:#e0ded7; --info:#185fa5; --info-bg:#e6f1fb;
+    --ok:#1d9e75; --ok-bg:#e3f5ed;
+    --hint-c:#a87800; --hint-bg:#fef6e0;
+    --v:#185fa5; --B:#7a4dbd; --F:#c43838;
+    --pos:#d6453c; --neg:#2f6fd0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1f1e1c; --surface:#2a2926; --text:#f0efe9; --muted:#a8a69e;
+      --border:#3a3835; --info:#85b7eb; --info-bg:#0c447c;
+      --ok:#5dcaa5; --ok-bg:#1a4a35; --hint-c:#e0b860; --hint-bg:#4a3a15;
+      --v:#85b7eb; --B:#b08be8; --F:#f0807d;
+      --pos:#f06a60; --neg:#6aa0ee;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:Vazirmatn, Tahoma, system-ui, sans-serif; line-height:1.7;
+  }
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:17px; margin:0 0 4px;}
+  .sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .layout{display:grid; grid-template-columns:1fr 280px; gap:16px;}
+  @media(max-width:680px){ .layout{grid-template-columns:1fr;} }
+
+  .stage{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  canvas{display:block; width:100%; height:330px; touch-action:none;}
+  .readout{padding:11px 12px; border-top:1px solid var(--border); display:flex; gap:8px; flex-wrap:wrap;}
+  .chip{flex:1 1 90px; background:var(--info-bg); color:var(--info); border-radius:8px; padding:6px 9px; text-align:center; font-size:13.5px;}
+  .chip b{display:block; font-size:15px; font-weight:700; margin-top:1px;}
+  .chip.ok{background:var(--ok-bg); color:var(--ok);}
+  .chip.bad{background:#fce5e5; color:#c43838;}
+  @media (prefers-color-scheme: dark){ .chip.bad{background:#4a1f1f; color:#f0807d;} }
+
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;}
+  .panel h3{font-size:14px; font-weight:700; margin:8px 0 8px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px;}
+  .panel h3:first-child{margin-top:0;}
+  .row{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;}
+  .btn{
+    font-family:inherit; font-size:13px; padding:7px 10px; border-radius:8px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text); cursor:pointer;
+    transition:.12s; flex:1 1 auto; min-width:54px;
+  }
+  .btn:hover{background:var(--info-bg); border-color:var(--info); color:var(--info);}
+  .btn.on{background:var(--info); color:#fff; border-color:var(--info);}
+  .btn.qpos.on{background:var(--pos); border-color:var(--pos);}
+  .btn.qneg.on{background:var(--neg); border-color:var(--neg);}
+  .slider-row{display:grid; grid-template-columns:1fr 50px; gap:8px; align-items:center; margin-bottom:8px; font-size:13px;}
+  .slider-row span{color:var(--muted);}
+  .slider-row .val{font-weight:700; color:var(--text); text-align:left;}
+  input[type=range]{accent-color:var(--info); width:100%; height:6px;}
+
+  .legend{display:flex; flex-wrap:wrap; gap:8px; font-size:13px; margin-top:10px;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .swatch{display:inline-block; width:14px; height:14px; border-radius:3px;}
+
+  .hint{
+    margin-top:12px; background:var(--hint-bg); color:var(--hint-c);
+    border-radius:10px; padding:10px 14px; font-size:13.5px;
+    border-right:3px solid var(--hint-c);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>✋ قاعدهٔ دست راست — کاوش بصری</h2>
+  <p class="sub">جهت سرعت ذرّه و میدان مغناطیسی رو تغییر بده، نوع بار رو عوض کن، و ببین نیرو ($\vec{F}$) به کدوم سمت می‌چرخه.</p>
+
+  <div class="layout">
+    <div class="stage">
+      <canvas id="cv"></canvas>
+      <div class="readout">
+        <div class="chip">جهت <b style="color:var(--v);">v</b><b id="vDirVal">—</b></div>
+        <div class="chip">جهت <b style="color:var(--B);">B</b><b id="bDirVal">—</b></div>
+        <div class="chip ok">جهت <b style="color:var(--F);">F</b><b id="fDirVal">—</b></div>
+        <div class="chip">شدّت F<b id="fMagVal">—</b></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>نوع بار</h3>
+      <div class="row">
+        <button class="btn qpos on" id="qP">+ مثبت</button>
+        <button class="btn qneg" id="qN">− منفی</button>
+      </div>
+
+      <h3>جهت سرعت v</h3>
+      <div class="slider-row">
+        <input type="range" id="vAng" min="0" max="359" step="1" value="0">
+        <span class="val" id="vAngVal">0°</span>
+      </div>
+      <div class="row" style="margin-top:-4px;">
+        <button class="btn" data-vang="0">→ راست</button>
+        <button class="btn" data-vang="90">↑ بالا</button>
+        <button class="btn" data-vang="180">← چپ</button>
+        <button class="btn" data-vang="270">↓ پایین</button>
+      </div>
+
+      <h3>جهت میدان B</h3>
+      <div class="row">
+        <button class="btn" data-bdir="right">→</button>
+        <button class="btn" data-bdir="up">↑</button>
+        <button class="btn" data-bdir="left">←</button>
+        <button class="btn" data-bdir="down">↓</button>
+      </div>
+      <div class="row">
+        <button class="btn on" data-bdir="out">⊙ خارج صفحه</button>
+        <button class="btn" data-bdir="in">⊗ داخل صفحه</button>
+      </div>
+
+      <h3>شدّت</h3>
+      <div class="slider-row">
+        <span>اندازه v</span>
+        <span class="val" id="vMagVal">1</span>
+      </div>
+      <input type="range" id="vMag" min="0.2" max="3" step="0.1" value="1">
+      <div class="slider-row" style="margin-top:8px;">
+        <span>اندازه B</span>
+        <span class="val" id="bMagVal">1</span>
+      </div>
+      <input type="range" id="bMag" min="0.2" max="3" step="0.1" value="1">
+    </div>
+  </div>
+
+  <div class="hint">
+    💡 <b>قاعدهٔ دست راست (روش کفِ دست — مطابق کتاب درسی):</b><br>
+    کفِ دستِ راست رو باز کن. <b>انگشت‌ها</b> در جهت <b style="color:var(--v);">v</b>، طوری که با خم کردنشون به سمت <b style="color:var(--B);">B</b> برسن. اون موقع <b>شَست</b>ت در جهتِ <b style="color:var(--F);">F</b> ـه. <br>
+    برای بار <b>منفی</b>، نیرو <b>برعکس</b> می‌شه. وقتی v و B هم‌جهتن، نیرو صفره. <br>
+    (روشِ معادل سه‌انگشتی: اشاره=v، میانی=B، شَست=F — هر دو نتیجهٔ یکسان می‌دن.)
+  </div>
+</div>
+
+<script id="mathjax-config">
+window.MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']],
+         displayMath: [['$$','$$'], ['\\[','\\]']],
+         processEscapes: true },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    pageReady: function () {
+      return MathJax.startup.defaultPageReady().then(function () {
+        var obs = new MutationObserver(function () {
+          MathJax.typesetPromise().catch(function (e) { console.warn('MathJax err', e); });
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var W,H,cx,cy;
+
+  // State
+  var qSign = +1;
+  var vAngDeg = 0;          // 0 = +x = right
+  var vMag = 1;
+  var bDir = 'out';         // 'right','up','left','down','out','in'
+  var bMag = 1;
+
+  function toFa(s){return (''+s).replace(/[0-9]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[+d];});}
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+  function arrow(x1,y1, x2,y2, color, width){
+    width=width||3.5;
+    var dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy);
+    if(len<2) return;
+    var ux=dx/len, uy=dy/len, hs=11;
+    ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=width; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2-ux*hs*0.6, y2-uy*hs*0.6); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-ux*hs - uy*hs*0.55, y2-uy*hs + ux*hs*0.55);
+    ctx.lineTo(x2-ux*hs + uy*hs*0.55, y2-uy*hs - ux*hs*0.55);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // Compute Force direction (in 2D screen) using F = q v × B.
+  // Conventions:
+  //   x = right, y = up (canvas y inverted), z = out of page.
+  //   In-plane B: vector in xy plane.
+  //   Out-of-plane B: along ±z.
+  // Result F is also in 2D when B is along z, OR along ±z when both v and B are in-plane.
+  function vDirection(){
+    var rad = vAngDeg * Math.PI/180;
+    return {x: Math.cos(rad), y: Math.sin(rad), z:0};
+  }
+  function bDirection(){
+    switch(bDir){
+      case 'right': return {x:1,y:0,z:0};
+      case 'up':    return {x:0,y:1,z:0};
+      case 'left':  return {x:-1,y:0,z:0};
+      case 'down':  return {x:0,y:-1,z:0};
+      case 'out':   return {x:0,y:0,z:1};
+      case 'in':    return {x:0,y:0,z:-1};
+    }
+    return {x:0,y:0,z:1};
+  }
+  function cross(a,b){
+    return {
+      x: a.y*b.z - a.z*b.y,
+      y: a.z*b.x - a.x*b.z,
+      z: a.x*b.y - a.y*b.x
+    };
+  }
+  function forceDir(){
+    var v = vDirection(), b = bDirection();
+    var c = cross(v,b);
+    if (qSign<0){ c.x=-c.x; c.y=-c.y; c.z=-c.z; }
+    return c;
+  }
+
+  function dirName(d){
+    var inPlane = Math.hypot(d.x, d.y);
+    var zPart = Math.abs(d.z);
+    if (inPlane < 0.05 && zPart < 0.05) return 'صفر';
+    if (zPart > 0.95) return d.z>0 ? '⊙ خارج صفحه' : '⊗ داخل صفحه';
+    var ang = Math.atan2(d.y, d.x) * 180/Math.PI;
+    if (ang<0) ang+=360;
+    // Snap to compass labels
+    if (ang>=337.5 || ang<22.5) return 'راست (→)';
+    if (ang<67.5) return 'بالا-راست (↗)';
+    if (ang<112.5) return 'بالا (↑)';
+    if (ang<157.5) return 'بالا-چپ (↖)';
+    if (ang<202.5) return 'چپ (←)';
+    if (ang<247.5) return 'پایین-چپ (↙)';
+    if (ang<292.5) return 'پایین (↓)';
+    return 'پایین-راست (↘)';
+  }
+  function shortDirName(d){
+    var inPlane = Math.hypot(d.x, d.y);
+    var zPart = Math.abs(d.z);
+    if (inPlane < 0.05 && zPart < 0.05) return '۰';
+    if (zPart > 0.95) return d.z>0 ? '⊙ خارج' : '⊗ داخل';
+    var ang = Math.atan2(d.y, d.x) * 180/Math.PI;
+    if (ang<0) ang+=360;
+    if (ang>=337.5 || ang<22.5) return '→';
+    if (ang<67.5) return '↗';
+    if (ang<112.5) return '↑';
+    if (ang<157.5) return '↖';
+    if (ang<202.5) return '←';
+    if (ang<247.5) return '↙';
+    if (ang<292.5) return '↓';
+    return '↘';
+  }
+
+  function drawAxesLabels(){
+    ctx.save();
+    ctx.fillStyle = cssv('--muted');
+    ctx.font = '11px Vazirmatn, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('محورِ z از صفحه به‌سمت توست (⊙ = خارج صفحه، ⊗ = داخل صفحه)', W/2, 16);
+    ctx.restore();
+  }
+
+  function drawBOutOfPlaneMarker(){
+    // Show grid of ⊙ or ⊗ symbols across the canvas to convey perpendicular B
+    if (bDir!=='out' && bDir!=='in') return;
+    var step=50, sym = (bDir==='out') ? '⊙' : '⊗';
+    ctx.save();
+    ctx.fillStyle = cssv('--B');
+    ctx.globalAlpha = 0.35;
+    ctx.font = '20px Vazirmatn, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    for (var x=step/2; x<W; x+=step){
+      for (var y=step/2; y<H; y+=step){
+        ctx.fillText(sym, x, y);
+      }
+    }
+    ctx.restore();
+  }
+
+  function draw(){
+    var rect=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    cv.width=rect.width*dpr; cv.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=rect.width; H=rect.height; cx=W/2; cy=H/2;
+    ctx.clearRect(0,0,W,H);
+    drawAxesLabels();
+    drawBOutOfPlaneMarker();
+
+    // Particle at center
+    var v = vDirection(), b = bDirection(), F = forceDir();
+    // We draw in canvas (y is down). So map physical y→canvas y by negating.
+    function toCanvas(d){return {x: d.x, y: -d.y};}
+    var vC = toCanvas(v);
+    var bC = toCanvas(b);
+    var fC = toCanvas(F);
+
+    var scale = 110;
+
+    // Draw B arrow (in-plane) or marker text (out-of-plane drawn above already)
+    if (bDir!=='out' && bDir!=='in'){
+      arrow(cx, cy, cx+bC.x*scale*bMag, cy+bC.y*scale*bMag, cssv('--B'), 4);
+      ctx.fillStyle = cssv('--B'); ctx.font='bold 14px Vazirmatn'; ctx.textAlign='center';
+      ctx.fillText('B', cx+bC.x*scale*bMag*1.12, cy+bC.y*scale*bMag*1.12);
+    }
+
+    // Draw v arrow
+    arrow(cx, cy, cx+vC.x*scale*vMag, cy+vC.y*scale*vMag, cssv('--v'), 4);
+    ctx.fillStyle = cssv('--v'); ctx.font='bold 14px Vazirmatn'; ctx.textAlign='center';
+    ctx.fillText('v', cx+vC.x*scale*vMag*1.12, cy+vC.y*scale*vMag*1.12);
+
+    // Draw F — depends on whether it's in-plane or out-of-plane
+    var fMag = Math.hypot(F.x, F.y, F.z);
+    if (fMag > 0.01){
+      var inPlane = Math.hypot(F.x, F.y);
+      if (inPlane > 0.05){
+        var nx=F.x/inPlane, ny=-F.y/inPlane;   // canvas y inverted
+        arrow(cx, cy, cx+nx*scale*0.85, cy+ny*scale*0.85, cssv('--F'), 4);
+        ctx.fillStyle = cssv('--F'); ctx.font='bold 14px Vazirmatn'; ctx.textAlign='center';
+        ctx.fillText('F', cx+nx*scale*0.85*1.12, cy+ny*scale*0.85*1.12);
+      } else {
+        // F is along z — draw circle marker on top of particle
+        ctx.save();
+        ctx.fillStyle = cssv('--F'); ctx.globalAlpha=0.9;
+        ctx.beginPath();
+        if (F.z>0){
+          // ⊙
+          ctx.arc(cx, cy, 18, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle='#fff';
+          ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI*2); ctx.fill();
+        } else {
+          // ⊗
+          ctx.arc(cx, cy, 18, 0, Math.PI*2); ctx.fill();
+          ctx.strokeStyle='#fff'; ctx.lineWidth=3;
+          ctx.beginPath(); ctx.moveTo(cx-9, cy-9); ctx.lineTo(cx+9, cy+9); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(cx+9, cy-9); ctx.lineTo(cx-9, cy+9); ctx.stroke();
+        }
+        ctx.fillStyle = cssv('--F'); ctx.font='bold 13px Vazirmatn';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('F', cx+30, cy-25);
+        ctx.restore();
+      }
+    } else {
+      // No force — show "F=0" near particle
+      ctx.fillStyle = cssv('--muted'); ctx.font='bold 13px Vazirmatn'; ctx.textAlign='center';
+      ctx.fillText('F = ۰', cx, cy-30);
+    }
+
+    // Draw particle (last so it's on top)
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI*2);
+    ctx.fillStyle = qSign>0 ? cssv('--pos') : cssv('--neg');
+    ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='bold 16px Vazirmatn';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(qSign>0 ? '+' : '−', cx, cy+1);
+    ctx.restore();
+
+    // Update readouts
+    document.getElementById('vDirVal').textContent = shortDirName(v);
+    document.getElementById('bDirVal').textContent = shortDirName(b);
+    document.getElementById('fDirVal').textContent = shortDirName(F);
+    var fMagNum = vMag * bMag * Math.abs(Math.sin((vAngBetween(v,b)) * Math.PI/180));
+    document.getElementById('fMagVal').textContent = toFa(fMagNum.toFixed(2)) + ' (نسبی)';
+  }
+
+  function vAngBetween(a,b){
+    // Angle (deg) between unit-ish vectors a and b in 3D
+    var dot = a.x*b.x + a.y*b.y + a.z*b.z;
+    var ma = Math.hypot(a.x,a.y,a.z), mb = Math.hypot(b.x,b.y,b.z);
+    if (ma<1e-9 || mb<1e-9) return 0;
+    var c = Math.max(-1, Math.min(1, dot/(ma*mb)));
+    return Math.acos(c)*180/Math.PI;
+  }
+
+  // Bindings
+  document.getElementById('qP').addEventListener('click', function(){
+    qSign=+1;
+    document.getElementById('qP').classList.add('on');
+    document.getElementById('qN').classList.remove('on');
+    draw();
+  });
+  document.getElementById('qN').addEventListener('click', function(){
+    qSign=-1;
+    document.getElementById('qN').classList.add('on');
+    document.getElementById('qP').classList.remove('on');
+    draw();
+  });
+  document.getElementById('vAng').addEventListener('input', function(e){
+    vAngDeg=+e.target.value;
+    document.getElementById('vAngVal').textContent = toFa(vAngDeg) + '°';
+    draw();
+  });
+  document.querySelectorAll('button[data-vang]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      vAngDeg = +btn.dataset.vang;
+      document.getElementById('vAng').value = vAngDeg;
+      document.getElementById('vAngVal').textContent = toFa(vAngDeg) + '°';
+      draw();
+    });
+  });
+  document.querySelectorAll('button[data-bdir]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      bDir = btn.dataset.bdir;
+      document.querySelectorAll('button[data-bdir]').forEach(function(b){b.classList.remove('on');});
+      btn.classList.add('on');
+      draw();
+    });
+  });
+  document.getElementById('vMag').addEventListener('input', function(e){
+    vMag=+e.target.value;
+    document.getElementById('vMagVal').textContent = toFa(vMag.toFixed(1));
+    draw();
+  });
+  document.getElementById('bMag').addEventListener('input', function(e){
+    bMag=+e.target.value;
+    document.getElementById('bMagVal').textContent = toFa(bMag.toFixed(1));
+    draw();
+  });
+  window.addEventListener('resize', draw);
+  draw();
+})();
+</script>
+</body>
+</html>
